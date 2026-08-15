@@ -22,6 +22,3 @@ Thumbs.db
 
 # IDE
 .idea/
-
-# 构建产物
-release/

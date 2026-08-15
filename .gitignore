@@ -10,7 +10,6 @@ node_modules/
 
 # Build outputs
 dist/
-release/
 out/
 
 # Env & secrets (keep *.example)
