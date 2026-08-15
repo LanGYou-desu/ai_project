@@ -1,0 +1,133 @@
+/* ============================================================
+ * NETIME · 年代复古主题（浏览器页面内容）
+ * 每个年代一套 CSS：字体、配色、边框、动效
+ * ============================================================ */
+
+/* ================= 页面基础 ================= */
+.page { padding: 18px 22px; font-size: 13px; line-height: 1.75; word-break: break-word; }
+.page a { cursor: pointer; }
+.page .cnt { font-family: "Courier New", monospace; }
+.page .ascii { font-family: "Courier New", monospace; font-size: 12px; line-height: 1.35; color: #000; }
+.page .results { margin-top: 14px; }
+.sr-count { font-size: 12px; color: #666; margin-bottom: 8px; }
+.sr-list { list-style: none; }
+.sr-list li { margin-bottom: 12px; }
+.sr-url { color: #0a7; font-size: 11px; font-family: monospace; }
+.sr-snip { color: #555; font-size: 12px; }
+.sr-hint, .sr-empty { color: #777; font-size: 13px; }
+.nf { color: #a33; }
+
+/* ================= 1995 · BBS 黎明 ================= */
+.page-1995 {
+  background: #c0c0c0; color: #000;
+  font-family: "SimSun", "宋体", "NSimSun", serif;
+  font-size: 14px;
+}
+.page-1995 a { color: #0000ee; text-decoration: underline; }
+.page-1995 a:visited { color: #551a8b; }
+.page-1995 h2.title95, .page-1995 h3.title95 { color: #000; }
+.page-1995 table.retro { border-collapse: collapse; }
+.page-1995 table.retro th, .page-1995 table.retro td { border: 1px solid #808080; padding: 4px 6px; }
+.page-1995 .banner { background: #000080; color: #fff; padding: 8px 12px; }
+.page-1995 .banner2 { background: #008080; color: #fff; padding: 6px 12px; }
+.page-1995 .subbar { background: #dfdfdf; padding: 4px 12px; }
+.page-1995 .news { margin-left: 22px; }
+.page-1995 .news li { margin: 4px 0; }
+.page-1995 marquee { color: #800080; }
+.page-1995 hr { border: none; border-top: 1px solid #808080; }
+
+/* ================= 2000 · 门户时代 ================= */
+.page-2000 {
+  background: #ffffff; color: #222;
+  font-family: "SimSun", "宋体", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+}
+.page-2000 a { color: #0033cc; }
+.page-2000 a:hover { color: #ff6600; }
+.page-2000 table.retro { border-collapse: collapse; }
+.page-2000 table.retro th, .page-2000 table.retro td { border: 1px solid #999; padding: 4px 8px; }
+.page-2000 table.retro th { background: #e8eef8; }
+.page-2000 .banner3 { background: #0a3a8f; color: #fff; padding: 10px 14px; font-size: 20px; }
+.page-2000 .nav2000 { background: #1d5fc4; color: #fff; padding: 5px 14px; font-size: 13px; }
+.page-2000 .nav2000 a { color: #fff; text-decoration: none; margin: 0 6px; }
+.page-2000 .nav2000 a:hover { text-decoration: underline; }
+.page-2000 h2.title2000, .page-2000 h3.title2000 { color: #0a3a8f; }
+.page-2000 .news { margin-left: 22px; }
+.page-2000 .news li { margin: 4px 0; }
+.page-2000 marquee { color: #cc3300; }
+
+/* ================= 2005 · 博客元年 ================= */
+.page-2005 {
+  background: #eef3fa; color: #333;
+  font-family: "Microsoft YaHei", "微软雅黑", "SimSun", sans-serif;
+  font-size: 13px;
+}
+.page-2005 a { color: #0b66c3; text-decoration: none; }
+.page-2005 a:hover { text-decoration: underline; }
+.page-2005 table.retro { border-collapse: collapse; width: 100%; }
+.page-2005 table.retro td { border: 1px solid #c8d4e4; padding: 7px 9px; background: #fff; }
+.page-2005 .bloghead2005 {
+  background: linear-gradient(180deg, #7cb3e8, #4a90d9); color: #fff;
+  padding: 9px 14px; font-size: 17px; font-weight: 700; border-radius: 6px 6px 0 0;
+}
+.page-2005 .bloghead2005 span { font-weight: 400; font-size: 12px; }
+.page-2005 .blogpost2005 { background: #fff; border: 1px solid #c8d4e4; border-radius: 6px; padding: 16px 20px; }
+.page-2005 h2.title2005 { color: #1f5fa8; font-size: 20px; }
+.page-2005 .blogmeta { color: #888; font-size: 11px; margin: 6px 0 10px; }
+.page-2005 .blogpost2005 p { text-indent: 2em; margin: 10px 0; line-height: 1.9; }
+
+/* ================= 2010 · 社交网络 ================= */
+.page-2010 {
+  background: #ffffff; color: #333;
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif;
+  font-size: 13px;
+}
+.page-2010 a { color: #2b7de9; text-decoration: none; }
+.page-2010 .snshead {
+  background: #fff; border-bottom: 2px solid #2b7de9; color: #333;
+  padding: 9px 4px; font-size: 18px; font-weight: 700;
+}
+.page-2010 .snshead span { color: #999; font-weight: 400; font-size: 12px; }
+.page-2010 .snsnav { padding: 8px 4px; font-size: 13px; border-bottom: 1px solid #eee; }
+.page-2010 .feed { margin-top: 6px; }
+.page-2010 .post { border-bottom: 1px solid #f0f0f0; padding: 12px 4px; line-height: 1.7; }
+.page-2010 .post b { font-size: 14px; }
+.page-2010 .meta { color: #999; font-size: 11px; }
+.page-2010 .profile { background: #f7f9fc; border: 1px solid #e3e8f0; border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+.page-2010 h2.title2010, .page-2010 h3.title2010 { color: #2b7de9; }
+
+/* ================= 2025 · 最后的电台 ================= */
+.page-2025 {
+  background: #0f1419; color: #c8d3dc;
+  font-family: "Cascadia Code", Consolas, "Courier New", "Microsoft YaHei", monospace;
+  font-size: 13px;
+}
+.page-2025 a { color: #5ad0c0; text-decoration: none; }
+.page-2025 a:hover { text-decoration: underline; color: #9ff0e4; }
+.page-2025 .archhead {
+  color: #6be8a0; font-size: 18px; letter-spacing: 2px;
+  border-bottom: 1px solid #24404a; padding-bottom: 10px; margin-bottom: 12px;
+}
+.page-2025 .archhead.unlock { color: #ffe08a; text-shadow: 0 0 14px rgba(255,224,138,.5); }
+.page-2025 .archstat { color: #6be8a0; font-size: 12px; margin-bottom: 12px; }
+.page-2025 table.archnav { width: 100%; border-collapse: collapse; }
+.page-2025 table.archnav td { border: 1px solid #24404a; padding: 10px 14px; font-size: 14px; }
+.page-2025 hr { border: none; border-top: 1px dashed #24404a; margin: 14px 0; }
+.page-2025 .epilogue {
+  border-left: 3px solid #6be8a0; background: #111a20; padding: 14px 18px;
+  line-height: 2; font-size: 14px; margin: 12px 0; color: #d8f4e4;
+}
+.page-2025 .epifinal { color: #ffe08a; font-size: 17px; margin: 14px 0; text-shadow: 0 0 12px rgba(255,224,138,.35); }
+.page-2025 .lockform { margin: 14px 0; display: flex; gap: 8px; }
+.page-2025 .lockform input, .page-2025 .lockform textarea {
+  background: #0a1014; color: #eafff5; border: 1px solid #2c5c6a; border-radius: 6px;
+  padding: 9px 12px; font-family: inherit; font-size: 15px; flex: 1;
+}
+.page-2025 .lockform textarea { min-height: 70px; }
+.page-2025 .lockform button {
+  background: #123f47; color: #9ff0e4; border: 1px solid #2c7a8a; border-radius: 6px;
+  padding: 9px 20px; font-family: inherit; font-size: 14px; cursor: pointer; letter-spacing: 2px;
+}
+.page-2025 .lockform button:hover { background: #18515c; }
+.page-2025 .lockmsg { color: #e05c5c; font-size: 12px; margin-top: 4px; }
+.page-2025 .ascii { color: #6be8a0; }

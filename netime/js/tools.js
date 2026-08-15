@@ -97,9 +97,9 @@
     var out = [];
     var tokens = String(text).toUpperCase().split(/(\s+)/);
     tokens.forEach(function (tok) {
+      if (/^\s+$/.test(tok)) { out.push('/'); return; } // 空白 → 词分隔
       var t = tok.trim();
       if (!t) return;
-      if (tok.indexOf(' ') >= 0) { out.push('/'); return; } // 空白 → 词分隔
       var parts = [];
       for (var i = 0; i < t.length; i++) {
         var ch = t.charAt(i);
@@ -109,7 +109,7 @@
       }
       out.push(parts.join(' '));
     });
-    return out.join(' / ');
+    return out.join(' ');
   }
 
   // 摩斯 → 文本

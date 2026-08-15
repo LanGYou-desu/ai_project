@@ -12,7 +12,7 @@
 | [ai_compiler](./ai_compiler/) | Electron 桌面应用 | 把编辑器代码发给 AI「模拟运行」，AI 输出流式显示在内置终端里的 AI 编译器 | Electron + Express + Monaco Editor + electron-builder |
 | [cyber-academy](./cyber-academy/) | Web 应用 + 本地靶场 | 面向零基础到进阶的网络安全训练营：课程 → 示例 → 关卡 → 挑战 → 真实本地靶场 → 命令行工具链 | 原生 HTML/CSS/JS + Node.js（零第三方依赖） |
 | [devsaga](./devsaga/) | Python 养成游戏 | 程序员职场模拟器：11 种开发环境、79 个任务、33 道课后测验、51 篇知识手册、多结局剧情、11 套专属工作台 UI，边玩边学真实排障 | Python 3.10+ 标准库（零第三方依赖） |
-| [netime](./netime/) | Web 解谜游戏 | 「网络时光机」：沿着 1995→2025 五个年代收集时间密钥，破解一桩跨越三十年的旧互联网失踪案（进行中） | 原生 HTML/CSS/JS（纯前端零依赖） |
+| [netime](./netime/) | Web 解谜游戏 | 「网络时光机」：复古浏览器里沿着 1995→2025 五个年代收集时间密钥，用 ROT13 / 摩斯 / 藏头 / Base64 破解一桩跨越三十年的旧互联网失踪案 | 原生 HTML/CSS/JS（纯前端零依赖，54 项测试） |
 | [sound-archaeology](./sound-archaeology/) | Web 解谜游戏 | 音频取证解谜：用变速 / 倒放 / 滤波 / 频谱图破译 6 段录音，揭开废弃广播塔沉睡四十年的秘密 | 原生 HTML/CSS/JS + Web Audio API（零依赖，素材内嵌） |
 
 ## 🌳 目录结构
@@ -44,9 +44,11 @@ ai_project/
 │   ├── tests/              # 核心 / 场景 / WebUI / SQL 虚拟文件系统测试
 │   ├── docs/DESIGN.md      # 设计文档
 │   └── 启动DevSaga.bat     # 双击一键启动（网页版 / 终端版 / 机器人演示）
-├── netime/                 # NETIME 网络时光机（旧互联网考古，进行中）
-│   ├── js/story.js         # 剧情数据：年代 / 时间密钥 / 提示链 / 成就
-│   ├── js/tools.js         # 工具箱：ROT13 / Base64 / 摩斯电码解码
+├── netime/                 # NETIME 网络时光机（旧互联网考古）
+│   ├── index.html          # 入口（双击即玩）
+│   ├── js/                 # 剧情 / 站点内容 / 浏览器引擎 / 谜题状态机 / 工具箱 / 主控制器
+│   ├── css/                # 时光机控制台主题 + 五个年代复古网页主题
+│   ├── tests/              # 54 项测试：工具 / 引擎 / 谜题 / 剧情通关 / 前端启动冒烟
 │   └── start.bat           # 启动脚本（打开 index.html / 运行测试）
 └── sound-archaeology/      # LAB-7 声音考古学 · 幽灵频率（音频取证解谜）
     ├── index.html          # 主页面（双击即玩）
@@ -97,7 +99,7 @@ cd netime
 node tests/run.js          # 运行单元测试（需要 Node.js）
 ```
 
-纯前端零依赖。⚠️ 项目进行中：目前包含完整剧情数据与解码工具箱，主线页面仍在开发。
+纯前端零依赖，双击 `index.html` 即玩；`node tests/run.js` 可跑 54 项测试（含 headless 全通关）。
 
 ### sound-archaeology（LAB-7 声音考古学）
 
@@ -122,5 +124,6 @@ node tests/verify-audio.js # 音频内容验证（倒放相关性 / 频带功率
 - [ai_compiler 详细文档](./ai_compiler/README.md)
 - [cyber-academy 详细文档](./cyber-academy/README.md)
 - [devsaga 详细文档](./devsaga/README.md)
+- [netime 详细文档](./netime/README.md)
 - [sound-archaeology 详细文档](./sound-archaeology/README.md)
 - [devsaga 设计文档](./devsaga/docs/DESIGN.md)

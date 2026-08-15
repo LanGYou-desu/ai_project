@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NETIME 网络时光机 · 旧互联网考古</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/eras.css">
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand">📡 NETIME <span>网络时光机 · 旧互联网考古</span></div>
+  <div class="topbtns">
+    <button id="btnHelp">❓ 帮助</button>
+    <button id="btnSave">💾 保存</button>
+    <button id="btnReset">♻ 重置</button>
+  </div>
+</header>
+
+<main id="layout">
+  <!-- 左栏 -->
+  <aside id="left">
+    <section class="panel">
+      <h2>🕰️ 年代选择</h2>
+      <div id="eraNav"></div>
+      <div id="keyProgress" title="时间密钥进度"></div>
+    </section>
+    <section class="panel" style="flex:1">
+      <h2>📌 案件档案</h2>
+      <div id="clueList" class="scrollable"></div>
+    </section>
+  </aside>
+
+  <!-- 中栏：浏览器 -->
+  <section id="center">
+    <div id="browser" class="browser era-1995">
+      <div class="browser-titlebar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span id="pageTitle">NETIME</span>
+      </div>
+      <div class="toolbar">
+        <button id="btnBack" disabled title="后退">←</button>
+        <button id="btnFwd" disabled title="前进">→</button>
+        <button id="btnHome" title="回到本年代首页">⌂</button>
+        <button id="btnSource" title="查看当前页面的 HTML 源代码">📄 查看源代码</button>
+        <input id="urlBar" type="text" spellcheck="false" placeholder="输入网址，回车前往">
+        <button id="btnGo">前往</button>
+        <input id="searchBox" type="text" placeholder="搜索本年代…">
+        <button id="btnSearch">🔍 搜索</button>
+      </div>
+      <div id="page" class="page page-1995"></div>
+      <div id="statusBar">就绪</div>
+    </div>
+
+    <div id="loadingOverlay" class="hidden">
+      <div class="loading-box">
+        <div class="loading-title">🔌 拨号连接中…</div>
+        <div id="loadingText"></div>
+      </div>
+    </div>
+
+    <div id="viewSourceOverlay" class="hidden">
+      <div class="source-box">
+        <div class="source-head"><span id="sourceTitle">view-source:</span><button id="sourceClose">✕ 关闭</button></div>
+        <pre id="sourceCode"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 右栏 -->
+  <aside id="right">
+    <section class="panel">
+      <h2>🧰 解码工具箱</h2>
+      <select id="toolSelect"></select>
+      <textarea id="toolInput" placeholder="把要解码的内容粘贴到这里…"></textarea>
+      <button id="btnDecode" class="primary">解 码</button>
+      <pre id="toolOutput" class="output"></pre>
+    </section>
+    <section class="panel">
+      <h2>🔑 时间密钥</h2>
+      <div id="keyHint" class="dim"></div>
+      <input id="keyInput" type="text" maxlength="8" placeholder="输入密钥 / 口令">
+      <button id="btnKey" class="primary">提交验证</button>
+    </section>
+    <section class="panel">
+      <h2>💡 提示</h2>
+      <button id="btnHint">看一条提示</button>
+      <div id="hintText" class="dim"></div>
+    </section>
+    <section class="panel">
+      <h2>📝 调查笔记</h2>
+      <textarea id="notesInput" placeholder="记录你的发现…"></textarea>
+      <button id="btnNote">保存笔记</button>
+      <div id="noteList" class="scrollable" style="max-height:140px"></div>
+    </section>
+    <section class="panel">
+      <h2>🏆 成就 <span class="cnt" id="achCount">0/8</span></h2>
+      <div id="achList" class="scrollable" style="max-height:220px"></div>
+    </section>
+  </aside>
+</main>
+
+<!-- 开场白 -->
+<div id="introModal" class="modal hidden">
+  <div class="modal-box">
+    <div id="introBody"></div>
+    <div style="text-align:center">
+      <button id="introStart" class="primary big">🚀 启动时光机</button>
+    </div>
+  </div>
+</div>
+
+<!-- 帮助 -->
+<div id="helpModal" class="modal hidden">
+  <div class="modal-box">
+    <div id="helpBody"></div>
+    <div style="text-align:center">
+      <button id="helpClose" class="primary big">关 闭</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastWrap"></div>
+
+<script src="js/tools.js"></script>
+<script src="js/story.js"></script>
+<script src="js/sites.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/puzzle.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
