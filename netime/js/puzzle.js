@@ -115,7 +115,7 @@
 
     submitPassword: function (value) {
       var input = String(value || '').trim();
-      if (Puzzle.state.passwordUnlocked) return { ok: false, message: '信号已经解锁过了。' };
+      if (Puzzle.state.passwordUnlocked) return { ok: true, message: '信号已经解锁过了。' };
       if (input !== Story.PASSWORD) {
         return { ok: false, message: '口令错误。四个字，从 1995 到 2010，一路念下来。' };
       }

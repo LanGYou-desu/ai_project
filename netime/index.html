@@ -22,12 +22,12 @@
   <!-- 左栏 -->
   <aside id="left">
     <section class="panel">
-      <h2>🕰️ 年代选择</h2>
-      <div id="eraNav"></div>
+      <h2>🕰️ 年代时间线</h2>
+      <div id="eraNav" class="timeline"></div>
       <div id="keyProgress" title="时间密钥进度"></div>
     </section>
-    <section class="panel" style="flex:1">
-      <h2>📌 案件档案</h2>
+    <section class="panel clue-panel" style="flex:1">
+      <h2>📌 案件档案 <span class="cnt" id="clueCount">0</span></h2>
       <div id="clueList" class="scrollable"></div>
     </section>
   </aside>
@@ -36,8 +36,16 @@
   <section id="center">
     <div id="browser" class="browser era-1995">
       <div class="browser-titlebar">
-        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="win-brand" id="browserBrand">Netscape Navigator 3.0</span>
         <span id="pageTitle">NETIME</span>
+        <span class="win-btns">
+          <span class="win-btn" data-act="min" title="最小化">─</span>
+          <span class="win-btn" data-act="max" title="最大化">□</span>
+          <span class="win-btn close" data-act="close" title="关闭">✕</span>
+        </span>
+      </div>
+      <div id="tabStrip" class="tabstrip">
+        <span class="tb-tab active"><span id="tabTitle">NETIME</span><span class="tb-x" data-act="close" title="关闭标签页">✕</span></span>
       </div>
       <div class="toolbar">
         <button id="btnBack" disabled title="后退">←</button>
@@ -55,8 +63,10 @@
 
     <div id="loadingOverlay" class="hidden">
       <div class="loading-box">
-        <div class="loading-title">🔌 拨号连接中…</div>
-        <div id="loadingText"></div>
+        <div class="dlg-title">🔌 拨号连接</div>
+        <div id="loadingText" class="dlg-body"></div>
+        <div class="dlg-progress"><div class="dlg-bar"></div></div>
+        <div class="dlg-foot"><button id="loadingSkip" type="button">跳过 (S)</button></div>
       </div>
     </div>
 
@@ -70,33 +80,41 @@
 
   <!-- 右栏 -->
   <aside id="right">
-    <section class="panel">
-      <h2>🧰 解码工具箱</h2>
-      <select id="toolSelect"></select>
-      <textarea id="toolInput" placeholder="把要解码的内容粘贴到这里…"></textarea>
-      <button id="btnDecode" class="primary">解 码</button>
-      <pre id="toolOutput" class="output"></pre>
-    </section>
-    <section class="panel">
+    <section class="panel key-panel">
       <h2>🔑 时间密钥</h2>
       <div id="keyHint" class="dim"></div>
-      <input id="keyInput" type="text" maxlength="8" placeholder="输入密钥 / 口令">
-      <button id="btnKey" class="primary">提交验证</button>
+      <div class="key-row">
+        <input id="keyInput" type="text" maxlength="8" placeholder="密钥 / 口令" autocomplete="off">
+        <button id="btnKey" class="primary">验证</button>
+      </div>
     </section>
-    <section class="panel">
-      <h2>💡 提示</h2>
-      <button id="btnHint">看一条提示</button>
-      <div id="hintText" class="dim"></div>
-    </section>
-    <section class="panel">
-      <h2>📝 调查笔记</h2>
-      <textarea id="notesInput" placeholder="记录你的发现…"></textarea>
-      <button id="btnNote">保存笔记</button>
-      <div id="noteList" class="scrollable" style="max-height:140px"></div>
-    </section>
-    <section class="panel">
-      <h2>🏆 成就 <span class="cnt" id="achCount">0/8</span></h2>
-      <div id="achList" class="scrollable" style="max-height:220px"></div>
+    <section class="panel tab-panel">
+      <div class="tabs">
+        <button class="tab active" data-tab="tools">🧰 工具箱</button>
+        <button class="tab" data-tab="hint">💡 提示</button>
+        <button class="tab" data-tab="notes">📝 笔记</button>
+        <button class="tab" data-tab="ach">🏆 成就<span id="achBadge"></span></button>
+      </div>
+      <div class="tab-body">
+        <div id="tab-tools" class="tab-pane active">
+          <select id="toolSelect"></select>
+          <textarea id="toolInput" placeholder="把要解码的内容粘贴到这里…"></textarea>
+          <button id="btnDecode" class="primary">解 码</button>
+          <pre id="toolOutput" class="output"></pre>
+        </div>
+        <div id="tab-hint" class="tab-pane">
+          <button id="btnHint">看一条提示</button>
+          <div id="hintText" class="dim"></div>
+        </div>
+        <div id="tab-notes" class="tab-pane">
+          <textarea id="notesInput" placeholder="记录你的发现…"></textarea>
+          <button id="btnNote">保存笔记</button>
+          <div id="noteList" class="scrollable"></div>
+        </div>
+        <div id="tab-ach" class="tab-pane">
+          <div id="achList" class="scrollable"></div>
+        </div>
+      </div>
     </section>
   </aside>
 </main>

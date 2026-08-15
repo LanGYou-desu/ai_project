@@ -1,0 +1,11 @@
+{
+  "name": "lingua",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LINGUA · 语言演化博物馆（纯前端零依赖）",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "verify": "node scripts/verify.js",
+    "start": "start index.html"
+  }
+}

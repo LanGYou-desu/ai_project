@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LASTBROADCAST · 最后的广播</title>
+<meta name="theme-color" content="#0b1020">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📻</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">LAST<span>BROADCAST</span><em>最后的广播</em></div>
+    <div class="hud">
+      <span id="turnLabel" class="turn">——</span>
+      <span id="remaining" class="remain">——</span>
+      <span class="stam">你的精力 <b id="stamVal">70</b></span>
+      <span id="achChip" class="ach-chip hidden" title="成就">🏅 0</span>
+      <button id="btnLore" class="lore-btn" title="世界观考据">📜 背景</button>
+      <button id="btnContinue" class="continue-btn hidden" title="继续上一次的广播">💾 继续上局</button>
+      <span id="onair" class="onair off">● OFF AIR</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- 左：控制台 -->
+    <section class="console">
+      <div class="panel">
+        <div class="panel-title">播控台 · 城市之声 FM 95.5</div>
+        <div id="beat" class="beat"></div>
+        <canvas id="vu" width="240" height="26"></canvas>
+        <div class="vu-labels"><span>◀◀</span><span>VU</span><span>▶▶</span></div>
+        <canvas id="scope" width="240" height="64"></canvas>
+        <div class="vu-labels"><span>SCOPE</span><span>波形</span></div>
+        <div id="nowPlaying" class="now-playing">— 静默 —</div>
+        <div id="reqHint" class="req-hint hidden"></div>
+        <div class="vol-row"><span>🔊</span><input type="range" id="vol" min="0" max="100" value="90"><span id="volVal" class="vol-val">90</span></div>
+        <div id="actions" class="actions"></div>
+      </div>
+    </section>
+
+    <!-- 中：城市 -->
+    <section class="city">
+      <div class="panel">
+        <div class="panel-title">城市窗口</div>
+        <canvas id="skyline" role="img" aria-label="城市窗口：天际线灯火随希望变化，动画显示极光、闪电与灰烬"></canvas>
+        <div class="panel-title" style="margin-top:10px">城市情绪曲线</div>
+        <canvas id="chart" role="img" aria-label="城市情绪曲线：希望与氛围随时间变化"></canvas>
+        <div class="legend"><span class="lg hope">希望</span><span class="lg mood">氛围</span></div>
+      </div>
+    </section>
+
+    <!-- 右：档案 -->
+    <section class="archive">
+      <div class="panel">
+        <div class="panel-title">电话总机</div>
+        <div id="phone" class="phone"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">听众</div>
+        <div id="chars" class="chars"></div>
+      </div>
+      <div class="panel grow">
+        <div class="panel-title">广播日志</div>
+        <div id="log" class="log"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="tip">耳机体验更佳 · 音乐为程序化合成 · 全部角色与事件均为虚构</footer>
+</div>
+
+<!-- 首访介绍 -->
+<div id="intro" class="intro hidden" role="dialog" aria-modal="true" aria-label="开场介绍">
+  <div class="intro-card">
+    <h2>📻 欢迎回到 FM 95.5</h2>
+    <p>城市隔离第七天。站长把钥匙留给了你，只留下一句话：<b>「播到天亮。」</b></p>
+    <ul>
+      <li>🎵 <b>播放歌曲</b>：每首歌有自己的情感标签，会影响听众与整座城市；部分歌曲是<b>特定回合限定</b></li>
+      <li>📢 <b>新闻播报</b>：安抚 / 中立 / 真相——三种口径，三种后果</li>
+      <li>📞 <b>接听来电</b>：有些来电会<b>点播歌曲</b>，下一回合放对歌会有额外加成</li>
+      <li>📡 <b>回应信号</b>：军队切频、FREQUENCY X——回应与否通往不同结局</li>
+      <li>🤐 <b>沉默</b>：能恢复你的精力，但也会让城市更安静；精力太低时动作效果会打折</li>
+    </ul>
+    <p class="intro-tip">💡 6 种结局 · 15 位听众 · 结局图鉴与成就 · 进度自动存档，可「继续上局」。</p>
+    <button id="btnIntroOk">进入广播间 →</button>
+  </div>
+</div>
+
+<!-- 背景考据（A8） -->
+<div id="lorePanel" class="intro hidden" role="dialog" aria-modal="true" aria-label="世界观考据">
+  <div class="intro-card">
+    <h2>📜 背景考据</h2>
+    <div id="loreList"></div>
+    <button id="btnLoreClose">关闭</button>
+  </div>
+</div>
+
+
+<!-- 结局覆盖层 -->
+<div id="ending" class="ending hidden">
+  <div class="card">
+    <div id="endTitle" class="end-title"></div>
+    <div id="endEpithet" class="end-epithet"></div>
+    <div id="endEpilogue" class="end-epilogue"></div>
+    <div id="endConditions" class="end-conditions"></div>
+    <div id="endNight" class="end-night"></div>
+    <div id="endUnlock" class="end-unlock"></div>
+    <div id="endArchive" class="end-archive"></div>
+    <div id="endFates" class="end-fates"></div>
+    <div class="end-btns">
+      <button id="btnLog">📋 下载广播日志</button>
+      <button id="btnReplay">🔁 再播一夜</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/shared/data.js"></script>
+<script src="js/shared/engine.js"></script>
+<script src="js/shared/storage.js"></script>
+<script src="js/synth.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

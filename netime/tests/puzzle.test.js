@@ -51,6 +51,9 @@ test('口令：网络之声', function () {
   assert(good.ok, '正确口令应通过');
   assert(P.state.passwordUnlocked, 'passwordUnlocked 应为 true');
   assert(P.hasAchievement('final'), '最终成就应达成');
+  // 已解锁后再次提交也应成功（信号页可反复打开）
+  const again = P.submitPassword('网络之声');
+  assert(again.ok, '已解锁后再次提交口令也应视为成功');
 });
 
 test('四枚密钥拼成口令', function () {

@@ -44,7 +44,8 @@ function getEl(id) {
 const win = {
   addEventListener: function () {},
   confirm: function () { return false; },
-  location: { reload: function () {} }
+  location: { reload: function () {} },
+  __NETIME_FAST: true   // 测试快速模式：跳过拨号动画延迟
 };
 
 // 注入浏览器侧全局（与 index.html 的 script 加载顺序一致）
@@ -71,12 +72,13 @@ test('前端启动：app.js 初始化 + 首页加载无异常', async function (
   const app = win.NETimeApp;
   assert(app && typeof app.go === 'function', '应暴露测试钩子');
 
-  // 等待拨号动画结束后首屏渲染完成
-  await new Promise(function (resolve) { setTimeout(resolve, 2600); });
+  // 等待（快速模式下拨号动画极短）
+  await new Promise(function (resolve) { setTimeout(resolve, 300); });
 
   const page = getEl('page');
   assert(page.innerHTML.length > 50, '首页应已渲染出内容');
   assertContains(page.innerHTML, '东方资讯台', '1995 首页应包含东方资讯台');
+  assertEq(getEl('browserBrand').textContent, 'Netscape Navigator 3.0', '1995 年标题栏应为 Netscape 品牌');
 
   // 渲染后各面板状态
   assert(getEl('statusBar').textContent.indexOf('完成') >= 0, '状态栏应显示完成');
@@ -86,16 +88,18 @@ test('前端启动：app.js 初始化 + 首页加载无异常', async function (
 test('前端启动：导航到告别帖 + 查看源代码无异常', async function () {
   const app = win.NETimeApp;
   app.go('http://bbs.yemaomao.cn/thread/1024');
-  await new Promise(function (resolve) { setTimeout(resolve, 2200); });
+  await new Promise(function (resolve) { setTimeout(resolve, 300); });
   const page = getEl('page');
   assertContains(page.innerHTML, '网络之声今晚十二点永久停播', '告别帖应渲染');
   assert(page.innerHTML.indexOf('Gur svefg') < 0, '密文在留言板页，不应出现在告别帖');
 });
 
-test('前端启动：切换年代到 2005 无异常', async function () {
+test('前端启动：非拨号年代（2010）切换不弹拨号动画', async function () {
   const app = win.NETimeApp;
-  app.switchEra('2005'); // 2005 可能未解锁（取决于存档），允许失败路径
-  await new Promise(function (resolve) { setTimeout(resolve, 2000); });
-  // 无论解锁与否，都不应抛异常
-  assert(true);
+  app.switchEra('2010');
+  await new Promise(function (resolve) { setTimeout(resolve, 400); });
+  // 拨号动画只属于 1995/2000/2005：2010 切换时加载遮罩必须保持隐藏
+  assert(getEl('loadingOverlay').classList.contains('hidden'), '非拨号年代不应显示拨号遮罩');
+  // 无论解锁与否，都不应抛异常，页面应有内容
+  assert(getEl('page').innerHTML.length > 0, '页面应有内容');
 });

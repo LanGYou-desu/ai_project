@@ -45,9 +45,12 @@ test('剧情：2000 源代码摩斯解码出隐藏页地址', function () {
   assertContains(SITES['e2000_lab_radio'].html, '第二枚密钥：络');
 });
 
-test('剧情：2000 留言板呼应十年之约', function () {
-  assertContains(SITES['e2000_lab_guestbook'].html, '十年了。你还在听吗？');
+test('剧情：2000 留言板呼应五年之约（时间线自洽）', function () {
+  assertContains(SITES['e2000_lab_guestbook'].html, '五年了。你还在听吗？');
+  assertContains(SITES['e2000_lab_radio'].html, '五年了。你还在听吗？');
   assertContains(SITES['e2000_lab_radio'].html, '我还在听');
+  assertContains(SITES['e2010_forum'].html, '十五年整了');
+  assertContains(SITES['e2010_keeper'].html, '十五年整');
 });
 
 test('剧情：2005 藏头诗指向第三条回复', function () {
@@ -80,6 +83,20 @@ test('剧情：结局页与留言表单', function () {
   assertContains(fin.html, 'data-netime="reply"');
   assertContains(fin.html, '--. --- --- -.. -... -.-- .', '结局页源代码应有摩斯彩蛋');
   assertEq(T.morseDecode('--. --- --- -.. -... -.-- .'), 'GOODBYE');
+});
+
+test('剧情：终章解释广播三十年的动机', function () {
+  const fin = SITES['e2025_final'];
+  assertContains(fin.html, '为什么广播三十年', '终章应回答动机');
+  assertContains(fin.html, '声音，永远不会消失，它只是在等', '动机应与主题呼应');
+  assertContains(fin.html, '怕他回来的时候，找不到我', '应点出 SIGMA-7 之约');
+});
+
+test('剧情：关于顾言页补充 SIGMA-7 背景', function () {
+  const about = SITES['e2025_about'];
+  assertContains(about.html, 'SIGMA-7', '关于页应提及 SIGMA-7');
+  assertContains(about.html, '第一位听众来信的署名', '应说明 SIGMA-7 的身份');
+  assertContains(about.html, '不是在逃跑，而是在等一个人回来', '应点明动机');
 });
 
 test('剧情：完整通关模拟（headless playthrough）', function () {
@@ -152,6 +169,16 @@ test('剧情：每年代至少有一枚密钥线索', function () {
   ['1995', '2000', '2005', '2010'].forEach(function (era) {
     const keys = Story.KEYS[era];
     assert(keys && keys.char, era + ' 应有密钥定义');
+  });
+});
+
+test('剧情：拨号年代仅为 1995/2000/2005', function () {
+  Story.ERAS.forEach(function (era) {
+    if (['1995', '2000', '2005'].indexOf(era.id) >= 0) {
+      assert(era.dialup, era.id + ' 应为拨号年代');
+    } else {
+      assert(!era.dialup, era.id + ' 不应为拨号年代');
+    }
   });
 });
 

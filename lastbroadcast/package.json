@@ -1,0 +1,11 @@
+{
+  "name": "lastbroadcast",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LASTBROADCAST · 最后的广播（纯前端零依赖）",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "verify": "node scripts/verify.js",
+    "start": "start index.html"
+  }
+}

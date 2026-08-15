@@ -22,6 +22,15 @@
 
   function currentEra() { return E.state.era; }
 
+  // 每个年代的浏览器品牌（标题栏）
+  var BRANDS = {
+    '1995': 'Netscape Navigator 3.0',
+    '2000': 'Internet Explorer 5.0',
+    '2005': 'Internet Explorer 6.0',
+    '2010': 'Internet Explorer 8.0',
+    '2025': 'NETIME Archive Browser'
+  };
+
   /* ==================== 年代导航 ==================== */
   function renderEraNav() {
     var nav = $('eraNav');
@@ -31,11 +40,21 @@
       btn.className = 'era-btn';
       btn.dataset.era = era.id;
       var locked = !P.isEraUnlocked(era.id);
-      var solved = P.isEraSolved(era.id);
+      var solved = era.id === '2025' ? P.state.passwordUnlocked : P.isEraSolved(era.id);
       var active = era.id === currentEra();
-      btn.innerHTML = '<span class="era-year">' + era.id + '</span>' +
-        '<span class="era-name">' + era.label + '</span>' +
-        '<span class="era-mark">' + (solved ? '✓' : locked ? '🔒' : '') + '</span>';
+      var status;
+      if (locked) status = '<span class="st-lock">🔒 待解锁</span>';
+      else if (solved) status = '<span class="st-done">✓ 密钥已得</span>';
+      else if (active) status = '<span class="st-now">◉ 当前年代</span>';
+      else status = '<span class="st-explore">探索中…</span>';
+      btn.innerHTML =
+        '<span class="tl-dot"></span>' +
+        '<span class="era-main">' +
+          '<span class="era-row1"><span class="era-year">' + era.id + '</span>' +
+          '<span class="era-name">' + era.label + '</span></span>' +
+          '<span class="era-tag">' + era.tagline + '</span>' +
+        '</span>' +
+        status;
       if (active) btn.classList.add('active');
       if (locked) btn.classList.add('locked');
       if (solved) btn.classList.add('solved');
@@ -64,15 +83,14 @@
     if (!page) return;
     var era = page.era || currentEra();
     var eraDef = S.ERAS.filter(function (e) { return e.id === era; })[0];
-    var steps = [];
-    if (eraDef && eraDef.dialup) {
-      steps = ['正在拨号连接……', '调制解调器握手……', '正在协商协议……', '已连接 52.8 Kbps，正在下载页面……'];
+    // 只有「进入拨号年代」时才播拨号动画；年代内翻页 / 非拨号年代一律秒开
+    if (isEraSwitch && eraDef && eraDef.dialup) {
+      showLoading(['正在拨号连接……', '调制解调器握手……', '已连接 52.8 Kbps，正在下载页面……'], function () {
+        renderPage(page, query);
+      });
     } else {
-      steps = ['正在连接 ' + (page.url || '') + ' ……'];
-    }
-    showLoading(steps, function () {
       renderPage(page, query);
-    });
+    }
   }
 
   function renderPage(page, query) {
@@ -81,6 +99,10 @@
 
     // 浏览器外壳
     $('browser').className = 'browser era-' + era;
+    var brandEl = $('browserBrand');
+    if (brandEl) brandEl.textContent = BRANDS[era] || 'NETIME';
+    var tabEl = $('tabTitle');
+    if (tabEl) tabEl.textContent = page.title;
     $('pageTitle').textContent = page.title;
     $('urlBar').value = page.url + (query ? '?q=' + query : '');
     document.title = page.title + ' - NETIME';
@@ -90,6 +112,19 @@
     pageEl.className = 'page page-' + era;
     pageEl.innerHTML = page.html;
     pageEl.scrollTop = 0;
+
+    // 已解锁的信号页：直接展示信号内容，而不是锁表单
+    if (page.id === 'e2025_signal' && P.state.passwordUnlocked) {
+      var finPage = window.NetSites && window.NetSites.SITES['e2025_final'];
+      if (finPage) {
+        pageEl.innerHTML = finPage.html;
+        $('pageTitle').textContent = '信号 · 网络之声永存';
+      }
+    }
+    // 档案馆导航里的「已锁定」字样随解锁状态更新
+    if (page.id === 'e2025_archive' && P.state.passwordUnlocked) {
+      pageEl.innerHTML = pageEl.innerHTML.replace('信号（已锁定）', '信号（已解锁）');
+    }
 
     // 搜索页注入结果
     if (page.isSearch) {
@@ -136,16 +171,25 @@
     var txt = $('loadingText');
     ov.classList.remove('hidden');
     txt.innerHTML = '';
+    var fast = window.__NETIME_FAST === true; // 测试快速模式
+    var finished = false;
+    function finish() {
+      if (finished) return;
+      finished = true;
+      ov.classList.add('hidden');
+      done();
+    }
     var i = 0;
     (function next() {
-      if (i >= steps.length) {
-        setTimeout(function () { ov.classList.add('hidden'); done(); }, 350);
-        return;
-      }
+      if (i >= steps.length) { setTimeout(finish, fast ? 10 : 300); return; }
       txt.innerHTML = '<div>' + steps[i] + '</div>' + txt.innerHTML;
       i++;
-      setTimeout(next, 280 + Math.random() * 260);
+      setTimeout(next, fast ? 5 : 220 + Math.random() * 140); // 每步约 0.22~0.36s
     })();
+    // 跳过：点「跳过」按钮，或点对话框外的空白处
+    var skip = $('loadingSkip');
+    if (skip) skip.onclick = finish;
+    ov.onclick = function (e) { if (e.target === ov) finish(); };
   }
 
   /* ==================== 导航 ==================== */
@@ -325,6 +369,8 @@
     var list = $('clueList');
     list.innerHTML = '';
     var clues = P.state.clues.slice().reverse();
+    var cntEl = $('clueCount');
+    if (cntEl) cntEl.textContent = clues.length;
     if (!clues.length) {
       list.innerHTML = '<div class="empty">还没有线索。浏览网页时，重要发现会自动记录在这里。</div>';
       return;
@@ -373,7 +419,8 @@
         '<span class="ach-desc">' + a.desc + '</span>';
       list.appendChild(el);
     });
-    $('achCount').textContent = earned + '/' + S.ACHIEVEMENTS.length;
+    var badge = $('achBadge');
+    if (badge) badge.textContent = earned > 0 ? ' (' + earned + '/' + S.ACHIEVEMENTS.length + ')' : '';
   }
 
   /* ==================== 弹窗 ==================== */
@@ -418,6 +465,34 @@
     $('btnSource').addEventListener('click', toggleSource);
     $('btnSearch').addEventListener('click', doSearch);
     $('searchBox').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') doSearch(); });
+
+    // 窗口按钮 / 标签页关闭（彩蛋）
+    function closeEasterEgg() {
+      showToast('✕ 关不掉——你已经被困在时间里了 📻', 'warn');
+    }
+    document.querySelectorAll('.win-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var act = btn.getAttribute('data-act');
+        if (act === 'close') closeEasterEgg();
+        else if (act === 'min') showToast('─ 最小化？时间机器上没有这个按钮。', 'info');
+        else showToast('□ 最大化？' + currentEra() + ' 年的浏览器已经够大了。', 'info');
+      });
+    });
+    document.querySelectorAll('.tb-x').forEach(function (btn) {
+      btn.addEventListener('click', closeEasterEgg);
+    });
+
+    // 右侧标签页切换
+    document.querySelectorAll('.tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var name = btn.getAttribute('data-tab');
+        document.querySelectorAll('.tab').forEach(function (b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-pane').forEach(function (p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        var pane = document.getElementById('tab-' + name);
+        if (pane) pane.classList.add('active');
+      });
+    });
 
     // 密钥 / 提示 / 笔记 / 存档
     $('btnKey').addEventListener('click', submitKey);
@@ -499,11 +574,11 @@
       showModal('introModal');
     }
 
-    // 起始页面
+    // 起始页面（进入 1995 年，播一次拨号动画）
     var res = E.switchEra('1995');
     renderEraNav();
     refreshKeyHint();
-    loadPage(res.page, res.query, false);
+    loadPage(res.page, res.query, true);
 
     // 自动保存
     window.addEventListener('beforeunload', function () { P.save(); });

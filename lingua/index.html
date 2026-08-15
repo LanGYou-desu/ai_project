@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LINGUA · 语言演化博物馆</title>
+<meta name="theme-color" content="#f3ead8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <div class="logo">LINGUA<span>语言演化博物馆</span></div>
+  <div class="lang-title" id="langTitle">——</div>
+  <div class="controls">
+    <span id="achCounter" class="ach-counter" title="点击查看成就" role="button" tabindex="0">🏅 0/8</span>
+    <select id="presetSel" title="名语言馆：一键参观预制的六种语言">
+      <option value="">🏛️ 名语言馆</option>
+    </select>
+    <button id="btnReevolve" title="换一颗随机种子重新演化">重新演化</button>
+    <button id="btnRename" title="给语言换一个名字（同一颗种子）">换个名字</button>
+    <button id="btnShare" title="复制种子链接，分享你的语言">分享种子</button>
+    <button id="btnSave" title="把当前语言收藏进展厅">收藏</button>
+    <button id="btnExport" title="导出这门语言的完整档案（JSON）">导出档案</button>
+    <button id="btnWiki" title="导出这门语言的一页式维基（HTML）">维基页</button>
+    <button id="btnCard" title="生成一句话语言名片并复制">🎴 名片</button>
+    <button id="btnGuide" title="参观指南">指南</button>
+  </div>
+</header>
+
+<main>
+  <section class="hall-left">
+    <div class="panel-title">语系树 · 一千年演化</div>
+    <canvas id="treeCanvas" role="img" aria-label="语系树：一千年里各分支的演化关系，可点击选择分支、拖动刮擦年代"></canvas>
+    <div id="treeLegend" class="tree-legend"></div>
+    <div class="timeline">
+      <input type="range" id="epochSlider" min="0" max="19" value="19" step="1">
+      <span id="epochLabel">公元 1000 年</span>
+      <button id="btnPlay">▶ 播放</button>
+      <div class="speed" id="speedGroup">
+        <button data-s="1" class="active">×1</button>
+        <button data-s="2">×2</button>
+        <button data-s="4">×4</button>
+      </div>
+    </div>
+    <div class="kbd-hint">快捷键：<kbd>空格</kbd> 播放/暂停 · <kbd>←</kbd><kbd>→</kbd> 年代（<kbd>Shift</kbd>×10）</div>
+    <div id="eraChips" class="era-chips"></div>
+    <div class="hint">点击分支选中部族 · 拖动时间轴看演化 · 点击下方编年史可跳转年代 · 点击词表中的词追踪词源 · 🔊 试听发音</div>
+  </section>
+
+  <aside class="hall-right">
+    <nav class="tabs" id="tabs">
+      <button data-tab="words" class="active">📜 词表</button>
+      <button data-tab="cognates">🧬 同源词</button>
+      <button data-tab="grammar">📚 语法</button>
+      <button data-tab="events">📖 大事记</button>
+      <button data-tab="writing">🖋️ 文字</button>
+      <button data-tab="loan">🐎 借词</button>
+      <button data-tab="lyrics">🎵 歌谣</button>
+      <button data-tab="atlas">🏛️ 图鉴</button>
+      <button data-tab="sandbox">🧪 创作台</button>
+    </nav>
+    <div class="tabwrap">
+      <div id="tab-words" class="tab active"></div>
+      <div id="tab-cognates" class="tab"></div>
+      <div id="tab-grammar" class="tab"></div>
+      <div id="tab-events" class="tab"></div>
+      <div id="tab-writing" class="tab"></div>
+      <div id="tab-loan" class="tab"></div>
+      <div id="tab-lyrics" class="tab"></div>
+      <div id="tab-atlas" class="tab"></div>
+      <div id="tab-sandbox" class="tab"></div>
+      <button id="btnTop" class="btn-top hidden" title="回到顶部">↑</button>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <div class="gallery-title">馆藏（已保存的语言）</div>
+  <div id="gallery" class="gallery"></div>
+  <div id="achRow" class="gallery" style="margin-top:6px"></div>
+  <div id="etymology" class="etymology hidden"></div>
+</footer>
+
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<!-- 首访导览 -->
+<div id="intro" class="intro hidden" role="dialog" aria-modal="true" aria-label="参观指南">
+  <div class="intro-card">
+    <h2>欢迎来到 LINGUA 语言演化博物馆</h2>
+    <p>你将为原始部落命名一门语言，然后看它演化 <b>一千年</b>：</p>
+    <ul>
+      <li>🌳 <b>语系树</b>：洪水、迁徙、海平面上升导致部落三次分裂，7 个分支各自演化（创作台里还可以手动分裂）</li>
+      <li>🗣️ <b>音变与语法</b>：24 条音变规则、20+ 语法事件自动发生，每条都有真实语言史参照</li>
+      <li>🔎 <b>词源追踪</b>：点任意词，看它从原始词形一路演变的每一步（还能试听发音）</li>
+      <li>🧬 <b>同源词</b>：同一个词义，在 7 个分支里各说各话</li>
+      <li>🎵 <b>歌谣</b>：用演化出的词形拼成的语言歌谣</li>
+      <li>🧪 <b>创作台</b>：添加自定义词根、调节演化频率、亲手制造分裂</li>
+    </ul>
+    <p class="intro-tip">💡 同一名字 + 同一颗种子 = 完全相同的演化；右上角「名语言馆」有六种预制语言。</p>
+    <button id="btnIntroOk">开始参观 →</button>
+  </div>
+</div>
+
+<!-- 成就面板 -->
+<div id="achPanel" class="intro hidden" role="dialog" aria-modal="true" aria-label="成就">
+  <div class="intro-card">
+    <h2>🏅 成就</h2>
+    <div id="achList"></div>
+    <button id="btnAchClose">关闭</button>
+  </div>
+</div>
+
+<script src="js/shared/rng.js"></script>
+<script src="js/shared/lexicon.js"></script>
+<script src="js/shared/sounds.js"></script>
+<script src="js/shared/grammar.js"></script>
+<script src="js/shared/worlddata.js"></script>
+<script src="js/shared/world.js"></script>
+<script src="js/shared/lyrics.js"></script>
+<script src="js/shared/storage.js"></script>
+<script src="js/glyphs.js"></script>
+<script src="js/treeview.js"></script>
+<script src="js/tts.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

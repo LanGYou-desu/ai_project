@@ -118,6 +118,8 @@
   line-height: 2; font-size: 14px; margin: 12px 0; color: #d8f4e4;
 }
 .page-2025 .epifinal { color: #ffe08a; font-size: 17px; margin: 14px 0; text-shadow: 0 0 12px rgba(255,224,138,.35); }
+.page-2025 .why-title { color: #ffe08a; font-size: 13px; letter-spacing: 2px; margin: 16px 0 4px; }
+.page-2025 .epilogue.why { border-left-color: #ffe08a; background: #141a20; color: #e8f2e8; }
 .page-2025 .lockform { margin: 14px 0; display: flex; gap: 8px; }
 .page-2025 .lockform input, .page-2025 .lockform textarea {
   background: #0a1014; color: #eafff5; border: 1px solid #2c5c6a; border-radius: 6px;
@@ -131,3 +133,141 @@
 .page-2025 .lockform button:hover { background: #18515c; }
 .page-2025 .lockmsg { color: #e05c5c; font-size: 12px; margin-top: 4px; }
 .page-2025 .ascii { color: #6be8a0; }
+
+/* ================= 浏览器外壳：按年代换肤 =================
+ * 1995 Netscape Navigator / 2000 IE5 / 2005 IE6(XP Luna) /
+ * 2010 IE8 / 2025 NETIME Archive Browser
+ * ========================================================= */
+
+/* --- 1995 · Win95 / Netscape 灰阶风 --- */
+.browser.era-1995 .browser-titlebar {
+  background: #000080; color: #fff;
+  font-family: "SimSun", "宋体", serif; font-size: 12px;
+}
+.browser.era-1995 .win-btn {
+  background: #c0c0c0; border-color: #fff #404040 #404040 #fff; color: #000;
+}
+.browser.era-1995 .win-btn:active { border-color: #404040 #fff #fff #404040; }
+.browser.era-1995 .toolbar {
+  background: #c0c0c0; border-bottom: 1px solid #808080; padding: 4px; gap: 3px;
+}
+.browser.era-1995 .toolbar button {
+  background: #c0c0c0; border-color: #fff #404040 #404040 #fff; border-radius: 0;
+  color: #000; font-family: "SimSun", "宋体", serif; font-size: 11px; padding: 3px 8px;
+}
+.browser.era-1995 .toolbar button:active { border-color: #404040 #fff #fff #404040; }
+.browser.era-1995 .toolbar button:hover:not(:disabled) { border-color: #000; color: #000; }
+.browser.era-1995 .toolbar input, .browser.era-1995 .toolbar #searchBox {
+  background: #fff; color: #000; border: 1px solid #808080; border-radius: 0;
+  font-family: "Courier New", monospace; font-size: 12px;
+}
+.browser.era-1995 #statusBar {
+  background: #c0c0c0; color: #000; border-top: 1px solid #fff;
+  font-family: "SimSun", "宋体", serif; font-size: 11px;
+}
+
+/* --- 2000 · IE5 / 千禧蓝灰 --- */
+.browser.era-2000 .browser-titlebar {
+  background: linear-gradient(90deg, #0a246a, #6a95d0); color: #fff;
+  font-family: "SimSun", "宋体", serif; font-size: 12px;
+}
+.browser.era-2000 .win-btn { background: #d4d0c8; border-color: #fff #404040 #404040 #fff; color: #000; }
+.browser.era-2000 .win-btn:active { border-color: #404040 #fff #fff #404040; }
+.browser.era-2000 .toolbar {
+  background: linear-gradient(180deg, #f5f7fa, #dfe4ec); border-bottom: 1px solid #99a;
+  padding: 4px; gap: 3px;
+}
+.browser.era-2000 .toolbar button {
+  background: linear-gradient(180deg, #f5f7fa, #d6dce4); border: 1px solid #8a94a6;
+  border-radius: 2px; color: #000; font-family: "SimSun", "宋体", serif; font-size: 11px; padding: 3px 8px;
+}
+.browser.era-2000 .toolbar button:hover:not(:disabled) { border-color: #0a3a8f; color: #0a3a8f; }
+.browser.era-2000 .toolbar input, .browser.era-2000 .toolbar #searchBox {
+  background: #fff; color: #000; border: 1px solid #8a94a6; border-radius: 2px;
+  font-family: "SimSun", "宋体", serif;
+}
+.browser.era-2000 #statusBar { background: #eef1f6; color: #333; font-size: 11px; }
+
+/* --- 2005 · IE6 / XP Luna 蓝 --- */
+.browser.era-2005 .browser-titlebar {
+  background: linear-gradient(180deg, #0058e6 0%, #3a6ea5 9%, #0c3b7e 46%, #092f64 100%);
+  color: #fff; font-family: "Microsoft YaHei", "微软雅黑", sans-serif; font-size: 12px;
+}
+.browser.era-2005 .win-btn {
+  background: linear-gradient(180deg, #ffffff, #c0d4f2); border: 1px solid #7a9cd4;
+  border-radius: 3px; color: #333;
+}
+.browser.era-2005 .win-btn.close { background: linear-gradient(180deg, #f9c7c7, #e06a6a); border-color: #c05a5a; color: #fff; }
+.browser.era-2005 .toolbar {
+  background: linear-gradient(180deg, #f2f6fc, #dce8f8); border-bottom: 1px solid #9db6d5; padding: 4px; gap: 4px;
+}
+.browser.era-2005 .toolbar button {
+  background: linear-gradient(180deg, #ffffff, #e3edfb); border: 1px solid #7a9cd4;
+  border-radius: 3px; color: #1f3c66; font-family: "Microsoft YaHei", "微软雅黑", sans-serif; font-size: 11px; padding: 3px 9px;
+}
+.browser.era-2005 .toolbar button:hover:not(:disabled) { border-color: #1f5fa8; color: #1f5fa8; }
+.browser.era-2005 .toolbar input, .browser.era-2005 .toolbar #searchBox {
+  background: #fff; color: #222; border: 1px solid #7a9cd4; border-radius: 3px;
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif;
+}
+.browser.era-2005 #statusBar { background: #dce8f8; color: #1f3c66; font-size: 11px; }
+
+/* --- 2010 · 现代扁平浏览器（标签页时代） --- */
+.browser.era-2010 .browser-titlebar {
+  background: linear-gradient(180deg, #fdfdfe, #eceff3); color: #444;
+  border-bottom: 1px solid #d5dbe3; font-family: "Microsoft YaHei", "微软雅黑", sans-serif; font-size: 12px;
+}
+.browser.era-2010 .win-brand, .browser.era-2010 .win-btns { display: none; }
+.browser.era-2010 .tabstrip {
+  display: flex; background: #eef1f5; border-bottom: 1px solid #d5dbe3;
+  padding: 5px 8px 0; gap: 4px;
+}
+.browser.era-2010 .tb-tab {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 260px;
+  background: #fff; border: 1px solid #d5dbe3; border-bottom: none;
+  border-radius: 7px 7px 0 0; padding: 6px 14px; font-size: 12px; color: #333;
+}
+.browser.era-2010 .tb-x { color: #aab4c0; cursor: pointer; font-size: 11px; }
+.browser.era-2010 .tb-x:hover { color: #d05050; }
+.browser.era-2010 .toolbar { background: #fff; border-bottom: 1px solid #d5dbe3; padding: 6px; gap: 5px; }
+.browser.era-2010 .toolbar button {
+  background: #f6f8fb; border: 1px solid #d5dbe3; border-radius: 4px; color: #555;
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif; font-size: 12px; padding: 4px 11px;
+}
+.browser.era-2010 .toolbar button:hover:not(:disabled) { border-color: #2b7de9; color: #2b7de9; }
+.browser.era-2010 .toolbar input, .browser.era-2010 .toolbar #searchBox {
+  background: #f7f9fc; color: #333; border: 1px solid #cfd6df; border-radius: 14px;
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif;
+}
+.browser.era-2010 #statusBar { background: #f4f7fb; color: #8a94a3; border-top: 1px solid #e3e8ef; font-size: 11px; }
+
+/* --- 2025 · 现代深色浏览器（标签页时代） --- */
+.browser.era-2025 .browser-titlebar {
+  background: #161b22; color: #c8d3dc; border-bottom: 1px solid #2a333d;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 12px;
+}
+.browser.era-2025 .win-brand, .browser.era-2025 .win-btns { display: none; }
+.browser.era-2025 .tabstrip {
+  display: flex; background: #10151b; border-bottom: 1px solid #2a333d;
+  padding: 6px 10px 0; gap: 5px;
+}
+.browser.era-2025 .tb-tab {
+  display: inline-flex; align-items: center; gap: 9px; max-width: 280px;
+  background: #1c242e; border: 1px solid #2a333d; border-bottom: none;
+  border-radius: 8px 8px 0 0; padding: 7px 16px; font-size: 12px; color: #d7deea;
+}
+.browser.era-2025 .tb-tab.active { background: #232c38; }
+.browser.era-2025 .tb-x { color: #7a8794; cursor: pointer; font-size: 11px; }
+.browser.era-2025 .tb-x:hover { color: #e05c5c; }
+.browser.era-2025 .toolbar { background: #1c242e; border-bottom: 1px solid #2a333d; padding: 6px; gap: 5px; }
+.browser.era-2025 .toolbar button {
+  background: #262f3b; border: 1px solid #37424f; border-radius: 6px; color: #c8d3dc;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 12px; padding: 4px 12px;
+}
+.browser.era-2025 .toolbar button:hover:not(:disabled) { border-color: #4e8fe0; color: #9cc4f0; }
+.browser.era-2025 .toolbar input, .browser.era-2025 .toolbar #searchBox {
+  background: #10151b; color: #e4ecf4; border: 1px solid #37424f; border-radius: 15px;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+.browser.era-2025 #statusBar { background: #1c242e; color: #8fa1b3; border-top: 1px solid #2a333d; font-size: 11px; }
+
