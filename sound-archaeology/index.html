@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LAB-7 · 声音考古学 — 幽灵频率</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- 启动画面 -->
+<div id="boot">
+  <div class="boot-inner">
+    <h1>LAB-7 <span class="blink">·</span> 声音考古学</h1>
+    <p class="boot-sub">城市音频取证实验室 &nbsp;|&nbsp; 专案「幽灵频率」</p>
+    <p class="boot-desc">
+      午夜零点，一座废弃广播塔每年准时苏醒，向全城发射无人能懂的声音。<br>
+      你将在六段录音里，用<b>变速 · 倒放 · 滤波 · 频谱图</b>，<br>
+      破译一座城市沉睡四十年的秘密。
+    </p>
+    <button id="boot-btn">▸ 进入实验室</button>
+    <p class="boot-tip">⚠ 全程请佩戴耳机 · 使用 Chrome / Edge 打开</p>
+  </div>
+</div>
+
+<!-- 主界面 -->
+<div id="app" class="hidden">
+  <header>
+    <div class="logo">LAB-7 <span>·</span> 声音考古学</div>
+    <div class="header-mid">专案「幽灵频率」— 午夜广播信号溯源</div>
+    <div class="header-right"><span id="hdr-case">CASE-01</span></div>
+  </header>
+
+  <div class="main">
+    <!-- 左：案件列表 -->
+    <aside id="case-list" class="panel"></aside>
+
+    <!-- 中：实验室 -->
+    <section class="center">
+      <div class="panel lab-panel">
+        <div class="lab-title">
+          <span id="case-title">CASE-01 · 雨夜留言</span>
+          <span id="case-tag" class="tag"></span>
+        </div>
+
+        <div class="transport">
+          <button id="btn-play" title="播放/暂停（空格键）">▶</button>
+          <button id="btn-stop" title="停止">■</button>
+          <button id="btn-reverse" title="倒放">⇄ 倒放</button>
+          <button id="btn-loop" title="循环播放">↻ 循环</button>
+          <select id="sel-speed" title="播放速度">
+            <option value="0.25">0.25×</option>
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1.0×</option>
+            <option value="2">2.0×</option>
+            <option value="4">4.0×</option>
+          </select>
+          <span id="time-label">0.0s / 0.0s</span>
+          <span id="gen-badge" class="badge hidden">⚗ 发生器信号</span>
+        </div>
+
+        <div class="scope-head">
+          <span class="scope-title">波形 · WAVE</span>
+          <span class="scope-title">频谱 · SPECTROGRAM
+            <select id="sel-spec-range" title="频谱显示范围（放大低频段可看清频谱文字）">
+              <option value="full" selected>全频</option>
+              <option value="8000">0–8kHz</option>
+              <option value="3000">0–3kHz</option>
+            </select>
+          </span>
+        </div>
+        <canvas id="wave" class="scope" title="点击波形可跳转播放位置"></canvas>
+        <canvas id="spec" class="scope"></canvas>
+
+        <div class="eq">
+          <div class="eq-row">
+            <label class="eq-item">滤波
+              <select id="sel-filter">
+                <option value="allpass" selected>直通</option>
+                <option value="lowpass">低通</option>
+                <option value="highpass">高通</option>
+                <option value="bandpass">带通</option>
+                <option value="notch">陷波</option>
+                <option value="peaking">峰化</option>
+              </select>
+            </label>
+            <label class="eq-item">频率
+              <input type="range" id="rng-freq" min="0" max="1000" step="1" value="1000">
+              <span id="freq-val">20kHz</span>
+            </label>
+            <label class="eq-item">Q
+              <input type="range" id="rng-q" min="1" max="100" value="7">
+              <span id="q-val">0.7</span>
+            </label>
+            <label class="eq-item">峰增益
+              <input type="range" id="rng-gain" min="-20" max="20" value="0">
+              <span id="gain-val">0dB</span>
+            </label>
+          </div>
+          <div class="eq-row">
+            <label class="eq-item">放大
+              <input type="range" id="rng-boost" min="-20" max="30" value="0">
+              <span id="boost-val">0dB</span>
+            </label>
+            <label class="eq-item chk">
+              <input type="checkbox" id="chk-gate"> 去噪门
+            </label>
+            <label class="eq-item">门阈值
+              <input type="range" id="rng-gate" min="1" max="90" value="8">
+              <span id="gate-val">0.08</span>
+            </label>
+            <label class="eq-item">音量
+              <input type="range" id="rng-vol" min="-40" max="6" value="0">
+              <span id="vol-val">0dB</span>
+            </label>
+            <button id="btn-reset-instr">重置仪器</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel gen-panel">
+        <div class="gen-title">⚗ 信号发生器 <span class="gen-sub">—— 自己造一段声音练手</span></div>
+        <div class="gen-row">
+          <select id="gen-type">
+            <option value="sine">纯音</option>
+            <option value="noise">白噪声</option>
+            <option value="morse">摩斯测试</option>
+            <option value="font">频谱文字</option>
+          </select>
+          <label class="eq-item">频率
+            <input type="range" id="gen-freq" min="0" max="1000" value="530">
+            <span id="gen-freq-val">1.2kHz</span>
+          </label>
+          <input type="text" id="gen-text" placeholder="摩斯/频谱文字，如 MIDNIGHT" maxlength="12">
+          <button id="btn-gen">生成并载入</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右：卷宗 -->
+    <aside class="panel evidence">
+      <h3>案件卷宗 <button id="hint-btn" class="small">提示 (0/3)</button></h3>
+      <div id="hint-text" class="hint hidden"></div>
+      <div id="ev-back" class="ev-section"></div>
+      <div id="ev-evidence" class="ev-section"></div>
+
+      <div class="ev-section">
+        <h4>提交答案</h4>
+        <div class="ans-row">
+          <input type="text" id="ans-input" placeholder="你的结论…" autocomplete="off">
+          <button id="ans-btn">提交</button>
+        </div>
+        <div id="ans-msg"></div>
+      </div>
+
+      <div id="archive" class="ev-section hidden">
+        <h4>📜 考古笔记</h4>
+        <p id="archive-text"></p>
+        <button id="next-btn" class="hidden">下一案 →</button>
+        <div id="epilogue" class="hidden"></div>
+      </div>
+
+      <div class="ev-section">
+        <h4>调查笔记</h4>
+        <textarea id="note-box" rows="5" placeholder="记录你听到的每一个细节……（自动保存）"></textarea>
+      </div>
+
+      <div class="ev-section">
+        <h4>摩斯辅助器 <button id="mor-ref-toggle" class="small">速查表</button></h4>
+        <div class="mor-btns">
+          <button id="btn-dot" class="mor">· 点</button>
+          <button id="btn-dash" class="mor">— 划</button>
+          <button id="btn-cgap" class="mor">字符间隔</button>
+          <button id="btn-wgap" class="mor">词间隔</button>
+          <button id="btn-bsp" class="mor">退格</button>
+          <button id="btn-mclear" class="mor">清空</button>
+        </div>
+        <div id="mor-seq" class="mor-seq"></div>
+        <div id="mor-dec" class="mor-dec">…</div>
+        <div id="mor-ref" class="hidden"></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer id="status-bar">
+    <span id="st-case">—</span>
+    <span id="st-info"></span>
+    <button id="reset-btn" class="small danger">重置进度</button>
+  </footer>
+</div>
+
+<!-- 加载顺序: morse → synth → voices → cases → audio-lab → spectrogram → app -->
+<script src="js/morse.js"></script>
+<script src="js/synth.js"></script>
+<script src="js/voices.js"></script>
+<script src="js/cases.js"></script>
+<script src="js/audio-lab.js"></script>
+<script src="js/spectrogram.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

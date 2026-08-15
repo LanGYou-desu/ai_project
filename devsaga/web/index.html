@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevSaga · Glitchworks 工位工作台</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand"><span class="logo">⚡</span>Glitchworks<span class="sub">· 工位工作台</span></div>
+  <div id="profile-bar" class="profile"></div>
+  <div class="top-right">
+    <span id="clock" class="clock">--:--:--</span>
+    <button id="btn-sound" class="icon-btn" title="音效开关">🔊</button>
+  </div>
+</header>
+
+<div id="layout">
+  <nav id="sidebar">
+    <div class="side-title">工作导航</div>
+    <button class="nav active" data-view="home">🏠 我的工位</button>
+    <button class="nav" data-view="tickets">🗂 工单台</button>
+    <button class="nav" data-view="lessons">📚 知识库<span class="badge" id="badge-learned"></span></button>
+    <button class="nav" data-view="quiz-pick">📝 测验中心</button>
+    <button class="nav" data-view="achievements">🏆 成就墙<span class="badge" id="badge-ach"></span></button>
+    <button class="nav" data-view="career">📈 职业路线</button>
+    <button class="nav" data-view="ending">🎬 命运结算</button>
+    <button class="nav" data-view="settings">⚙️ 设置</button>
+  </nav>
+
+  <main id="main">
+    <!-- 我的工位（仪表盘） -->
+    <section id="view-home" class="view">
+      <h1 id="home-hello" class="view-h1"></h1>
+      <p class="tag" id="home-tag"></p>
+      <div id="home-cards" class="dash-grid"></div>
+      <div class="card">
+        <h3>📌 最近动态</h3>
+        <div id="home-news" class="news"></div>
+      </div>
+    </section>
+
+    <!-- 工单台 -->
+    <section id="view-tickets" class="view hidden">
+      <div class="view-head"><h2>🗂 工单台</h2><span class="dim" id="ticket-summary"></span></div>
+      <div id="ticket-filter" class="chips"></div>
+      <div id="ticket-grid" class="grid"></div>
+    </section>
+
+    <!-- 知识库 -->
+    <section id="view-lessons" class="view hidden">
+      <div class="view-head"><h2>📚 知识库</h2><span class="dim" id="lesson-summary"></span></div>
+      <input id="lesson-search" type="text" placeholder="🔍 搜索知识点，如 grep / SQL 注入 / 蓝绿发布…">
+      <div id="lesson-body"></div>
+    </section>
+
+    <!-- 测验中心 -->
+    <section id="view-quiz-pick" class="view hidden">
+      <div class="view-head"><h2>📝 测验中心</h2><span class="dim">每场景 3 题 · 满分解锁「学霸」成就</span></div>
+      <div id="quiz-pick-list" class="grid"></div>
+    </section>
+
+    <section id="view-quiz" class="view hidden">
+      <div class="view-head"><button class="back" data-view="quiz-pick">← 返回</button><h2 id="quiz-title"></h2></div>
+      <div id="quiz-body"></div>
+    </section>
+
+    <!-- 成就墙 -->
+    <section id="view-achievements" class="view hidden">
+      <div class="view-head"><h2>🏆 成就墙</h2><span class="dim" id="ach-summary"></span></div>
+      <div id="ach-grid" class="grid"></div>
+    </section>
+
+    <!-- 职业路线 -->
+    <section id="view-career" class="view hidden">
+      <div class="view-head"><h2>📈 职业路线</h2><span class="dim">绩效（XP）决定职级</span></div>
+      <div id="career-body"></div>
+    </section>
+
+    <!-- 命运结算 -->
+    <section id="view-ending" class="view hidden">
+      <div class="view-head"><button class="back" data-view="home">← 返回</button><h2>🎬 命运结算</h2></div>
+      <div id="ending-card"></div>
+    </section>
+
+    <!-- 设置 -->
+    <section id="view-settings" class="view hidden">
+      <div class="view-head"><h2>⚙️ 设置</h2></div>
+      <div class="card">
+        <h3>难度模式</h3>
+        <p id="diff-desc" class="dim"></p>
+        <button id="btn-difficulty" class="big-btn">切换难度</button>
+      </div>
+      <div class="card">
+        <h3>音效</h3>
+        <p class="dim">任务完成提示音、晋升音效等。</p>
+        <button id="btn-sound2" class="big-btn">切换音效</button>
+      </div>
+      <div class="card">
+        <h3>新建档案</h3>
+        <p class="dim">将清空当前进度，从头开始。</p>
+        <input id="new-name" type="text" placeholder="你的花名" maxlength="12">
+        <button id="btn-newprofile" class="big-btn">创建新档案</button>
+      </div>
+      <div class="card dim" style="font-size:12px;">
+        数据保存在 <code>~/.devsaga/save.json</code>，与终端版完全互通。
+      </div>
+    </section>
+
+    <!-- 工单处理（游戏） -->
+    <section id="view-game" class="view hidden">
+      <div id="ticket-head"></div>
+      <div id="dashboard" class="hidden"></div>
+      <div id="game-wrap">
+        <div id="main-col">
+          <div id="terminal" class="terminal" tabindex="0"></div>
+          <div id="editor-wrap" class="hidden">
+            <div class="ed-toolbar">
+              <span class="ed-file">📄 solution.py</span>
+              <button id="btn-sample" class="mini">📋 示例</button>
+              <button id="btn-run" class="mini run">▶ 判题运行（Ctrl+Enter）</button>
+              <span class="dim" style="font-size:11px;" id="ed-status">就绪</span>
+            </div>
+            <div class="editor">
+              <div id="gutter" class="gutter"></div>
+              <div id="code-wrap" class="code-wrap">
+                <pre id="hl" class="hl"></pre>
+                <textarea id="ta" class="ta" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+              </div>
+            </div>
+            <div id="results" class="results hidden"></div>
+          </div>
+        </div>
+        <aside id="side">
+          <div class="card" id="task-card"></div>
+          <div class="card">
+            <h3>操作</h3>
+            <div class="action-row">
+              <button id="btn-hint" class="mini">💡 提示</button>
+              <button id="btn-learn" class="mini">📚 知识点</button>
+              <button id="btn-coffee" class="mini">☕ 咖啡</button>
+              <button id="btn-skip" class="mini">⏭ 跳过</button>
+              <button id="btn-help" class="mini">❓ 手册</button>
+              <button id="btn-exit" class="mini danger">✕ 退出</button>
+            </div>
+          </div>
+          <div class="card" id="palette-card">
+            <h3 id="palette-title">快捷命令 <span class="dim">（点击即执行）</span></h3>
+            <div id="palette" class="chips"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer id="statusbar">
+  <span><i class="dot ok"></i> 本地服务运行中</span>
+  <span id="sb-employee">员工：-</span>
+  <span id="sb-scenario">工单：-</span>
+  <span id="sb-task">任务：-</span>
+  <span class="spacer"></span>
+  <span>DevSaga v1.1 · 网页版</span>
+</footer>
+
+<div id="modal-mask" class="hidden"><div id="modal" class="modal"></div></div>
+<div id="toasts"></div>
+<div id="confetti-layer"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
