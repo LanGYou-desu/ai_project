@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 编译器</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" data-name="vs/editor/editor.main"
+        href="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/editor/editor.main.min.css"
+        integrity="sha384-Jh+Ai04UKbHnd74JWvksIEeYveQYmAUYk71qv/4YYdwW4X+Ud+RY+WR723HNCzbQ"
+        crossorigin="anonymous">
+</head>
+<body>
+  <header class="titlebar">
+    <span class="codicon codicon-code titlebar-icon"></span>
+    <span>AI 编译器</span>
+  </header>
+
+  <div class="app">
+    <nav class="activity-bar">
+      <div class="activity-group">
+        <button id="act-explorer" class="activity-item" title="资源管理器"><span class="codicon codicon-files"></span></button>
+        <button id="act-assistant" class="activity-item" title="助手"><span class="codicon codicon-comment-discussion"></span></button>
+        <button id="act-preview" class="activity-item" title="Markdown 预览"><span class="codicon codicon-markdown"></span></button>
+      </div>
+      <div class="activity-group">
+        <button id="act-terminal" class="activity-item" title="终端 (Ctrl+`)"><span class="codicon codicon-terminal"></span></button>
+        <button id="act-settings" class="activity-item" title="设置"><span class="codicon codicon-settings-gear"></span></button>
+      </div>
+    </nav>
+
+    <div class="main-area">
+      <div class="workbench">
+        <div class="main-col">
+          <aside id="explorer" class="sidebar-left">
+            <div class="explorer-head">资源管理器</div>
+            <div id="explorer-toolbar" class="explorer-toolbar">
+              <button id="btn-open-folder" class="icon-btn" title="打开文件夹"><span class="codicon codicon-folder-opened"></span></button>
+              <button id="btn-new-file" class="icon-btn" title="新建文件" disabled><span class="codicon codicon-new-file"></span></button>
+              <button id="btn-refresh" class="icon-btn" title="刷新" disabled><span class="codicon codicon-refresh"></span></button>
+              <button id="btn-delete" class="icon-btn" title="删除选中" disabled><span class="codicon codicon-trash"></span></button>
+            </div>
+            <div id="explorer-hint" class="explorer-hint">未打开文件夹</div>
+            <div id="explorer-tree" class="explorer-tree" hidden></div>
+          </aside>
+          <div id="split-left" class="splitter"></div>
+          <div class="editor-area">
+          <div class="editor-titlebar">
+            <button id="btn-run" class="title-btn" title="运行 (Ctrl+Enter)"><span class="codicon codicon-play"></span><span>运行</span></button>
+            <button id="btn-stop" class="title-btn" title="停止" disabled><span class="codicon codicon-debug-stop"></span><span>停止</span></button>
+            <button id="btn-explain" class="title-btn" title="解释代码"><span class="codicon codicon-book"></span><span>解释</span></button>
+            <div class="titlebar-spacer"></div>
+            <button id="btn-save" class="title-btn" title="保存 (Ctrl+S)" disabled><span class="codicon codicon-save"></span><span>保存</span></button>
+            <select id="lang-select" class="lang-select" title="语言"></select>
+          </div>
+          <div id="editor-tabs" class="editor-tabs"></div>
+          <div id="editor"></div>
+          </div>
+        </div>
+
+        <div id="split-right" class="splitter" hidden></div>
+        <aside id="sidebar-right" class="sidebar-right" hidden>
+          <div class="side-tabs">
+            <button class="side-tab active" data-side="assistant">AI 助手</button>
+            <button class="side-tab" data-side="preview">预览</button>
+          </div>
+          <div id="panel-assistant" class="side-panel">
+            <div class="panel-head panel-head-row">
+              <span><span class="codicon codicon-comment-discussion"></span> AI 助手</span>
+              <button id="btn-clear-chat" class="head-icon-btn" title="清空对话"><span class="codicon codicon-clear-all"></span></button>
+            </div>
+            <div class="assistant-mode">
+              <button class="mode-btn active" data-mode="ask">提问代码</button>
+              <button class="mode-btn" data-mode="gen">生成代码</button>
+            </div>
+            <div id="assistant-thread" class="chat-messages"></div>
+            <div id="assistant-codearea" hidden>
+              <div class="panel-head">生成结果</div>
+              <pre id="assistant-code" class="gen-output"></pre>
+              <button id="btn-apply-code" class="action-btn" hidden>应用到编辑器</button>
+            </div>
+            <div class="chat-input-row">
+              <textarea id="assistant-input" rows="2" placeholder="向 AI 提问当前代码，或描述要生成的代码..."></textarea>
+              <button id="btn-assistant-stop" class="icon-btn icon-btn-stop" title="停止生成" hidden><span class="codicon codicon-debug-stop"></span></button>
+              <button id="btn-assistant-send" class="icon-btn" title="发送"><span class="codicon codicon-send"></span></button>
+            </div>
+          </div>
+          <div id="panel-preview" class="side-panel" hidden>
+            <div class="panel-head panel-head-row">
+              <span><span class="codicon codicon-markdown"></span> Markdown 预览</span>
+              <button id="btn-refresh-preview" class="head-icon-btn" title="重新渲染"><span class="codicon codicon-refresh"></span></button>
+            </div>
+            <div id="preview-scroll" class="md-preview-scroll">
+              <div id="preview-content" class="md-preview"></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <div id="resize-bottom" class="splitter-h" title="拖动调整面板高度"></div>
+      <div class="bottom-panel" id="bottom-panel">
+        <div class="panel-tabs">
+          <button class="panel-tab active" data-tab="terminal">终端</button>
+          <button class="panel-tab" data-tab="explain">解释</button>
+          <button class="panel-tab" data-tab="fix">修复</button>
+          <div class="panel-tabs-spacer"></div>
+          <button id="btn-autoscroll" class="panel-tool" title="自动滚动：开"><span class="codicon codicon-lock"></span></button>
+          <button id="btn-copy-output" class="panel-tool" title="复制当前面板内容"><span class="codicon codicon-copy"></span></button>
+          <button id="btn-clear-output" class="panel-tool" title="清空当前面板"><span class="codicon codicon-clear-all"></span></button>
+        </div>
+        <pre id="output-terminal" class="output"></pre>
+      <div id="terminal-input-row" class="terminal-input-row" hidden>
+        <span class="terminal-prompt">$ </span>
+        <input id="terminal-input" class="terminal-input" autocomplete="off" spellcheck="false" placeholder="程序需要输入...">
+      </div>
+        <div id="output-explain" class="output md-panel" hidden></div>
+        <div id="output-fix" class="output md-panel" hidden></div>
+        <div id="fix-actions" class="fix-actions" hidden>
+          <button id="btn-fix" class="action-btn"><span class="codicon codicon-wand"></span><span>让 AI 修复</span></button>
+          <button id="btn-apply-fix" class="action-btn" hidden>应用修复</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="status-bar">
+    <span id="status-model">模型：未配置</span>
+    <span class="status-sep"></span>
+    <span id="status-lang">Python</span>
+    <span class="status-spacer"></span>
+    <span id="status-cursor">Ln 1, Col 1</span>
+  </footer>
+
+  <div id="settings-panel" class="settings-panel">
+    <div class="settings-box">
+      <h3>设置</h3>
+      <label for="set-baseurl">接口地址 (BASE_URL)</label>
+      <input id="set-baseurl" type="text" placeholder="https://api.deepseek.com/v1">
+      <label for="set-apikey">API 密钥</label>
+      <input id="set-apikey" type="password" placeholder="sk-...">
+      <span id="set-apikey-hint" class="hint"></span>
+      <label for="set-model">模型 (MODEL)</label>
+      <input id="set-model" type="text" placeholder="deepseek-chat">
+      <label for="set-port">端口 (PORT，下次启动生效)</label>
+      <input id="set-port" type="number" placeholder="3000">
+      <label for="set-temperature">温度 (0-2，留空为模型默认)</label>
+      <input id="set-temperature" type="number" min="0" max="2" step="0.1" placeholder="默认">
+      <label for="set-maxtokens">最大输出长度 (留空为模型默认)</label>
+      <input id="set-maxtokens" type="number" min="1" step="1" placeholder="默认">
+      <label for="set-fontsize">编辑器字号 (9-32，留空为默认 14)</label>
+      <input id="set-fontsize" type="number" min="9" max="32" step="1" placeholder="14">
+      <div id="settings-msg" class="settings-msg"></div>
+      <div class="settings-actions">
+        <button id="btn-settings-test" class="btn">测试连接</button>
+        <button id="btn-settings-save" class="btn btn-run">保存</button>
+        <button id="btn-settings-close" class="btn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script>var require = { paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs' } };</script>
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"
+          integrity="sha384-pHG02SG8pId94Np3AbPmBEJ1yPqaH0IkJGLSNGXYmuGhkazT8Lr/57WYpbkGjJtu"
+          crossorigin="anonymous"></script>
+  <script src="/markdown.js"></script>
+  <script src="/output.js"></script>
+  <script src="/explorer.js"></script>
+  <script src="/editor.js"></script>
+  <script src="/preview.js"></script>
+  <script src="/assistant.js"></script>
+  <script src="/settings.js"></script>
+</body>
+</html>

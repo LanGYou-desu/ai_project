@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>赛博安全学院 — 从原理到实战 · 网络安全训练营</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="matrix"></canvas>
+<div id="hud"></div>
+<div id="objpanel"></div>
+<div id="webbrowser" class="hidden">
+  <div class="wb-bar">
+    <span class="wb-dots">● ● ●</span>
+    <span id="wb-url" class="wb-url"></span>
+    <button id="wb-close" onclick="closeWebBrowser()">✕</button>
+  </div>
+  <iframe id="wbframe" title="靶场浏览器"></iframe>
+</div>
+<div id="terminal">
+  <div id="output"></div>
+  <div id="input-line">
+    <span id="prompt">guest@cyber:~$</span>
+    <input id="input" type="text" autocomplete="off" spellcheck="false" autocapitalize="off" autofocus>
+  </div>
+</div>
+<div id="scanlines"></div>
+
+<script src="js/crypto.js"></script>
+<script src="js/core.js"></script>
+<script src="js/tools.js"></script>
+<script src="js/course.js"></script>
+<script src="js/challenges.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/docs.js"></script>
+<script src="js/lab.js"></script>
+<script src="js/levels/level0.js"></script>
+<script src="js/levels/level1.js"></script>
+<script src="js/levels/level2.js"></script>
+<script src="js/levels/level3.js"></script>
+<script src="js/levels/level4.js"></script>
+<script src="js/levels/level5.js"></script>
+<script src="js/levels/level6.js"></script>
+<script src="js/levels/level7.js"></script>
+<script src="js/levels/level8.js"></script>
+<script src="js/levels/level9.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

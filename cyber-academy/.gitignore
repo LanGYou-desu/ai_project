@@ -1,0 +1,9 @@
+# 运行时/脚本生成的练习素材与靶场文件
+# 重新生成: node make-practice.js  或直接运行 start.ps1 / start.bat
+practice/
+lab/downloads/
+lab/lab-files/
+tools/rockyou-mini.txt
+
+# 日志
+*.log
