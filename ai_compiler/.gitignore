@@ -27,7 +27,6 @@ Thumbs.db
 # IDE
 .idea/
 
-# 构建产物：release 只上传安装包 exe，其余自动生成文件不上传
-release/*.blockmap
-release/latest.yml
-release/builder-debug.yml
+# 构建产物：release 目录只上传 *.exe 安装包，其余任何文件一律忽略
+release/*
+!release/*.exe
