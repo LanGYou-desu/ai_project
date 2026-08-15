@@ -1,0 +1,12 @@
+{
+  "name": "shell-quest",
+  "version": "1.0.0",
+  "description": "REAL SHELL QUEST · 真实文件历险 —— 在真实磁盘沙盒目录里用真实命令行解谜的考古冒险",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "worldgen": "node lib/worldgen.js",
+    "test": "node test/run.js"
+  },
+  "license": "MIT"
+}

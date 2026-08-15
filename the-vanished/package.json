@@ -1,0 +1,11 @@
+{
+  "name": "the-vanished",
+  "version": "1.0.0",
+  "description": "THE VANISHED · 桌面悬疑事件 —— 实时上演的桌面惊悚剧：线索通过真实 Windows 通知与真实证据文件陆续送达",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/run.js"
+  },
+  "license": "MIT"
+}

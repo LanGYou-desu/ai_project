@@ -1,6 +1,6 @@
 # AI Project 合集
 
-> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录八个项目：桌面端「AI 编译器」、网页端「赛博安全学院」、Python 游戏「DevSaga」、四款纯前端解谜/模拟游戏「NETIME 时光机」「声音考古学」「LINGUA 语言演化博物馆」「LASTBROADCAST 最后的广播」，以及最新的纯前端生态模拟器「ECO-ARK 生态方舟」。
+> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录十二个项目：桌面端「AI 编译器」、网页端「赛博安全学院」、Python 游戏「DevSaga」、四款纯前端解谜/模拟游戏「NETIME 时光机」「声音考古学」「LINGUA 语言演化博物馆」「LASTBROADCAST 最后的广播」、生态模拟器「ECO-ARK 生态方舟」，以及四个**真机原生**游戏：「REAL SHELL QUEST 真实文件历险」（在真实磁盘上执行真实命令的解谜冒险）、「THE VANISHED 桌面悬疑事件」（用真实 Windows 通知上演的实时悬疑剧）、「DESKTOP SIEGE 桌面保卫战」（敌人由你电脑上的真实文件名生成的射击游戏）、「HOUSE GUEST 桌灵·房客」（住在你真实电脑里的幽灵，用真实资源管理器在虚拟 C 盘里解谜）。
 
 | GitHub | https://github.com/LanGYou-desu/ai_project |
 | ------ | ------------------------------------------ |
@@ -17,6 +17,10 @@
 | [lingua](./lingua/) | Web 语言演化模拟 | 造一门语言，看它在一千年里经历音变、语法演化、方言分裂、借词与文字诞生；106 词 / 24 条音变 / 7 分支 / 同源词对照 / 音系档案 / 现实语言学注释 / 种子可复现可分享可导出 | 原生 HTML/CSS/JS（纯前端零依赖，32 项测试） |
 | [lastbroadcast](./lastbroadcast/) | Web 叙事模拟 | 末日前的最后 24 小时，你是一座城市唯一还在播音的电台值班员：选歌、播报、接来电（含点歌联动）、回应神秘信号，15 位听众的命运与 9 种结局由你决定 | 原生 HTML/CSS/JS + Web Audio（零依赖，26 项测试） |
 | [eco-ark](./eco-ark/) | Web 生态模拟器 | 微观生态重建：从苔藓到狼群亲手重建完整食物网，应对干旱/冰期/陨石/入侵物种，让生态系统稳定繁衍 500 年；6 章剧情 + 沙盒 + 21 物种 + 生态学知识卡 + 成就 + 可复现种子存档（约 1 小时通关） | 原生 HTML/CSS/JS + Canvas + Web Audio（零依赖，38 项测试） |
+| [shell-quest](./shell-quest/) | 真实命令行冒险 | 生成一个**真实沙盒目录**（60+ 个真实 txt/log/hex/tar 文件），用真实命令（ls/cat/grep/base64/untar…）逐层破解，找回自我封存的 ECHO 核心；3 幕剧情 + 13 口令 + 管道/编码/归档谜题，40–60 分钟 | Node.js（零依赖）+ 原生 HTML/CSS/JS（55 项测试） |
+| [the-vanished](./the-vanished/) | 实时桌面悬疑剧 | 同事深夜失踪，约 40 分钟内线索通过**真实 Windows 通知**、**真实磁盘证据文件**与模拟聊天陆续送达；3 个检查点 + 注意力计分 + 5 种结局 | Node.js（零依赖）+ PowerShell（真实系统通知）（16 项测试） |
+| [desktop-siege](./desktop-siege/) | Canvas 防御射击 | 敌人由**你电脑上的真实文件名与系统进程**生成（每台机器独一无二）：exe 冲锋、pdf 重甲、zip 分裂、Boss 以你磁盘最大文件命名；20 波 + 4 Boss + 无尽模式 + 6 种道具，30–60 分钟 | Node.js（零依赖）+ 原生 Canvas/Web Audio（24 项测试） |
+| [houseguest](./houseguest/) | Python 桌面游戏 | 一只幽灵住进你的电脑：透明桌面悬浮层 + 真实虚拟 C 盘（`vfsystem\`），用真实资源管理器 / cmd 操作真实文件解谜；12 章四幕 + 3+1 结局 + 陪伴模式 | Python 3.10+（tkinter + Windows SAPI，零第三方依赖，38 项测试） |
 
 ## 🌳 目录结构
 
@@ -74,13 +78,42 @@ ai_project/
     ├── css/style.css       # 深夜电台主题
     ├── test/               # 单元测试（node test/run.js，26 项）
     └── start.bat           # 一键打开
-└── eco-ark/                # ECO-ARK · 生态方舟（微观生态重建模拟器）
+├── eco-ark/                # ECO-ARK · 生态方舟（微观生态重建模拟器）
     ├── index.html          # 入口（双击即玩）
     ├── js/shared/          # 引擎：RNG / 21 物种 / 地形 / 生态仿真 / 章节 / 知识卡
     ├── js/                 # 培养皿渲染 / 种群曲线 / Web Audio / 主逻辑
     ├── css/style.css       # 深绿实验室主题
     ├── test/               # 单元测试（node test/run.js，38 项）
     └── start.bat           # 一键打开
+├── shell-quest/            # ARCHIVE-7 · 真实文件历险（真实命令行解谜冒险）
+    ├── server.js           # 服务器：/api/exec 在真实沙盒目录上执行命令
+    ├── lib/                # 世界生成器 / 安全命令引擎 / 剧情 / 状态
+    ├── public/             # 终端界面（任务面板 + 命令终端）
+    ├── test/run.js         # 55 项测试（含沙盒安全与全流程通关）
+    ├── world/              # 生成的真实沙盒世界（不入库）
+    └── start.bat           # 一键启动
+├── the-vanished/           # THE VANISHED · 桌面悬疑事件（实时悬疑剧）
+    ├── server.js           # 时间线引擎 + 真实证据生成 + API
+    ├── notify.ps1          # 真实 Windows Toast 通知脚本
+    ├── lib/                # 剧情 / 时间线引擎 / 通知桥
+    ├── public/             # 调查台（聊天 / 证据 / 案件板）
+    ├── test/run.js         # 16 项测试
+    ├── evidence/           # 运行时生成的真实证据文件（不入库）
+    └── start.bat           # 一键启动
+└── desktop-siege/          # DESKTOP SIEGE · 桌面保卫战（真实数据敌人射击游戏）
+    ├── server.js           # 真实磁盘/进程扫描 + 波次 API
+    ├── lib/                # 扫描器 / 波次生成 / 纯逻辑引擎（UMD 双模式）
+    ├── public/             # Canvas 游戏界面
+    ├── test/run.js         # 24 项测试
+    └── start.bat           # 一键启动
+└── houseguest/             # HOUSE GUEST · 桌灵·房客（桌面幽灵叙事解谜）
+    ├── main.py             # 入口（单实例 + 章节状态机 + 观测台）
+    ├── game/               # 幽灵对话 / 透明悬浮层 / 密码箱 / 虚拟系统构建器 / 操作检测
+    ├── tools/smoke.py      # GUI 冒烟测试
+    ├── tests/              # 38 项单元测试（python -m unittest，含无头全流程通关）
+    ├── vfsystem/           # 【运行时生成】虚拟系统目录（仿真实 Windows，不入库）
+    ├── save/               # 【运行时生成】存档（不入库）
+    └── start.bat           # 一键启动
 ```
 
 ## 🚀 快速开始
@@ -164,9 +197,49 @@ node test/run.js          # 38 项单元测试（含确定性 / 生态平衡 / �
 
 微观生态重建模拟器（约 1 小时通关）：在 84×54 的培养皿星球上涂抹物种、重建食物网，应对干旱 / 冰期 / 陨石 / 入侵藤蔓。6 章剧情 + 沙盒模式 + 21 种物种 + 13 条生态学知识卡 + 12 项成就 + 种子存档重放。纯前端零依赖，引擎全确定性（同种子同操作 → 相同演化）。
 
+### shell-quest（ARCHIVE-7 · 真实文件历险）
+
+```bash
+cd shell-quest
+.\start.bat               # 一键启动（自动生成真实沙盒世界并打开浏览器）
+node test/run.js          # 55 项测试（世界确定性 / 沙盒安全 / 全流程通关）
+```
+
+首次启动在 `world/` 生成约 60 个真实文件（txt / log / hex / tar），游戏内终端**真实执行**受限命令（白名单 + 只读 + 路径锁定）逐层解谜：藏头诗、登记表推理、base64、rot13、凯撒、XOR、tar 归档、grep 定位……3 幕 13 个口令，40–60 分钟。你甚至可以退出游戏用资源管理器直接翻看这个世界。
+
+### the-vanished（THE VANISHED · 桌面悬疑事件）
+
+```bash
+cd the-vanished
+.\start.bat               # 一键启动（真实时间线自动开始）
+node test/run.js          # 16 项测试（时间线 / 计分 / 结局 / 服务器）
+```
+
+同事林薇深夜失踪。约 40 分钟里，线索通过**真实的 Windows Toast 通知**、**真实写入 `evidence/` 目录的证据文件**与模拟聊天陆续送达；3 个检查点 + 注意力计分 → 5 种结局。可在界面右上角切换 4x/8x/16x 倍速。
+
+### desktop-siege（DESKTOP SIEGE · 桌面保卫战）
+
+```bash
+cd desktop-siege
+.\start.bat               # 一键启动（自动扫描你的磁盘并打开浏览器）
+node test/run.js          # 24 项测试（扫描 / 波次确定性 / 引擎逻辑 / 服务器）
+```
+
+启动时扫描你的桌面 / 文档 / 下载 / 图片与系统进程，把**真实文件名**变成敌人：exe 冲锋、pdf 重甲、zip 分裂、jpg 治疗，Boss 以你磁盘上最大的文件命名。WASD 移动 + 鼠标射击，20 波 + 4 Boss + 无尽模式，一局 30–60 分钟。每台电脑的战场独一无二。
+
+### houseguest（HOUSE GUEST · 桌灵·房客）
+
+```bash
+cd houseguest
+python main.py                                     # 正常启动（首次自动生成 vfsystem\ 虚拟系统）
+python -m unittest discover -s tests -t .          # 38 项单元测试（或双击 run_tests.bat）
+```
+
+启动后透明幽灵「咕噜」飘在桌面右下角（可拖拽、会说话、会整蛊）：它布置任务，你用**真实的资源管理器 / cmd** 在 `vfsystem\`（仿真实 Windows 的虚拟 C 盘）里找文件、解密码（摩斯/Base64/ROT13/藏头诗）、移动/新建/删除真实文件，后台每 1.5 秒检测你的真实操作。12 章四幕主线 + 3 种结局 + 1 个隐藏结局（集齐 12 颗彩蛋），通关后还有陪伴模式。纯 Python 零第三方依赖，不联网。
+
 ## 📝 仓库约定
 
-- **八个项目相互独立**：各自维护代码、文档与依赖，不互相引用。
+- **十二个项目相互独立**：各自维护代码、文档与依赖，不互相引用。
 - **release 目录只跟踪 `*.exe` 安装包**：`latest.yml`、`*.blockmap` 等 electron-builder 自动生成的构建产物一律忽略，防止每次打包产生无关改动。
 - **敏感与依赖文件不入库**：`node_modules/`、`.env` / `config.json`（含 API 密钥）、`.superpowers/`、AI 助手说明文件（`AGENTS.md` / `CLAUDE.md`）等均已加入 `.gitignore`。
 - **练习素材可再生成**：cyber-academy 的 `practice/`、`lab/downloads/` 等由 `node make-practice.js` 生成，不入库；sound-archaeology 的语音素材可由 `tools/generate-voice.ps1` 重新生成。
@@ -181,4 +254,5 @@ node test/run.js          # 38 项单元测试（含确定性 / 生态平衡 / �
 - [lingua 详细文档](./lingua/README.md)
 - [lastbroadcast 详细文档](./lastbroadcast/README.md)
 - [eco-ark 详细文档](./eco-ark/README.md)
+- [houseguest 详细文档](./houseguest/README.md)
 - [devsaga 设计文档](./devsaga/docs/DESIGN.md)

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DESKTOP SIEGE · 桌面保卫战</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game">
+  <canvas id="cv"></canvas>
+  <div id="hud">
+    <div class="hud-item"><span class="hud-label">生命</span><div class="bar-wrap"><div id="hpBar" class="bar hp"></div></div></div>
+    <div class="hud-item"><span class="hud-label">护盾</span><div class="bar-wrap"><div id="shieldBar" class="bar shield"></div></div></div>
+    <div class="hud-item"><span class="hud-label">第 <span id="waveNum">1</span> 波</span><span id="waveTag" class="tag"></span></div>
+    <div class="hud-item"><span class="hud-label">得分</span><span id="score" class="value">0</span></div>
+    <div class="hud-item"><span class="hud-label">连击</span><span id="combo" class="value">x0</span></div>
+    <div class="hud-item"><span class="hud-label">击杀</span><span id="kills" class="value">0</span></div>
+  </div>
+  <div id="bossBar" class="hidden">
+    <span id="bossName"></span>
+    <div class="bar-wrap"><div id="bossHp" class="bar boss"></div></div>
+  </div>
+  <div id="overlay">
+    <div id="titleScreen" class="screen">
+      <h1>DESKTOP SIEGE</h1>
+      <h2>桌面保卫战</h2>
+      <p class="sub">敌人由你电脑上的<strong>真实文件</strong>与<strong>系统进程</strong>生成——每一台电脑，都有独一无二的战场。</p>
+      <div id="scanInfo" class="scanInfo">正在扫描你的磁盘……</div>
+      <button id="startBtn" class="bigbtn">开始保卫桌面</button>
+      <div class="controls">
+        <div>WASD / 方向键 —— 移动</div>
+        <div>鼠标 —— 瞄准 · 按住左键 —— 射击</div>
+        <div>共 20 波 + 4 个 Boss + 无尽模式 · 收集道具强化火力</div>
+      </div>
+    </div>
+    <div id="gameOverScreen" class="screen hidden">
+      <h1>桌面沦陷</h1>
+      <p id="goStats"></p>
+      <button id="retryBtn" class="bigbtn">再来一次</button>
+    </div>
+    <div id="waveBanner" class="screen hidden"><h1 id="bannerTitle"></h1><p id="bannerSub"></p></div>
+  </div>
+  <div id="toastMsg" class="hidden"></div>
+</div>
+<script src="/lib/rng.js"></script>
+<script src="/lib/waves.js"></script>
+<script src="/lib/engine.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

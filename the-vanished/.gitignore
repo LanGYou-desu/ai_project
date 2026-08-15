@@ -1,0 +1,4 @@
+# 运行时生成的证据文件与存档不入库
+evidence/
+state.json
+node_modules/

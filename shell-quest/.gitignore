@@ -1,0 +1,5 @@
+# 生成的沙盒世界与存档不入库
+world/
+世界清单.json
+state.json
+node_modules/

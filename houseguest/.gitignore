@@ -1,0 +1,6 @@
+# 运行时生成
+vfsystem/
+save/
+__pycache__/
+*.pyc
+*.pyo

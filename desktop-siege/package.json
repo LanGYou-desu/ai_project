@@ -1,0 +1,12 @@
+{
+  "name": "desktop-siege",
+  "version": "1.0.0",
+  "description": "DESKTOP SIEGE · 桌面保卫战 —— 敌人由你电脑上的真实文件名与进程名生成的画布防御游戏",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "scan": "node lib/scanner.js",
+    "test": "node test/run.js"
+  },
+  "license": "MIT"
+}

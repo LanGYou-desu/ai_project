@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE VANISHED · 桌面悬疑事件</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">
+      <span class="logo">◤◢</span>
+      <div>
+        <h1>THE VANISHED · 林薇失踪事件</h1>
+        <p class="sub">HALCYON 安全分析台 · 夜班 · 2081-07-19</p>
+      </div>
+    </div>
+    <div class="status">
+      <span id="clock" class="badge">00:00</span>
+      <span id="attention" class="badge">注意力 0</span>
+      <select id="speedSel" title="时间倍速">
+        <option value="1">1x</option>
+        <option value="4">4x</option>
+        <option value="8">8x</option>
+        <option value="16">16x</option>
+      </select>
+      <button id="restartBtn" class="btn small">重新开始</button>
+    </div>
+  </header>
+
+  <div id="main">
+    <section class="col" id="chatCol">
+      <div class="colHead">林薇 · 离线消息</div>
+      <div id="chatBox"></div>
+      <div class="colHead">系统通知（真实的 Windows 通知也会弹出）</div>
+      <div id="noticeBox"></div>
+    </section>
+
+    <section class="col" id="evidenceCol">
+      <div class="colHead">证据文件（evidence/ 真实目录）</div>
+      <div id="fileList"></div>
+      <div id="fileViewer">
+        <div class="viewerEmpty">点击左侧文件查看内容</div>
+      </div>
+    </section>
+
+    <section class="col" id="boardCol">
+      <div class="colHead">案件板</div>
+      <div id="board"></div>
+      <div class="colHead">任务进度</div>
+      <div id="progressList"></div>
+    </section>
+  </div>
+</div>
+
+<div id="checkpointModal" class="modal hidden">
+  <div class="modalBox">
+    <h2 id="cpQuestion"></h2>
+    <div id="cpOptions"></div>
+    <div id="cpExplain" class="hidden"></div>
+    <button id="cpClose" class="btn hidden">继续</button>
+  </div>
+</div>
+
+<div id="endingModal" class="modal hidden">
+  <div class="modalBox ending">
+    <h2 id="endTitle"></h2>
+    <div id="endScore"></div>
+    <p id="endText"></p>
+    <button id="endClose" class="btn">关闭</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

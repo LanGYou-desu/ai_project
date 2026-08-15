@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>档案馆-7 · ARCHIVE-7 —— 真实文件历险</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">
+      <span class="logo">▲</span>
+      <div>
+        <h1>档案馆-7 · ARCHIVE-7</h1>
+        <p class="sub">真实文件历险 —— 用真实命令行找回 ECHO 核心</p>
+      </div>
+    </div>
+    <div class="status">
+      <span id="actBadge" class="badge">第 1 幕</span>
+      <span id="doneBadge" class="badge done hidden">已激活</span>
+      <span id="flagCount" class="badge">0 / 13</span>
+    </div>
+  </header>
+
+  <div id="main">
+    <aside id="side">
+      <section class="panel">
+        <h2>任务清单</h2>
+        <div id="taskList"></div>
+        <button id="hintBtn" class="btn">获取提示（已用 0 次）</button>
+        <button id="resetBtn" class="btn ghost">重置进度</button>
+      </section>
+      <section class="panel">
+        <h2>档案馆档案</h2>
+        <div id="storyLog"></div>
+      </section>
+    </aside>
+
+    <section id="termWrap">
+      <div id="termHeader">
+        <span>guest@archive-7</span>
+        <span class="right">沙盒目录：world/（真实文件，可到磁盘上查看）</span>
+      </div>
+      <div id="termOut" tabindex="0"></div>
+      <div id="termInputRow">
+        <span id="prompt">guest@archive-7:/&gt;</span>
+        <input id="termInput" type="text" autocomplete="off" spellcheck="false" placeholder="输入 help 开始……">
+      </div>
+    </section>
+  </div>
+
+  <footer id="foot">命令在真实沙盒目录上执行 · 输入 flag &lt;答案&gt; 提交口令 · 输入 clear 清屏</footer>
+</div>
+<div id="doneOverlay" class="hidden">
+  <div class="doneBox">
+    <h2>档案馆-7 · 激活完成</h2>
+    <p id="doneStats"></p>
+    <p>ECHO 核心重新接入网络。大静默的余波，从今天开始消散。</p>
+    <button id="doneClose" class="btn">继续探索（无尽模式）</button>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
