@@ -46,7 +46,7 @@
 
   function urlParams() {
     var p = new URLSearchParams(location.search);
-    return { lang: p.get('lang'), seed: p.get('seed') };
+    return { lang: p.get('lang'), seed: p.get('seed'), w: p.get('w') };
   }
 
   function pickDefaultBranch(h) {
@@ -148,7 +148,13 @@
       return ca.localeCompare(cb) || a.localeCompare(b2);
     });
     var ph = world.phonemeInventory(w);
-    var html = '<div class="phoneme">🎼 音系档案：<b>' + ph.consonants.length + '</b> 辅音 <span class="cat">[' + ph.consonants.join(' ') + ']</span> · <b>' + ph.vowels.length + '</b> 元音 <span class="cat">[' + ph.vowels.join(' ') + ']</span></div>';
+    var g = world.grammarAt(h, state.selected, state.cursor);
+    var feats = 0;
+    Object.keys(g).forEach(function (k) { var v = g[k]; if (v === true || v === false) { if (v) feats++; } else if (v && v !== 'SVO' && v !== '一至三') feats++; });
+    var loansOfBranch = 0;
+    for (var lg in branch.wordLog) if (branch.wordLog[lg][0].note) loansOfBranch++;
+    var html = '<div class="phoneme">🗺️ <b>' + branch.name + '</b> · 📖 ' + Object.keys(w).length + ' 词 · 🎼 ' + (ph.consonants.length + ph.vowels.length) + ' 音位 · 🐎 ' + loansOfBranch + ' 借词 · 📚 ' + feats + ' 语法特征' + (branch.writing != null ? ' · 🖋️ 有文字' : '') + '</div>';
+    html += '<div class="phoneme">🎼 音系档案：<b>' + ph.consonants.length + '</b> 辅音 <span class="cat">[' + ph.consonants.join(' ') + ']</span> · <b>' + ph.vowels.length + '</b> 元音 <span class="cat">[' + ph.vowels.join(' ') + ']</span></div>';
     var catChips = '<span class="cat-chip" data-cat="all" style="background:' + (state.catFilter === 'all' ? '#a03a2a' : '#b7a583') + '">全部 ' + Object.keys(w).length + '</span>';
     Object.keys(lex.CATS).forEach(function (c) {
       var n = Object.keys(w).filter(function (g) { return w[g].cat === c; }).length;
@@ -166,10 +172,13 @@
       var note = branch.wordLog[g] && branch.wordLog[g][0].note;
       var loanBadge = '';
       if (note) loanBadge = ' <span class="badge loan">' + note.replace('借词', '借') + '</span>';
-      var catColor = CAT_COLOR[w[g].cat] || '#999';
+      var extra = null;
+      state.opts.extraWords.forEach(function (x) { if (x.gloss === g) extra = x; });
+      var cat = extra ? extra.cat : w[g].cat;
+      var catColor = CAT_COLOR[cat] || '#999';
       html += '<tr class="wordrow" data-gloss="' + g + '">' +
         '<td>' + g + loanBadge + '</td>' +
-        '<td><span class="cat-chip" style="background:' + catColor + '">' + (lex.CATS[w[g].cat] || '其他') + '</span></td>' +
+        '<td><span class="cat-chip" style="background:' + catColor + '">' + (lex.CATS[cat] || '其他') + '</span></td>' +
         '<td class="proto">' + proto + '</td>' +
         '<td class="word">' + w[g].word + '</td>' +
         '<td><button class="say-btn" data-word="' + w[g].word + '" title="试听发音">🔊</button></td></tr>';
@@ -184,7 +193,7 @@
       var keys = Object.keys(w);
       if (!keys.length) return;
       var g = keys[Math.floor(Math.random() * keys.length)];
-      showEtymology(g);
+      showWordCard(g);
       toast('🎲 今日邂逅：「' + g + '」');
     });
     drawPhonemeCurve();
@@ -192,7 +201,7 @@
       chip.addEventListener('click', function () { state.catFilter = chip.getAttribute('data-cat'); renderWords(); });
     });
     el.querySelectorAll('.wordrow').forEach(function (tr) {
-      tr.addEventListener('click', function () { showEtymology(tr.getAttribute('data-gloss')); });
+      tr.addEventListener('click', function () { showWordCard(tr.getAttribute('data-gloss')); });
     });
     el.querySelectorAll('.say-btn').forEach(function (b) {
       b.addEventListener('click', function (ev) { ev.stopPropagation(); tts.speak(b.getAttribute('data-word')); });
@@ -268,12 +277,20 @@
       var got = x.total > 0;
       var branchNames = Object.keys(x.branches);
       var branchesHtml = branchNames.map(function (n) { return n + '×' + x.branches[n]; }).join('、');
-      html += '<div class="grammar-card" style="' + (got ? '' : 'opacity:.55') + '"><h4>' + (got ? '📖' : '🔒') + ' ' + x.rule.name + (got ? ' · 共 ' + x.total + ' 次' : ' · 待发现') + '</h4>' +
+      html += '<div class="grammar-card rule-card" data-rule="' + x.rule.id + '" style="cursor:pointer;' + (got ? '' : 'opacity:.55') + '"><h4>' + (got ? '📖' : '🔒') + ' ' + x.rule.name + (got ? ' · 共 ' + x.total + ' 次' : ' · 待发现') + '</h4>' +
         '<p>' + x.rule.desc + '</p>' +
         (got ? '<div class="real">🔄 涉及分支：' + branchesHtml + '</div>' : '') +
         '<div class="real">📖 ' + x.rule.real + '</div></div>';
     });
     el.innerHTML = html;
+    el.querySelectorAll('.rule-card').forEach(function (c) {
+      c.addEventListener('click', function () {
+        var id = c.getAttribute('data-rule');
+        var r = null;
+        GW.sounds.RULES.forEach(function (x) { if (x.id === id) r = x; });
+        if (r) showRuleCard(r);
+      });
+    });
   }
 
   // 语言名片
@@ -401,7 +418,7 @@
     }).join('');
     var cat = el.getAttribute('data-cat') || 'nature';
     var html = '<div class="writing-pick"><select id="writingSel">' + opts + '</select></div>' +
-      '<div>' +
+      '<div class="stage-row">' +
       '<div class="writing-stage"><canvas id="ws-pic" width="120" height="120"></canvas><div class="cap">图画阶段 · 象形</div></div>' +
       '<div class="writing-stage"><canvas id="ws-sim" width="120" height="120"></canvas><div class="cap">简化阶段 · 笔画化</div></div>' +
       '<div class="writing-stage"><canvas id="ws-script" width="120" height="120"></canvas><div class="cap">文字阶段 · 字母化</div></div>' +
@@ -570,7 +587,7 @@
     var sel = $('cogSel');
     sel.addEventListener('change', function () { el.setAttribute('data-pick', sel.value); renderCognates(); });
     el.querySelectorAll('.wordrow').forEach(function (tr) {
-      tr.addEventListener('click', function () { state.selected = tr.getAttribute('data-branch'); renderAll(); });
+      tr.addEventListener('click', function () { selectBranch(tr.getAttribute('data-branch')); });
     });
     // 双分支对比
     var ba = el.getAttribute('data-ba') || state.selected;
@@ -602,6 +619,66 @@
     var cmpA = $('cmpA'), cmpB = $('cmpB');
     if (cmpA) cmpA.addEventListener('change', function () { el.setAttribute('data-ba', cmpA.value); renderCognates(); });
     if (cmpB) cmpB.addEventListener('change', function () { el.setAttribute('data-bb', cmpB.value); renderCognates(); });
+  }
+
+  // ---------- 详情弹层 ----------
+  function showPanel(html) {
+    var card = $('detailCard');
+    card.innerHTML = html;
+    $('detailPanel').classList.remove('hidden');
+    var close = card.querySelector('[data-close]');
+    if (close) close.addEventListener('click', function () { $('detailPanel').classList.add('hidden'); });
+    card.querySelectorAll('.say-btn').forEach(function (b) {
+      b.addEventListener('click', function (ev) { ev.stopPropagation(); tts.speak(b.getAttribute('data-word')); });
+    });
+  }
+
+  function showWordCard(gloss) {
+    var h = state.history;
+    var w = wordsAtCached(state.selected, state.cursor);
+    if (!w || !w[gloss]) return;
+    var entry = w[gloss];
+    var proto = lex.BY_GLOSS[gloss] ? lex.BY_GLOSS[gloss].word : '—';
+    var chain = world.traceEtymology(h, state.selected, gloss);
+    var cog = world.cognates(h, gloss, state.cursor);
+    var extra = null;
+    state.opts.extraWords.forEach(function (x) { if (x.gloss === gloss) extra = x; });
+    var cat = extra ? extra.cat : entry.cat;
+    var branch = null;
+    h.branches.forEach(function (b) { if (b.id === state.selected) branch = b; });
+    var html = '<span class="close" data-close="1" role="button" aria-label="关闭">✕</span>' +
+      '<h2 style="color:#a03a2a;margin-bottom:6px">' + gloss + ' <span class="cat-chip" style="background:' + (CAT_COLOR[cat] || '#999') + '">' + (lex.CATS[cat] || '其他') + '</span></h2>' +
+      '<p class="cat">「' + branch.name + '」· 公元 ' + (state.cursor * h.yearsPerEpoch) + ' 年</p>' +
+      '<p>原始词形：<b>' + proto + '</b> → 当前词形：<b style="color:#a03a2a">' + entry.word + '</b> <button class="say-btn" data-word="' + entry.word + '">🔊 试听</button></p>' +
+      '<p class="cat">同源词：' + cog.rows.length + ' 个分支仍在说这个词' + (chain.length > 1 ? ' · 经历 ' + (chain.length - 1) + ' 次音变' : '') + '</p>' +
+      '<div class="stage-row">' +
+      '<div class="writing-stage"><canvas data-g="' + gloss + '" data-stage="picture" width="84" height="84"></canvas><div class="cap">图画</div></div>' +
+      '<div class="writing-stage"><canvas data-g="' + gloss + '" data-stage="simple" width="84" height="84"></canvas><div class="cap">简化</div></div>' +
+      '<div class="writing-stage"><canvas data-g="' + gloss + '" data-stage="script" width="84" height="84"></canvas><div class="cap">文字</div></div>' +
+      '</div>' +
+      '<h4 style="margin:10px 0 6px;color:#8b5a2b">词源追踪</h4>';
+    var steps = [];
+    chain.forEach(function (c) {
+      var rules = c.rules.length ? '<span class="rules">' + c.rules.join('·') + '</span>' : '';
+      steps.push('<div class="etym-step"><span class="yr">公元' + c.year + '年' + (c.note ? '·' + c.note : '') + '</span><span class="form">' + c.form + '</span>' + rules + '</div>');
+    });
+    html += steps.join('<div class="etym-arrow">↓</div>');
+    showPanel(html);
+    var canvases = $('detailCard').querySelectorAll('canvas');
+    canvases.forEach(function (cv) {
+      var ctx = cv.getContext('2d');
+      glyphs.drawStage(ctx, cv.getAttribute('data-g'), entry.word, cv.getAttribute('data-stage'), 42, 42, 68);
+    });
+  }
+
+  function showRuleCard(rule) {
+    var h = state.history;
+    var html = '<span class="close" data-close="1" role="button" aria-label="关闭">✕</span>' +
+      '<h2 style="color:#a03a2a;margin-bottom:8px">📖 ' + rule.name + '</h2>' +
+      '<p style="line-height:1.9">' + rule.desc + '</p>' +
+      '<div class="real" style="margin-top:8px">📖 ' + rule.real + '</div>' +
+      '<p class="cat" style="margin-top:8px">时代窗口：公元 ' + (rule.epochLo * h.yearsPerEpoch) + '~' + (rule.epochHi * h.yearsPerEpoch) + ' 年 · 每词触发概率 ~' + Math.round(rule.prob * 100) + '%</p>';
+    showPanel(html);
   }
 
   // ---------- 词源追踪 ----------
@@ -772,6 +849,10 @@
     });
     $('btnShare').addEventListener('click', function () {
       var url = location.origin + location.pathname + '?lang=' + encodeURIComponent(state.history.name) + '&seed=' + encodeURIComponent(state.history.seed);
+      var o = state.opts;
+      if (o.extraWords.length || o.ruleScale !== 1 || o.grammarScale !== 1 || o.extraSplits.length) {
+        url += '&w=' + encodeURIComponent(JSON.stringify({ extraWords: o.extraWords, ruleScale: o.ruleScale, grammarScale: o.grammarScale, extraSplits: o.extraSplits }));
+      }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(function () { toast('种子链接已复制'); });
       } else { prompt('复制这个种子链接：', url); }
@@ -791,6 +872,9 @@
     });
     $('achCounter').addEventListener('click', function () { showAchPanel(); });
     $('btnAchClose').addEventListener('click', function () { $('achPanel').classList.add('hidden'); });
+    ['intro', 'achPanel', 'detailPanel'].forEach(function (id) {
+      $(id).addEventListener('click', function (ev) { if (ev.target === $(id)) $(id).classList.add('hidden'); });
+    });
     $('btnSave').addEventListener('click', function () {
       var list = loadGallery();
       var dup = list.some(function (x) { return x.name === state.history.name && x.seed === state.history.seed; });
@@ -811,7 +895,7 @@
       if (ev.code === 'Space') { ev.preventDefault(); togglePlay(); }
       else if (ev.code === 'ArrowLeft') { ev.preventDefault(); setCursor(state.cursor - (ev.shiftKey ? 10 : 1)); }
       else if (ev.code === 'ArrowRight') { ev.preventDefault(); setCursor(state.cursor + (ev.shiftKey ? 10 : 1)); }
-      else if (ev.key === 'Escape') { $('intro').classList.add('hidden'); $('achPanel').classList.add('hidden'); }
+      else if (ev.key === 'Escape') { $('intro').classList.add('hidden'); $('achPanel').classList.add('hidden'); $('detailPanel').classList.add('hidden'); }
     });
     // 语系树：点选 + 拖拽刮擦
     $('treeCanvas').addEventListener('pointerdown', function (ev) {
@@ -959,12 +1043,31 @@
     renderTab();
   }
 
+  function renderTabCounts() {
+    var h = state.history;
+    var counts = {
+      words: Object.keys(lex.protoLexicon()).length,
+      grammar: GW.grammar.EVENTS.length,
+      atlas: GW.sounds.RULES.length,
+      loan: h.loans.length
+    };
+    document.querySelectorAll('.tabs button').forEach(function (b) {
+      var t = b.getAttribute('data-tab');
+      var n = counts[t];
+      if (n != null) {
+        var base = b.textContent.replace(/\s*\d+$/, '');
+        b.textContent = base + ' ' + n;
+      }
+    });
+  }
+
   function renderAll() {
     if (!state.history) return;
     renderHeader();
     renderTree();
     renderLegend();
     renderEraChips();
+    renderTabCounts();
     renderTab();
   }
 
@@ -985,6 +1088,9 @@
     bind();
     renderPresets();
     var p = urlParams();
+    if (p.w) {
+      try { state.opts = JSON.parse(p.w); } catch (e) {}
+    }
     var saved = (!p.lang && !p.seed) ? loadPos() : null;
     var name = p.lang || (saved ? saved.name : PRESETS[0].name);
     var seed = p.seed || (saved ? saved.seed : PRESETS[0].seed);

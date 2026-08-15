@@ -39,6 +39,21 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
   .actions .btn { min-height: 46px; font-size: 15px; }
   .hud { flex-wrap: wrap; }
 }
+/* 剩余时间呼吸红点 */
+#remaining { display: inline-flex; align-items: center; gap: 6px; }
+#remaining::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--red); animation: remainPulse 1.8s infinite; display: inline-block;
+}
+@keyframes remainPulse { 0%,100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
+
+@media (max-width: 520px) {
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .actions .btn.back, .actions .song-row, .actions .btn.final, .actions .btn.back { grid-column: 1 / -1; }
+  .actions .song-row .fav-btn { width: 46px; }
+  .hud { gap: 8px; }
+  .controls { width: 100%; }
+}
 @media (prefers-reduced-motion: reduce) {
   .ring, .onair.on, .onairPulse { animation: none !important; }
   * { transition-duration: 0.01ms !important; }

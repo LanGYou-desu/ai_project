@@ -1,0 +1,10 @@
+{
+  "name": "eco-ark",
+  "version": "1.0.0",
+  "description": "ECO-ARK 生态方舟：微观生态重建模拟器（纯前端零依赖）",
+  "main": "index.html",
+  "scripts": {
+    "test": "node test/run.js"
+  },
+  "license": "MIT"
+}

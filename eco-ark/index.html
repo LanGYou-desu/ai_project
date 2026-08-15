@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ECO-ARK 生态方舟 · 星球重建模拟器</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <!-- 顶栏 -->
+  <header id="topbar">
+    <div class="brand">🌱 ECO·ARK <span class="brand-sub">生态方舟</span></div>
+    <div class="chapter-pill" id="chapterPill">第一章 · 播种纪元</div>
+    <div class="clock" id="clock">元年 · 春</div>
+    <div class="controls">
+      <button class="icon-btn" id="btnPause" title="暂停/继续（空格）">⏸</button>
+      <button class="speed-btn" id="btnSpeed1" title="1 年/4 秒">1×</button>
+      <button class="speed-btn" id="btnSpeed2" title="1 年/2 秒">2×</button>
+      <button class="speed-btn active" id="btnSpeed4" title="1 年/秒">4×</button>
+      <button class="speed-btn" id="btnSpeed8" title="2 年/秒">8×</button>
+      <button class="speed-btn" id="btnSpeed16" title="4 年/秒">16×</button>
+      <button class="icon-btn" id="btnBook" title="生态图鉴">📖</button>
+      <button class="icon-btn" id="btnSave" title="存档">💾</button>
+      <button class="icon-btn" id="btnSound" title="声音">🔊</button>
+      <button class="icon-btn" id="btnMenu" title="主菜单">☰</button>
+    </div>
+  </header>
+
+  <!-- 主体 -->
+  <main id="main">
+    <!-- 左侧：工具 + 物种 -->
+    <aside id="left">
+      <div id="toolbar">
+        <button class="tool-btn" data-tool="remove" title="除草（清除植物与动物）">🧹 除草</button>
+        <button class="tool-btn" data-tool="fertilize" title="施肥">🧪 施肥</button>
+        <button class="tool-btn" data-tool="inspect" title="查看地形信息">🔍 查看</button>
+      </div>
+      <div id="speciesPanel" class="scroll-panel"></div>
+      <div id="speciesDetail"></div>
+    </aside>
+
+    <!-- 中间：培养皿 -->
+    <section id="center">
+      <div id="canvasWrap">
+        <canvas id="canvas"></canvas>
+        <div id="hoverTip" style="display:none"></div>
+      </div>
+      <div id="objectives"></div>
+    </section>
+
+    <!-- 右侧：指标 + 曲线 + 日志 -->
+    <aside id="right">
+      <div class="panel-title">📊 生态系统指标</div>
+      <div id="metrics"></div>
+      <div class="panel-title">📈 种群动态曲线</div>
+      <div id="chartWrap"><canvas id="chartCanvas"></canvas></div>
+      <div class="panel-title">📡 方舟日志</div>
+      <div id="log"></div>
+    </aside>
+  </main>
+</div>
+
+<script src="js/shared/rng.js"></script>
+<script src="js/shared/species.js"></script>
+<script src="js/shared/world.js"></script>
+<script src="js/shared/sim.js"></script>
+<script src="js/shared/chapters.js"></script>
+<script src="js/shared/knowledge.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/view.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

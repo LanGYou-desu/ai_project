@@ -1,6 +1,6 @@
 # AI Project 合集
 
-> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录七个项目：桌面端「AI 编译器」、网页端「赛博安全学院」、Python 游戏「DevSaga」、两款纯前端解谜游戏「NETIME 时光机」与「声音考古学」，以及两款纯前端创新实验「LINGUA 语言演化博物馆」与「LASTBROADCAST 最后的广播」。
+> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录八个项目：桌面端「AI 编译器」、网页端「赛博安全学院」、Python 游戏「DevSaga」、四款纯前端解谜/模拟游戏「NETIME 时光机」「声音考古学」「LINGUA 语言演化博物馆」「LASTBROADCAST 最后的广播」，以及最新的纯前端生态模拟器「ECO-ARK 生态方舟」。
 
 | GitHub | https://github.com/LanGYou-desu/ai_project |
 | ------ | ------------------------------------------ |
@@ -15,7 +15,8 @@
 | [netime](./netime/) | Web 解谜游戏 | 「网络时光机」：复古浏览器里沿着 1995→2025 五个年代收集时间密钥，用 ROT13 / 摩斯 / 藏头 / Base64 破解一桩跨越三十年的旧互联网失踪案 | 原生 HTML/CSS/JS（纯前端零依赖，57 项测试） |
 | [sound-archaeology](./sound-archaeology/) | Web 解谜游戏 | 音频取证解谜：用变速 / 倒放 / 滤波 / 频谱图破译 6 段录音，揭开废弃广播塔沉睡四十年的秘密 | 原生 HTML/CSS/JS + Web Audio API（零依赖，素材内嵌） |
 | [lingua](./lingua/) | Web 语言演化模拟 | 造一门语言，看它在一千年里经历音变、语法演化、方言分裂、借词与文字诞生；106 词 / 24 条音变 / 7 分支 / 同源词对照 / 音系档案 / 现实语言学注释 / 种子可复现可分享可导出 | 原生 HTML/CSS/JS（纯前端零依赖，32 项测试） |
-| [lastbroadcast](./lastbroadcast/) | Web 叙事模拟 | 末日前的最后 24 小时，你是一座城市唯一还在播音的电台值班员：选歌、播报、接来电（含点歌联动）、回应神秘信号，15 位听众的命运与 6 种结局由你决定 | 原生 HTML/CSS/JS + Web Audio（零依赖，21 项测试） |
+| [lastbroadcast](./lastbroadcast/) | Web 叙事模拟 | 末日前的最后 24 小时，你是一座城市唯一还在播音的电台值班员：选歌、播报、接来电（含点歌联动）、回应神秘信号，15 位听众的命运与 9 种结局由你决定 | 原生 HTML/CSS/JS + Web Audio（零依赖，26 项测试） |
+| [eco-ark](./eco-ark/) | Web 生态模拟器 | 微观生态重建：从苔藓到狼群亲手重建完整食物网，应对干旱/冰期/陨石/入侵物种，让生态系统稳定繁衍 500 年；6 章剧情 + 沙盒 + 21 物种 + 生态学知识卡 + 成就 + 可复现种子存档（约 1 小时通关） | 原生 HTML/CSS/JS + Canvas + Web Audio（零依赖，38 项测试） |
 
 ## 🌳 目录结构
 
@@ -68,10 +69,17 @@ ai_project/
     └── start.bat           # 一键打开
 ├── lastbroadcast/          # LASTBROADCAST · 最后的广播（末日电台叙事模拟）
     ├── index.html          # 入口（双击即玩）
-    ├── js/shared/          # 剧情数据 / 仿真引擎（12 回合、点歌联动、6 结局）
+    ├── js/shared/          # 剧情数据 / 仿真引擎（12 回合、点歌联动、9 结局）
     ├── js/                 # Web Audio 合成 / 主逻辑
     ├── css/style.css       # 深夜电台主题
-    ├── test/               # 单元测试（node test/run.js，21 项）
+    ├── test/               # 单元测试（node test/run.js，26 项）
+    └── start.bat           # 一键打开
+└── eco-ark/                # ECO-ARK · 生态方舟（微观生态重建模拟器）
+    ├── index.html          # 入口（双击即玩）
+    ├── js/shared/          # 引擎：RNG / 21 物种 / 地形 / 生态仿真 / 章节 / 知识卡
+    ├── js/                 # 培养皿渲染 / 种群曲线 / Web Audio / 主逻辑
+    ├── css/style.css       # 深绿实验室主题
+    ├── test/               # 单元测试（node test/run.js，38 项）
     └── start.bat           # 一键打开
 ```
 
@@ -141,14 +149,24 @@ node test/run.js          # 32 项单元测试
 
 ```bash
 cd lastbroadcast
-node test/run.js          # 21 项单元测试
+node test/run.js          # 26 项单元测试
 ```
 
-双击 `index.html` 即玩：末日电台值班 24 小时，选歌 / 播报 / 接来电（含点歌联动）/ 回应信号，6 种结局 + 结局图鉴。纯前端零依赖，音乐为 Web Audio 程序化合成，建议佩戴耳机。
+双击 `index.html` 即玩：末日电台值班 24 小时，选歌 / 播报 / 接来电（含点歌联动）/ 回应信号，9 种结局 + 结局图鉴。纯前端零依赖，音乐为 Web Audio 程序化合成，建议佩戴耳机。
+
+### eco-ark（ECO-ARK · 生态方舟）
+
+```bash
+cd eco-ark
+.\start.bat               # 或直接双击 index.html（Chrome / Edge）
+node test/run.js          # 38 项单元测试（含确定性 / 生态平衡 / 剧情目标回归）
+```
+
+微观生态重建模拟器（约 1 小时通关）：在 84×54 的培养皿星球上涂抹物种、重建食物网，应对干旱 / 冰期 / 陨石 / 入侵藤蔓。6 章剧情 + 沙盒模式 + 21 种物种 + 13 条生态学知识卡 + 12 项成就 + 种子存档重放。纯前端零依赖，引擎全确定性（同种子同操作 → 相同演化）。
 
 ## 📝 仓库约定
 
-- **七个项目相互独立**：各自维护代码、文档与依赖，不互相引用。
+- **八个项目相互独立**：各自维护代码、文档与依赖，不互相引用。
 - **release 目录只跟踪 `*.exe` 安装包**：`latest.yml`、`*.blockmap` 等 electron-builder 自动生成的构建产物一律忽略，防止每次打包产生无关改动。
 - **敏感与依赖文件不入库**：`node_modules/`、`.env` / `config.json`（含 API 密钥）、`.superpowers/`、AI 助手说明文件（`AGENTS.md` / `CLAUDE.md`）等均已加入 `.gitignore`。
 - **练习素材可再生成**：cyber-academy 的 `practice/`、`lab/downloads/` 等由 `node make-practice.js` 生成，不入库；sound-archaeology 的语音素材可由 `tools/generate-voice.ps1` 重新生成。
@@ -162,4 +180,5 @@ node test/run.js          # 21 项单元测试
 - [sound-archaeology 详细文档](./sound-archaeology/README.md)
 - [lingua 详细文档](./lingua/README.md)
 - [lastbroadcast 详细文档](./lastbroadcast/README.md)
+- [eco-ark 详细文档](./eco-ark/README.md)
 - [devsaga 设计文档](./devsaga/docs/DESIGN.md)

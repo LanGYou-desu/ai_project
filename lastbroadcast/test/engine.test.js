@@ -116,10 +116,33 @@ test('六种结局全部可达', () => {
   assert.strictEqual(engine.computeEnding(dust).id, 'dust');
 });
 
-test('结局路线图（D1）：6 条路线、条件可达可查', () => {
+test('新增三结局可达：纪念日/夜莺/灯塔', () => {
+  // 纪念日（隐藏）：基础 6 结局已收集（模拟）
+  const g0 = engine.createGame();
+  g0.flags.memorialUnlocked = true;
+  for (let i = 0; i < 11; i++) engine.applyAction(g0, S('nightstar'));
+  g0.hope = 55;
+  engine.applyAction(g0, F('hope'));
+  assert.strictEqual(engine.computeEnding(g0).id, 'memorial');
+
+  // 夜莺：摇篮曲 + 陪伴 + 接小雨(T2)与双胞胎(T1)
+  const g1 = play([S('starlet'), C('twins'), C('xiaoyu'), N('neutral'), N('neutral'),
+    SIG('military', 'ignore'), C('lily'), S('whitenoise'), N('neutral'), C('professor'), C('laozhou'), F('companion')]);
+  assert.ok(g1.flags.answered.xiaoyu && g1.flags.answered.twins, '应接到小雨与双胞胎');
+  assert.strictEqual(engine.computeEnding(g1).id, 'nightingale');
+
+  // 灯塔：希望 + 解码 + 无摇篮曲 + 沉默过一次（避免命中「不灭的电波」）
+  const g2 = play([N('neutral'), S('nightstar'), N('neutral'), S('loveletter'), SIL,
+    SIG('military', 'ignore'), C('lily'), S('sunrise'), N('neutral'), C('professor'), SIG('x', 'decode'), F('hope')]);
+  assert.strictEqual(g2.flags.lullaby, false);
+  assert.ok(g2.flags.silenceCount > 0);
+  assert.strictEqual(engine.computeEnding(g2).id, 'lighthouse');
+});
+
+test('结局路线图（D1）：9 条路线、条件可达可查', () => {
   const g = engine.createGame();
   const roadmap = engine.endingConditions(g);
-  assert.strictEqual(Object.keys(roadmap).length, 6);
+  assert.strictEqual(Object.keys(roadmap).length, 9);
   Object.keys(roadmap).forEach(k => {
     assert.ok(roadmap[k].length >= 1);
     roadmap[k].forEach(c => assert.strictEqual(typeof c.met, 'boolean'));

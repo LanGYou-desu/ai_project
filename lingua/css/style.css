@@ -153,7 +153,10 @@ td.proto { color: var(--ink2); font-size: 12px; }
 .event-item.writing { border-color: #7a4a8b; }
 .event-item.flavor { border-color: #999; }
 
-.writing-stage { display: inline-block; text-align: center; margin: 6px; }
+.stage-row { text-align: center; }
+.writing-pick { text-align: center; }
+.writing-stage { display: inline-block; text-align: center; margin: 6px; vertical-align: top; }
+.glyph-grid { justify-content: center; }
 .writing-stage canvas { border: 1px solid var(--line); background: #fdf8ec; border-radius: 6px; box-shadow: var(--shadow); }
 .writing-stage .cap { font-size: 12px; color: var(--ink2); margin-top: 4px; }
 .writing-pick { margin-bottom: 8px; }

@@ -1,5 +1,6 @@
 // LASTBROADCAST · 现状核对脚本（E7）
 const data = require('../js/shared/data.js');
+const scores = require('../js/shared/scores.js');
 const engine = require('../js/shared/engine.js');
 const g = engine.createGame('verify');
 let fail = 0;
@@ -13,6 +14,7 @@ const stats = {
   '歌名唯一': new Set(data.SONGS.map(s => s.id)).size === data.SONGS.length,
   '听众ID唯一': new Set(data.CHARACTERS.map(c => c.id)).size === data.CHARACTERS.length,
   '点播引用有效': data.CALLS.every(c => !c.request || data.SONGS.some(s => s.id === c.request)),
+  '全部歌曲有合法曲谱': data.SONGS.every(s => scores.SCORES[s.id] && scores.validScore(scores.SCORES[s.id])),
   '精灵力初始': g.djStamina === 70
 };
 for (const k in stats) { const v = stats[k]; console.log((v === true ? '✅' : '⚠️ ') + ' ' + k + ': ' + v); if (v === false) fail++; }

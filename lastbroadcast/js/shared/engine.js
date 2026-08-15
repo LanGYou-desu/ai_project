@@ -39,7 +39,8 @@
         lullaby: false, nostalgic: false, truthCount: 0, requestsFulfilled: 0,
         signalDecoded: false, professorMet: false,
         laozhouHonored: false, veteranHonored: false,
-        militaryHandled: false, silenceCount: 0
+        militaryHandled: false, silenceCount: 0,
+        answered: {}, memorialUnlocked: false
       },
       djStamina: 70,          // 你的精力 0-100
       pendingRequest: null,   // { caller, songId } 上一回合的点歌请求
@@ -131,6 +132,7 @@
     if (callerId === 'professor') state.flags.professorMet = true;
     if (callerId === 'laozhou') state.flags.laozhouHonored = true;
     if (callerId === 'veteran') state.flags.veteranHonored = true;
+    state.flags.answered[callerId] = true;
     if (call.request) state.pendingRequest = { caller: callerId, songId: call.request };
     log(state, call.line + '\n你回答：' + call.reply, 'call');
     return {};
@@ -300,10 +302,13 @@
   function computeEnding(state) {
     var f = state.flags;
     if (state.finalChoice === 'silence' || state.hope < 20) return data.ENDINGS.dust;
+    if (f.memorialUnlocked && state.finalChoice !== 'silence' && state.hope >= 40) return data.ENDINGS.memorial;
     if (state.finalChoice === 'hope' && f.silenceCount === 0 && state.hope >= 75) return data.ENDINGS.beacon;
-    if (state.finalChoice === 'truth' && f.signalDecoded && f.lullaby) return data.ENDINGS.afterglow;
+    if (state.finalChoice === 'hope' && f.signalDecoded && !f.lullaby) return data.ENDINGS.lighthouse;
     if (state.finalChoice === 'hope' && f.lullaby && state.hope >= 50) return data.ENDINGS.dawn;
+    if (state.finalChoice === 'truth' && f.signalDecoded && f.lullaby) return data.ENDINGS.afterglow;
     if (state.finalChoice === 'truth' && f.signalDecoded) return data.ENDINGS.signal;
+    if (state.finalChoice === 'companion' && f.lullaby && f.answered && f.answered.xiaoyu && f.answered.twins) return data.ENDINGS.nightingale;
     if (state.finalChoice === 'companion' && (f.laozhouHonored || f.veteranHonored)) return data.ENDINGS.fire;
     // 兜底
     if (state.finalChoice === 'companion') {
@@ -356,6 +361,22 @@
       ],
       dust: [
         { label: '终局沉默 或 希望 < 20', met: state.finalChoice === 'silence' || state.hope < 20 }
+      ],
+      memorial: [
+        { label: '隐藏结局：已收集全部基础结局', met: !!f.memorialUnlocked },
+        { label: '终局未选择沉默', met: state.finalChoice !== 'silence' },
+        { label: '城市希望 ≥ 40', met: state.hope >= 40 }
+      ],
+      nightingale: [
+        { label: '播放过摇篮曲', met: f.lullaby },
+        { label: '接听小雨', met: !!(f.answered && f.answered.xiaoyu) },
+        { label: '接听双胞胎', met: !!(f.answered && f.answered.twins) },
+        { label: '终局选择「陪伴」', met: state.finalChoice === 'companion' }
+      ],
+      lighthouse: [
+        { label: '解码 FREQUENCY X', met: f.signalDecoded },
+        { label: '未播放摇篮曲', met: !f.lullaby },
+        { label: '终局选择「希望」', met: state.finalChoice === 'hope' }
       ]
     };
   }

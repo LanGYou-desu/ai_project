@@ -17,7 +17,7 @@
     { id: 'allhope', name: '全员振作', desc: '结束时有 10 位以上听众心情 ≥ 60' },
     { id: 'truth', name: '真相行者', desc: '说出过 3 次真相' },
     { id: 'request', name: '点歌大师', desc: '满足 3 次听众点播' },
-    { id: 'endings', name: '结局收藏家', desc: '解锁全部 6 个结局' }
+    { id: 'endings', name: '结局收藏家', desc: '解锁全部 9 个结局' }
   ];
 
   function $(id) { return document.getElementById(id); }
@@ -87,7 +87,7 @@
 
     if (menu === 'songs') {
       html += '<button class="btn back" data-act="back">← 返回</button>';
-      var memorialUnlocked = achDone().indexOf('endings') >= 0;
+      var memorialUnlocked = loadEndings().length >= 6;
       data.SONGS.forEach(function (s) {
         if (s.hidden && !memorialUnlocked) return;
         var locked = s.unlockTurn != null && game.turn < s.unlockTurn;
@@ -174,10 +174,15 @@
     });
   }
 
+  var lastRingTurn = -1;
   function renderPhone() {
     var el = $('phone');
     var calls = data.CALLS.filter(function (c) { return c.turn === game.turn; });
     if (!calls.length) { el.innerHTML = '<div class="none">总机安静着。</div>'; return; }
+    if (lastRingTurn !== game.turn) {
+      lastRingTurn = game.turn;
+      try { synth.ring(); } catch (e) {}
+    }
     el.innerHTML = '';
     calls.forEach(function (c) {
       var ch = data.charById(c.caller);
@@ -394,7 +399,12 @@
     if (action.type === 'song') {
       var s = null;
       data.SONGS.forEach(function (x) { if (x.id === action.songId) s = x; });
-      if (s) { synth.ensure(); synth.startMusic(s.tags); lastWasSong = true; lastAct = '♪ ' + s.title; }
+      if (s) { synth.ensure(); synth.startMusic(s.id); lastWasSong = true; lastAct = '♪ ' + s.title; }
+    } else if (action.type === 'final') {
+      synth.ensure();
+      synth.startMusic('finalwaltz');
+      lastWasSong = true;
+      lastAct = '💬 终局圆舞曲';
     } else {
       synth.stopMusic(); lastWasSong = false;
       if (action.type === 'news') lastAct = '📢 ' + data.NEWS[action.tone].label;
@@ -481,9 +491,20 @@
     if (list.indexOf(e.id) < 0) { list.push(e.id); saveEndings(list); }
     var chips = Object.keys(data.ENDINGS).map(function (id) {
       var got = list.indexOf(id) >= 0;
-      return '<span class="chip' + (got ? ' got' : '') + '">' + (got ? data.ENDINGS[id].title : '？？？') + '</span>';
+      return '<span class="chip' + (got ? ' got' : '') + '" data-eid="' + id + '" style="cursor:' + (got ? 'pointer' : 'default') + '" title="' + (got ? '点击查看结局正文' : '') + '">' + (got ? data.ENDINGS[id].title : '？？？') + '</span>';
     }).join('');
     $('endUnlock').innerHTML = '🎬 结局图鉴：已解锁 <b>' + list.length + ' / ' + Object.keys(data.ENDINGS).length + '</b><br>' + chips;
+    $('endUnlock').querySelectorAll('.chip.got').forEach(function (c) {
+      c.addEventListener('click', function () {
+        var e = data.ENDINGS[c.getAttribute('data-eid')];
+        if (!e) return;
+        var html = '<h4 style="color:var(--amber)">' + e.title + '</h4><p style="color:var(--green)">' + e.epithet + '</p>' +
+          '<p style="line-height:1.9;margin:10px 0">' + e.epilogue + '</p>' +
+          '<p class="cat">达成条件：' + e.conditions + '</p>';
+        $('loreList').innerHTML = html;
+        $('lorePanel').classList.remove('hidden');
+      });
+    });
     // 结局路线图（D1）
     var roadmap = engine.endingConditions(game);
     var roadHtml = '<h4 style="margin:10px 0 6px;color:var(--amber)">🧭 各结局条件达成情况</h4>';
@@ -596,6 +617,10 @@
     synth.cleanup();
     game = engine.createGame();
     game.flags.favs = favs();
+    // 隐藏结局解锁：集齐 6 个基础结局
+    var base6 = ['dawn', 'signal', 'fire', 'dust', 'beacon', 'afterglow'];
+    var got = loadEndings();
+    game.flags.memorialUnlocked = base6.every(function (id) { return got.indexOf(id) >= 0; });
     history = [{ hope: 50, mood: 50 }];
     menu = 'main';
     lastWasSong = false;
@@ -636,6 +661,12 @@
       storage.set('lb-intro-seen', '1');
     });
     // 首次交互时解锁音频
+    ['intro', 'lorePanel'].forEach(function (id) {
+      $(id).addEventListener('click', function (ev) { if (ev.target === $(id)) $(id).classList.add('hidden'); });
+    });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') { $('intro').classList.add('hidden'); $('lorePanel').classList.add('hidden'); }
+    });
     document.addEventListener('pointerdown', function once() {
       synth.ensure();
       document.removeEventListener('pointerdown', once);
@@ -665,7 +696,7 @@
     if (id === 'allhope') return game.done && Object.keys(game.chars).filter(function (k) { return game.chars[k].hope >= 60; }).length >= 10;
     if (id === 'truth') return game.flags.truthCount >= 3;
     if (id === 'request') return (game.flags.requestsFulfilled || 0) >= 3;
-    if (id === 'endings') { try { return JSON.parse(storage.get('lb-endings') || '[]').length >= 6; } catch (e) { return false; } }
+    if (id === 'endings') { try { return JSON.parse(storage.get('lb-endings') || '[]').length >= 9; } catch (e) { return false; } }
     return false;
   }
 
@@ -704,6 +735,16 @@
     lines.push('最终发言：' + (game.finalWords || '—'));
     lines.push('城市希望 ' + game.hope + ' / 氛围 ' + game.mood + ' / 你的精力 ' + game.djStamina);
     lines.push('================================');
+    if (game.done && engine.ending(game)) {
+      var e = engine.ending(game).ending;
+      lines.push('达成条件：' + e.conditions);
+      var road = engine.endingConditions(game);
+      Object.keys(road).forEach(function (id) {
+        var met = road[id].filter(function (c) { return c.met; }).length;
+        lines.push('· ' + data.ENDINGS[id].epithet + '：' + met + '/' + road[id].length + ' 达成');
+      });
+      lines.push('================================');
+    }
     game.log.forEach(function (l) {
       var t = data.TURNS[l.turn] ? data.TURNS[l.turn].label.split(' · ')[0] : '';
       lines.push('[' + t + '] ' + l.text.replace(/\n/g, ' '));

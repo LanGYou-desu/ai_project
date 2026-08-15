@@ -14,11 +14,11 @@ test('数据完整性：角色/歌曲/来电 ID 唯一且互相关联', () => {
     assert.ok(c.missed, '每个来电都应有错过提示');
   });
 });
-test('31 首歌（含隐藏曲）/ 15 位听众 / 6 结局 / 12×3 插曲变体 / 支线 / 考据', () => {
+test('31 首歌（含隐藏曲）/ 15 位听众 / 9 结局 / 12×3 插曲变体 / 支线 / 考据', () => {
   assert.strictEqual(data.SONGS.length, 31);
   assert.ok(data.SONGS.some(s => s.id === 'memorial' && s.hidden));
   assert.strictEqual(data.CHARACTERS.length, 15);
-  assert.strictEqual(Object.keys(data.ENDINGS).length, 6);
+  assert.strictEqual(Object.keys(data.ENDINGS).length, 9);
   assert.strictEqual(data.TURN_INTERLUDES.length, 12);
   data.TURN_INTERLUDES.forEach(row => assert.ok(Array.isArray(row) && row.length === 3, '每回合 3 个变体'));
   assert.ok(data.ARCS.length >= 12);

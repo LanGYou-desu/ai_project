@@ -1,27 +1,21 @@
-/* LASTBROADCAST · 广播合成音：电台底噪 + 按歌曲标签生成氛围乐 + VU 表 */
+/* LASTBROADCAST · 合成器引擎
+   电台底噪 + 31 首曲谱音序器（和弦/低音/旋律/鼓/音色）+ 环境音层 + VU/示波器 */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else { root.LB = root.LB || {}; root.LB.synth = factory(); }
-})(typeof self !== 'undefined' ? self : this, function () {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./shared/scores.js'));
+  else { root.LB = root.LB || {}; root.LB.synth = factory(root.LB.scores); }
+})(typeof self !== 'undefined' ? self : this, function (scoresMod) {
   'use strict';
 
+  var SCORES = scoresMod ? scoresMod.SCORES : {};
+  var noteFreq = scoresMod ? scoresMod.noteFreq : function () { return null; };
+  var chordNotes = scoresMod ? scoresMod.chordNotes : function () { return []; };
+  var melodyTrack = scoresMod ? scoresMod.melodyTrack : function () { return { map: {}, totalSteps: 0 }; };
+
   var ctx = null, master = null, analyser = null;
-  var humGain = null, musicGain = null, musicTimer = null, musicProg = null, musicStep = 0;
-  var noiseGain = null;
+  var humGain = null, noiseGain = null, musicGain = null;
+  var musicScore = null, track = null, schedTimer = null, nextT = 0, stepIdx = 0;
 
-  // 每个标签对应一组和弦进行（根音半音数，大调/小调色彩）
-  var PROGRESSIONS = {
-    calm:     { roots: [0, 5, 3, 4], minor: false, wave: 'sine',  interval: 4.5, arp: false },
-    lullaby:  { roots: [0, 0, 3, 4], minor: false, wave: 'sine',  interval: 5,   arp: true, arpSpeed: 1.2 },
-    hype:     { roots: [0, 0, 5, 3], minor: false, wave: 'square', interval: 2.5, arp: true, arpSpeed: 0.22 },
-    sad:      { roots: [0, 3, 0, 5], minor: true,  wave: 'triangle', interval: 5, arp: false },
-    nostalgic:{ roots: [0, 4, 5, 3], minor: false, wave: 'triangle', interval: 4, arp: false, lowpass: 900 },
-    hopeful:  { roots: [0, 5, 7, 4], minor: false, wave: 'triangle', interval: 3.5, arp: true, arpSpeed: 0.5 },
-    warm:     { roots: [0, 3, 5, 4], minor: false, wave: 'sine',  interval: 4, arp: false },
-    farewell: { roots: [0, 0, 3, 3], minor: true,  wave: 'sine',  interval: 6, arp: false }
-  };
-  var BASE = 220; // A3 附近
-
+  // ---------- 基础 ----------
   function ensure() {
     if (ctx) return;
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -30,7 +24,6 @@
     master = ctx.createGain(); master.gain.value = 0.9;
     analyser = ctx.createAnalyser(); analyser.fftSize = 512;
     master.connect(analyser); analyser.connect(ctx.destination);
-    // 电台底噪（柔和嘶声）
     var len = ctx.sampleRate * 2;
     var buf = ctx.createBuffer(1, len, ctx.sampleRate);
     var d = buf.getChannelData(0);
@@ -40,7 +33,6 @@
     noiseGain = ctx.createGain(); noiseGain.gain.value = 0.05;
     noise.connect(lp); lp.connect(noiseGain); noiseGain.connect(master);
     noise.start();
-    // 设备嗡鸣
     var hum = ctx.createOscillator(); hum.frequency.value = 50; hum.type = 'sine';
     humGain = ctx.createGain(); humGain.gain.value = 0.015;
     hum.connect(humGain); humGain.connect(master); hum.start();
@@ -48,82 +40,136 @@
     if (ctx.state === 'suspended') ctx.resume();
   }
 
-  function noteFreq(root, semis) {
-    return BASE * Math.pow(2, (root + semis) / 12);
+  // ---------- 乐器（音色） ----------
+  function playTone(freq, t, dur, style, vol) {
+    if (!ctx || !musicGain || freq <= 0) return;
+    var o1 = ctx.createOscillator();
+    var g = ctx.createGain();
+    var filter = null;
+    if (style === 'lead') {
+      o1.type = 'sawtooth';
+      filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1800; filter.Q.value = 2;
+    } else if (style === 'bell') {
+      o1.type = 'sine';
+    } else {
+      o1.type = 'triangle';
+    }
+    o1.frequency.value = freq;
+    var attack = style === 'pad' ? 0.25 : 0.012;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o1.connect(filter || g);
+    if (filter) filter.connect(g);
+    g.connect(musicGain);
+    o1.start(t); o1.stop(t + dur + 0.05);
+    if (style === 'bell' || style === 'piano') {
+      var o2 = ctx.createOscillator();
+      o2.type = 'sine';
+      o2.frequency.value = freq * (style === 'bell' ? 2.76 : 2);
+      var g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0.0001, t);
+      g2.gain.exponentialRampToValueAtTime(vol * 0.35, t + attack);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.7);
+      o2.connect(g2); g2.connect(musicGain);
+      o2.start(t); o2.stop(t + dur);
+    }
+    if (style === 'pad') {
+      var o3 = ctx.createOscillator();
+      o3.type = 'triangle'; o3.frequency.value = freq * 1.006;
+      var g3 = ctx.createGain();
+      g3.gain.setValueAtTime(0.0001, t);
+      g3.gain.exponentialRampToValueAtTime(vol * 0.5, t + attack);
+      g3.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o3.connect(g3); g3.connect(musicGain);
+      o3.start(t); o3.stop(t + dur + 0.05);
+    }
   }
 
-  function playChord(prog, step, when) {
-    var root = prog.roots[step % prog.roots.length];
-    var semis = prog.minor ? [0, 3, 7] : [0, 4, 7];
-    semis.push(prog.minor ? 10 : 11); // 七音
-    semis.forEach(function (s, idx) {
-      var osc = ctx.createOscillator();
-      osc.type = prog.wave;
-      osc.frequency.value = noteFreq(root, s);
-      if (idx === 0) osc.frequency.value *= 0.5; // 低音
-      var g = ctx.createGain();
-      var dur = prog.interval * 0.9;
-      g.gain.setValueAtTime(0.0001, when);
-      g.gain.exponentialRampToValueAtTime(0.12 / (idx === 3 ? 1.6 : 1), when + 0.8);
-      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-      var filt = null;
-      if (prog.lowpass) {
-        filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = prog.lowpass;
-        osc.connect(filt); filt.connect(g);
-      } else {
-        osc.connect(g);
-      }
-      g.connect(musicGain);
-      osc.start(when); osc.stop(when + dur + 0.1);
-    });
+  function playKick(t, vol) {
+    if (!ctx || !musicGain) return;
+    var o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(50, t + 0.12);
+    var g = ctx.createGain();
+    var v = vol == null ? 0.22 : vol;
+    g.gain.setValueAtTime(v, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+    o.connect(g); g.connect(musicGain);
+    o.start(t); o.stop(t + 0.15);
   }
 
-  function playArp(prog, step, when) {
-    if (!prog.arp) return;
-    var root = prog.roots[step % prog.roots.length];
-    var semis = [0, 7, 12, 16, 12, 7];
-    semis.forEach(function (s, i) {
-      var t = when + i * prog.arpSpeed;
-      var osc = ctx.createOscillator();
-      osc.type = prog.minor ? 'triangle' : 'sine';
-      osc.frequency.value = noteFreq(root, s) * 2;
-      var g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.05, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + prog.arpSpeed * 0.8);
-      osc.connect(g); g.connect(musicGain);
-      osc.start(t); osc.stop(t + prog.arpSpeed);
-    });
+  function playHat(t, vol) {
+    if (!ctx || !musicGain) return;
+    var len = Math.floor(ctx.sampleRate * 0.05);
+    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    var src = ctx.createBufferSource(); src.buffer = buf;
+    var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6500;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(vol == null ? 0.1 : vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    src.connect(hp); hp.connect(g); g.connect(musicGain);
+    src.start(t);
   }
 
-  // tags -> 选择一种进行
-  function progFor(tags) {
-    var order = ['calm', 'lullaby', 'hype', 'sad', 'nostalgic', 'hopeful', 'warm', 'farewell'];
-    for (var i = 0; i < order.length; i++) if (tags.indexOf(order[i]) >= 0) return PROGRESSIONS[order[i]];
-    return PROGRESSIONS.calm;
+  // ---------- 音序器 ----------
+  function spb(score) { return 60 / score.bpm / 4; }
+
+  function scheduleAhead() {
+    if (!musicScore || !track) return;
+    var stepDur = spb(musicScore);
+    while (nextT < ctx.currentTime + 0.22) {
+      scheduleStep(stepIdx, nextT, stepDur);
+      nextT += stepDur;
+      stepIdx = (stepIdx + 1) % 64;
+    }
   }
 
-  function startMusic(tags) {
+  function scheduleStep(s, t, stepDur) {
+    var beat = s / 4;
+    var bar = Math.floor(beat / 4);
+    var inBar = beat - bar * 4;
+    var chord = chordNotes(musicScore.prog[bar], 3);
+    if (inBar === 0) {
+      var dur = stepDur * 16 * 0.96;
+      chord.forEach(function (f) { playTone(f, t, dur, 'pad', 0.055); });
+      playTone(chord[0] / 2, t, dur * 0.9, 'bass', 0.085);
+    } else if (inBar === 2) {
+      playTone(chord[0] / 2, t, stepDur * 8 * 0.9, 'bass', 0.06);
+    }
+    var entry = track.map[s];
+    if (entry) playTone(entry.freq, t, entry.durSteps * stepDur * 0.92, musicScore.style, 0.12);
+    if (musicScore.drums === 'soft') {
+      if (inBar === 0) playKick(t);
+      else if (inBar === 2) playKick(t, 0.7);
+      if (s % 2 === 1) playHat(t, s % 4 === 3 ? 0.32 : 0.2);
+    }
+  }
+
+  function startMusic(id) {
+    stopMusic();
     ensure();
     if (!ctx || !musicGain) return;
-    stopMusic();
-    musicProg = progFor(tags);
-    musicStep = 0;
-    musicGain.gain.cancelScheduledValues(ctx.currentTime);
-    musicGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    musicGain.gain.exponentialRampToValueAtTime(0.8, ctx.currentTime + 1.5);
-    var tick = function () {
-      var t = ctx.currentTime + 0.1;
-      playChord(musicProg, musicStep, t);
-      playArp(musicProg, musicStep, t + 0.5);
-      musicStep++;
-    };
-    tick();
-    musicTimer = setInterval(tick, musicProg.interval * 1000);
+    var sc = null;
+    if (typeof id === 'string') sc = SCORES[id] || null;
+    if (!sc) return;
+    musicScore = sc;
+    track = melodyTrack(sc.melody, sc.bpm);
+    stepIdx = 0;
+    nextT = ctx.currentTime + 0.12;
+    var t = ctx.currentTime;
+    musicGain.gain.cancelScheduledValues(t);
+    musicGain.gain.setValueAtTime(0.0001, t);
+    musicGain.gain.exponentialRampToValueAtTime(0.9, t + 1);
+    schedTimer = setInterval(scheduleAhead, 30);
   }
 
   function stopMusic() {
-    if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+    if (schedTimer) { clearInterval(schedTimer); schedTimer = null; }
+    musicScore = null; track = null;
     if (ctx && musicGain) {
       var t = ctx.currentTime;
       musicGain.gain.cancelScheduledValues(t);
@@ -134,6 +180,7 @@
 
   function setNoise(level) { if (noiseGain) noiseGain.gain.value = Math.max(0, Math.min(1, level)); }
 
+  // ---------- 仪表 ----------
   function vuLevel() {
     if (!analyser) return 0;
     var data = new Uint8Array(analyser.fftSize);
@@ -143,7 +190,6 @@
     return Math.sqrt(sum / data.length);
   }
 
-  // 波形数据（示波器）
   function waveform() {
     if (!analyser) return null;
     var data = new Uint8Array(analyser.fftSize);
@@ -153,7 +199,25 @@
 
   function setVolume(v) { if (master) master.gain.value = Math.max(0, Math.min(1, v)); }
 
-  // 环境音层（风/雨/远方警报）：随回合切换的氛围底
+  function ring() {
+    ensure();
+    if (!ctx) return;
+    ctx.resume();
+    var t = ctx.currentTime + 0.02;
+    for (var i = 0; i < 2; i++) {
+      var o = ctx.createOscillator();
+      o.type = 'sine'; o.frequency.value = 1180;
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.14, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + 0.18);
+      t += 0.3;
+    }
+  }
+
+  // 环境音层
   var ambGain = null, ambFilter = null, ambLfo = null;
   function ensureAmbient() {
     if (ambGain) return;
@@ -181,7 +245,7 @@
     ambGain.gain.setValueAtTime(ambGain.gain.value || 0, t);
     ambGain.gain.exponentialRampToValueAtTime(Math.max(0.0001, g), t + 1.2);
     ambFilter.frequency.setTargetAtTime(p.filterFreq || 600, t, 0.8);
-    if (ambLfo) { ambLfo.frequency.setTargetAtTime(p.lfoRate || 0.2, t, 0.5); }
+    if (ambLfo) ambLfo.frequency.setTargetAtTime(p.lfoRate || 0.2, t, 0.5);
   }
   function ambientOff() {
     if (!ctx || !ambGain) return;
@@ -191,11 +255,14 @@
     ambGain.gain.exponentialRampToValueAtTime(0.0001, t + 1);
   }
 
-  // 局间清理（C2）：停掉音乐并挂起上下文
   function cleanup() {
     stopMusic();
     if (ctx && ctx.state === 'running') { try { ctx.suspend(); } catch (e) {} }
   }
 
-  return { ensure: ensure, startMusic: startMusic, stopMusic: stopMusic, setNoise: setNoise, vuLevel: vuLevel, waveform: waveform, setVolume: setVolume, cleanup: cleanup, setAmbient: setAmbient, ambientOff: ambientOff };
+  return {
+    ensure: ensure, startMusic: startMusic, stopMusic: stopMusic,
+    setNoise: setNoise, vuLevel: vuLevel, waveform: waveform, setVolume: setVolume,
+    cleanup: cleanup, setAmbient: setAmbient, ambientOff: ambientOff, ring: ring
+  };
 });
