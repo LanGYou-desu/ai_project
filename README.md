@@ -1,6 +1,6 @@
 # AI Project 合集
 
-> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录十二个项目：桌面端「AI 编译器」、网页端「赛博安全学院」、Python 游戏「DevSaga」、四款纯前端解谜/模拟游戏「NETIME 时光机」「声音考古学」「LINGUA 语言演化博物馆」「LASTBROADCAST 最后的广播」、生态模拟器「ECO-ARK 生态方舟」，以及四个**真机原生**游戏：「REAL SHELL QUEST 真实文件历险」（在真实磁盘上执行真实命令的解谜冒险）、「THE VANISHED 桌面悬疑事件」（用真实 Windows 通知上演的实时悬疑剧）、「DESKTOP SIEGE 桌面保卫战」（敌人由你电脑上的真实文件名生成的射击游戏）、「HOUSE GUEST 桌灵·房客」（住在你真实电脑里的幽灵，用真实资源管理器在虚拟 C 盘里解谜）。
+> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录十三个项目：桌面端「AI 编译器」、网页端「赛博安全学院」、Python 游戏「DevSaga」、四款纯前端解谜/模拟游戏「NETIME 时光机」「声音考古学」「LINGUA 语言演化博物馆」「LASTBROADCAST 最后的广播」、生态模拟器「ECO-ARK 生态方舟」、听觉共情游戏「UNLIT 无光之城」（戴上耳机，在几乎全黑的世界里用白杖回声与盲文完成一天的生活），以及四个**真机原生**游戏：「REAL SHELL QUEST 真实文件历险」（在真实磁盘上执行真实命令的解谜冒险）、「THE VANISHED 桌面悬疑事件」（用真实 Windows 通知上演的实时悬疑剧）、「DESKTOP SIEGE 桌面保卫战」（敌人由你电脑上的真实文件名生成的射击游戏）、「HOUSE GUEST 桌灵·房客」（住在你真实电脑里的幽灵，用真实资源管理器在虚拟 C 盘里解谜）。
 
 | GitHub | https://github.com/LanGYou-desu/ai_project |
 | ------ | ------------------------------------------ |
@@ -21,6 +21,7 @@
 | [the-vanished](./the-vanished/) | 实时桌面悬疑剧 | 同事深夜失踪，约 40 分钟内线索通过**真实 Windows 通知**、**真实磁盘证据文件**与模拟聊天陆续送达；3 个检查点 + 注意力计分 + 5 种结局 | Node.js（零依赖）+ PowerShell（真实系统通知）（16 项测试） |
 | [desktop-siege](./desktop-siege/) | Canvas 防御射击 | 敌人由**你电脑上的真实文件名与系统进程**生成（每台机器独一无二）：exe 冲锋、pdf 重甲、zip 分裂、Boss 以你磁盘最大文件命名；20 波 + 4 Boss + 无尽模式 + 6 种道具，30–60 分钟 | Node.js（零依赖）+ 原生 Canvas/Web Audio（24 项测试） |
 | [houseguest](./houseguest/) | Python 桌面游戏 | 一只幽灵住进你的电脑：透明桌面悬浮层 + 真实虚拟 C 盘（`vfsystem\`），用真实资源管理器 / cmd 操作真实文件解谜；12 章四幕 + 3+1 结局 + 陪伴模式 | Python 3.10+（tkinter + Windows SAPI，零第三方依赖，38 项测试） |
+| [unlit](./unlit/) | Web 共情体验游戏 | 「无光之城」：戴上耳机走进视障者的世界——白杖回声定位、听信号灯过马路、摸盲文读信、摸钱币结账、听水声做饭；6 章剧情 + 10 张助盲知识卡 | 原生 HTML/CSS/JS + Web Audio（零依赖，59 项测试） |
 
 ## 🌳 目录结构
 
@@ -114,6 +115,12 @@ ai_project/
     ├── vfsystem/           # 【运行时生成】虚拟系统目录（仿真实 Windows，不入库）
     ├── save/               # 【运行时生成】存档（不入库）
     └── start.bat           # 一键启动
+└── unlit/                  # UNLIT · 无光之城（听觉共情体验游戏）
+    ├── index.html          # 入口（双击即玩，戴上耳机）
+    ├── js/                 # shared 纯逻辑（盲文/声学/回声/引擎）+ 音频合成 + 渲染 UI
+    ├── css/                # 墨黑 + 暖金主题
+    ├── test/run.js         # 59 项测试（含 ch0→ch5 全流程通关）
+    └── start.bat           # 一键打开
 ```
 
 ## 🚀 快速开始
@@ -237,9 +244,19 @@ python -m unittest discover -s tests -t .          # 38 项单元测试（或双
 
 启动后透明幽灵「咕噜」飘在桌面右下角（可拖拽、会说话、会整蛊）：它布置任务，你用**真实的资源管理器 / cmd** 在 `vfsystem\`（仿真实 Windows 的虚拟 C 盘）里找文件、解密码（摩斯/Base64/ROT13/藏头诗）、移动/新建/删除真实文件，后台每 1.5 秒检测你的真实操作。12 章四幕主线 + 3 种结局 + 1 个隐藏结局（集齐 12 颗彩蛋），通关后还有陪伴模式。纯 Python 零第三方依赖，不联网。
 
+### unlit（UNLIT · 无光之城）
+
+```bash
+cd unlit
+.\start.bat                # 打开 index.html（务必佩戴耳机）
+node test\run.js           # 59 项单元测试（含脚本化全流程通关）
+```
+
+**戴上耳机，屏幕几乎全黑。** 你是一个三个月前失去视力的人，今天是你重学日常的第一天：用白杖回声"看"路（Space）、听信号音独自过两条马路、摸盲文数字呼梯、摸钱币结账、听水开的声音做饭……6 章剧情约 40–60 分钟，通关解锁 10 张助盲知识卡。纯前端零依赖，所有声音由 Web Audio 实时合成；按 Tab 可在"沉浸/辅助"模式间切换，按 N 有语音导航。
+
 ## 📝 仓库约定
 
-- **十二个项目相互独立**：各自维护代码、文档与依赖，不互相引用。
+- **十三个项目相互独立**：各自维护代码、文档与依赖，不互相引用。
 - **release 目录只跟踪 `*.exe` 安装包**：`latest.yml`、`*.blockmap` 等 electron-builder 自动生成的构建产物一律忽略，防止每次打包产生无关改动。
 - **敏感与依赖文件不入库**：`node_modules/`、`.env` / `config.json`（含 API 密钥）、`.superpowers/`、AI 助手说明文件（`AGENTS.md` / `CLAUDE.md`）等均已加入 `.gitignore`。
 - **练习素材可再生成**：cyber-academy 的 `practice/`、`lab/downloads/` 等由 `node make-practice.js` 生成，不入库；sound-archaeology 的语音素材可由 `tools/generate-voice.ps1` 重新生成。
@@ -255,4 +272,5 @@ python -m unittest discover -s tests -t .          # 38 项单元测试（或双
 - [lastbroadcast 详细文档](./lastbroadcast/README.md)
 - [eco-ark 详细文档](./eco-ark/README.md)
 - [houseguest 详细文档](./houseguest/README.md)
+- [unlit 详细文档](./unlit/README.md)
 - [devsaga 设计文档](./devsaga/docs/DESIGN.md)

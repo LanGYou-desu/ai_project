@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>无光之城 UNLIT · 盲者体验馆</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 世界（纯黑画布） -->
+  <canvas id="world"></canvas>
+
+  <!-- 标题屏 -->
+  <div id="title" class="overlay center">
+    <div class="title-inner">
+      <div class="braille-deco" aria-hidden="true">⠓⠑⠇⠇⠕</div>
+      <h1>无光之城</h1>
+      <p class="sub">UNLIT · 盲者体验馆</p>
+      <p class="desc">三个月前，你失去了视力。<br>今天是你重学日常的第一天。<br><br>戴上耳机，用耳朵去看这个世界。</p>
+      <div class="tips">
+        <p>🎧 强烈建议佩戴耳机游玩 · 全程键盘操作</p>
+        <p>沉浸模式：屏幕几乎全黑，一切靠听<br>辅助模式：Tab 随时切换，显示微弱轮廓</p>
+      </div>
+      <button id="btnStart" class="btn-main">开始 · 睁开眼睛去听</button>
+      <button id="btnVoiceToggle" class="btn-ghost">语音：开（点击切换）</button>
+    </div>
+  </div>
+
+  <!-- 章节引言 -->
+  <div id="intro" class="overlay center hidden">
+    <div class="intro-inner">
+      <div id="introChap" class="chap-name"></div>
+      <div id="introLines" class="intro-lines"></div>
+      <button id="btnIntro" class="btn-main">进入黑暗</button>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hud hidden">
+    <div id="hudTop" class="hud-top">
+      <div id="hudChap" class="hud-chap"></div>
+      <div id="hudGoal" class="hud-goal"></div>
+      <div id="hudMode" class="hud-mode">沉浸</div>
+    </div>
+    <div id="hudBottom" class="hud-bottom">
+      <div id="saybox" class="saybox">
+        <div id="saySpeaker" class="say-speaker"></div>
+        <div id="sayText" class="say-text"></div>
+      </div>
+      <div id="hudKeys" class="hud-keys">
+        W/S 前进后退 · ←→ 转身 · Space 白杖 · E 触摸 · M 心灵地图 · H 提示 · N 语音导航 · Tab 辅助
+      </div>
+    </div>
+  </div>
+
+  <!-- 心灵地图 -->
+  <div id="mapOverlay" class="overlay hidden">
+    <div class="map-wrap">
+      <div class="map-head">
+        <span>心灵地图 —— 记下你听到的方位</span>
+        <button id="btnMapClose" class="btn-ghost small">关闭 (M)</button>
+      </div>
+      <canvas id="mapCanvas" width="720" height="480"></canvas>
+      <div class="map-palette">
+        <span>标记：</span>
+        <button class="mark" data-type="self">我</button>
+        <button class="mark" data-type="door">门</button>
+        <button class="mark" data-type="item">物</button>
+        <button class="mark" data-type="sound">声</button>
+        <button class="mark" data-type="danger">险</button>
+        <span class="map-hint">←→↑↓ 移动光标 · Enter 放置 · Backspace 删除光标处</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 谜题面板 -->
+  <div id="puzzle" class="overlay center hidden">
+    <div class="puzzle-inner" id="puzzleInner"></div>
+  </div>
+
+  <!-- 知识卡图鉴 -->
+  <div id="facts" class="overlay hidden">
+    <div class="facts-wrap">
+      <div class="map-head">
+        <span>助盲知识卡（F 关闭）</span>
+      </div>
+      <div id="factsList" class="facts-list"></div>
+    </div>
+  </div>
+
+  <!-- 提示 Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- 结局 -->
+  <div id="end" class="overlay center hidden">
+    <div class="end-inner">
+      <h2>这一碗面，很好吃</h2>
+      <p class="end-text">
+        你关上了灯。窗外是万家灯火。<br><br>
+        你曾经看得见它们，现在你听得见它们。<br><br>
+        世界上有 2.2 亿视障者，他们用这样的方式，过着每一天。<br>
+        谢谢你，花时间走进他们的黑暗里。<br><br>
+        <em>—— 无光之城 · 完 ——</em>
+      </p>
+      <div id="endFacts" class="end-facts"></div>
+      <button id="btnRestart" class="btn-main">再体验一次</button>
+    </div>
+  </div>
+
+  <script src="js/shared/rng.js"></script>
+  <script src="js/shared/braille.js"></script>
+  <script src="js/shared/audioscene.js"></script>
+  <script src="js/shared/cane.js"></script>
+  <script src="js/shared/money.js"></script>
+  <script src="js/shared/world.js"></script>
+  <script src="js/shared/chapters.js"></script>
+  <script src="js/shared/engine.js"></script>
+  <script src="js/audio-engine.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
