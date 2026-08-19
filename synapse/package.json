@@ -1,0 +1,10 @@
+{
+  "name": "synapse",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SYNAPSE · 神经织造 —— 手搓神经网络的活体教学沙盒（零第三方依赖）",
+  "scripts": {
+    "start": "cmd /c start.bat",
+    "test": "node test/run.js"
+  }
+}

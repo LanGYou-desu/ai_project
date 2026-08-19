@@ -1,0 +1,14 @@
+{
+  "name": "ink-saga",
+  "version": "1.0.0",
+  "description": "墨战 · 天书纪 — 汉字书写战斗史诗。用鼠标在空中书写汉字，消灭吞噬文字的墨妖。",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/run.js"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=16"
+  }
+}

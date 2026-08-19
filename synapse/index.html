@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SYNAPSE · 神经织造</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">🧠</div>
+    <div>
+      <h1>SYNAPSE <em>神经织造</em></h1>
+      <p class="tagline">亲手搓一个神经网络，看着它学会思考</p>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="workshop">织造台</button>
+    <button class="tab" data-tab="arena">训练场</button>
+    <button class="tab" data-tab="cards">知识卡</button>
+  </nav>
+</header>
+<main>
+  <section id="tab-workshop" class="tab-panel active">
+    <div class="ws-grid">
+      <div class="panel left">
+        <div class="panel-head">
+          <span class="panel-title">⚙ 网络织造台</span>
+          <span class="panel-sub" id="net-dims"></span>
+        </div>
+        <div class="toolbar">
+          <button id="btn-add-layer" title="在输出层前插入一层（4 个神经元）">＋ 加一层</button>
+          <button id="btn-del-layer" title="删除最后一个隐藏层">－ 删一层</button>
+          <button id="btn-add-neuron" title="给选中的隐藏层加一个神经元">＋ 神经元</button>
+          <button id="btn-del-node" title="删除选中的神经元">－ 神经元</button>
+          <button id="btn-autowire" title="层间全连接">自动连线</button>
+          <button id="btn-clear-edges" title="移除全部连线">清空连线</button>
+          <button id="btn-wire-mode" class="toggle" title="连线模式：依次点两个神经元">连线模式</button>
+        </div>
+        <canvas id="net-canvas"></canvas>
+        <div class="hint">拖拽神经元移动 · 点击选中 · 连线模式依次点两个相邻层神经元 · 右键删除 · 改结构会重置训练</div>
+      </div>
+      <div class="panel right">
+        <div class="panel-head">
+          <span class="panel-title">🎛 训练控制台</span>
+          <span class="panel-sub" id="ds-desc"></span>
+        </div>
+        <div class="controls">
+          <label class="ds-label">数据集
+            <select id="ds-select"></select>
+          </label>
+          <div class="hp-grid">
+            <label>学习率 <input type="number" id="hp-lr" step="0.01" min="0.0001" value="0.2"></label>
+            <label>动量 <input type="number" id="hp-momentum" step="0.01" min="0" max="0.99" value="0.9"></label>
+            <label>批大小 <input type="number" id="hp-batch" step="1" min="1" value="32"></label>
+            <label>回合数 <input type="number" id="hp-epochs" step="1" min="1" value="300"></label>
+            <label>种子 <input type="number" id="hp-seed" step="1" min="1" value="7"></label>
+            <label>损失 <select id="hp-loss"><option value="ce">交叉熵 CE</option><option value="mse">均方误差 MSE</option></select></label>
+          </div>
+          <div class="actions">
+            <button id="btn-train" class="primary">▶ 开始训练</button>
+            <button id="btn-pause">⏸ 暂停</button>
+            <button id="btn-reset">↺ 重置</button>
+          </div>
+          <div class="stats">
+            <div class="stat"><span class="k">回合</span><span class="v" id="st-epoch">0 / 0</span></div>
+            <div class="stat"><span class="k">损失</span><span class="v" id="st-loss">—</span></div>
+            <div class="stat"><span class="k">准确率</span><span class="v" id="st-acc">—</span></div>
+          </div>
+          <div class="progress"><div id="progress-bar"></div></div>
+        </div>
+        <div class="chart-head"><span>损失曲线</span><span id="loss-legend" class="legend"></span></div>
+        <canvas id="loss-canvas"></canvas>
+        <div class="chart-head"><span id="viz-title">决策边界</span><span id="viz-sub" class="legend"></span></div>
+        <canvas id="viz-canvas"></canvas>
+      </div>
+    </div>
+    <div class="node-panel" id="node-panel" hidden></div>
+  </section>
+
+  <section id="tab-arena" class="tab-panel" hidden>
+    <div class="arena-intro">
+      <h2>训练场 <em>CHALLENGES</em></h2>
+      <p>五个挑战，每个都有明确的「达标线」。载入预设 → 自动训练 → 网络能否毕业，就看你的织造功夫。</p>
+    </div>
+    <div class="card-grid" id="challenge-cards"></div>
+  </section>
+
+  <section id="tab-cards" class="tab-panel" hidden>
+    <div class="arena-intro">
+      <h2>知识卡 <em>CONCEPT CARDS</em></h2>
+      <p>织造神经网络需要的十三个核心概念——每一项都能在织造台里亲手摸到。</p>
+    </div>
+    <div class="card-grid" id="concept-cards"></div>
+  </section>
+</main>
+<footer>
+  <span>SYNAPSE · 神经织造 —— 零依赖纯前端教学沙盒</span>
+  <span class="footer-right">
+    <button id="btn-save" title="导出网络（JSON）">💾 导出</button>
+    <button id="btn-load" title="导入网络（JSON）">📂 导入</button>
+    <input type="file" id="file-load" accept=".json,application/json" hidden>
+    <button id="btn-mute" title="音效开关">🔊</button>
+  </span>
+</footer>
+<script src="js/shared/rng.js"></script>
+<script src="js/shared/activations.js"></script>
+<script src="js/shared/losses.js"></script>
+<script src="js/shared/network.js"></script>
+<script src="js/shared/trainer.js"></script>
+<script src="js/shared/tictactoe.js"></script>
+<script src="js/shared/datasets.js"></script>
+<script src="js/shared/editor.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/render.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

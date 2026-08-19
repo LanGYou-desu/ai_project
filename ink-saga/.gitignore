@@ -1,0 +1,5 @@
+node_modules/
+save/*.json
+save/reports/*
+save/exports/*
+!save/.gitkeep

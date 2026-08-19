@@ -1,6 +1,6 @@
 # AI Project 合集
 
-> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录十三个项目：桌面端「AI 编译器」、网页端「赛博安全学院」、Python 游戏「DevSaga」、四款纯前端解谜/模拟游戏「NETIME 时光机」「声音考古学」「LINGUA 语言演化博物馆」「LASTBROADCAST 最后的广播」、生态模拟器「ECO-ARK 生态方舟」、听觉共情游戏「UNLIT 无光之城」（戴上耳机，在几乎全黑的世界里用白杖回声与盲文完成一天的生活），以及四个**真机原生**游戏：「REAL SHELL QUEST 真实文件历险」（在真实磁盘上执行真实命令的解谜冒险）、「THE VANISHED 桌面悬疑事件」（用真实 Windows 通知上演的实时悬疑剧）、「DESKTOP SIEGE 桌面保卫战」（敌人由你电脑上的真实文件名生成的射击游戏）、「HOUSE GUEST 桌灵·房客」（住在你真实电脑里的幽灵，用真实资源管理器在虚拟 C 盘里解谜）。
+> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录十七个项目：桌面端「AI 编译器」、网页端「赛博安全学院」、Python 游戏「DevSaga」、四款纯前端解谜/模拟游戏「NETIME 时光机」「声音考古学」「LINGUA 语言演化博物馆」「LASTBROADCAST 最后的广播」、生态模拟器「ECO-ARK 生态方舟」、听觉共情游戏「UNLIT 无光之城」（戴上耳机，在几乎全黑的世界里用白杖回声与盲文完成一天的生活）、神经网络教学沙盒「SYNAPSE 神经织造」（亲手连线织一个神经网络，看它学会 XOR、螺旋与手写数字）、3D 车展「3D CAR 跑车展厅」（Three.js 的 Ferrari 458 交互式展厅）、汉字书写战斗史诗「INK-SAGA 墨战·天书纪」（鼠标写对目标字，每一个字都是刀）、GTA 风格开放世界「OUTLAW CITY 亡命都市 3D」，以及四个**真机原生**游戏：「REAL SHELL QUEST 真实文件历险」（在真实磁盘上执行真实命令的解谜冒险）、「THE VANISHED 桌面悬疑事件」（用真实 Windows 通知上演的实时悬疑剧）、「DESKTOP SIEGE 桌面保卫战」（敌人由你电脑上的真实文件名生成的射击游戏）、「HOUSE GUEST 桌灵·房客」（住在你真实电脑里的幽灵，用真实资源管理器在虚拟 C 盘里解谜）。
 
 | GitHub | https://github.com/LanGYou-desu/ai_project |
 | ------ | ------------------------------------------ |
@@ -22,6 +22,10 @@
 | [desktop-siege](./desktop-siege/) | Canvas 防御射击 | 敌人由**你电脑上的真实文件名与系统进程**生成（每台机器独一无二）：exe 冲锋、pdf 重甲、zip 分裂、Boss 以你磁盘最大文件命名；20 波 + 4 Boss + 无尽模式 + 6 种道具，30–60 分钟 | Node.js（零依赖）+ 原生 Canvas/Web Audio（24 项测试） |
 | [houseguest](./houseguest/) | Python 桌面游戏 | 一只幽灵住进你的电脑：透明桌面悬浮层 + 真实虚拟 C 盘（`vfsystem\`），用真实资源管理器 / cmd 操作真实文件解谜；12 章四幕 + 3+1 结局 + 陪伴模式 | Python 3.10+（tkinter + Windows SAPI，零第三方依赖，38 项测试） |
 | [unlit](./unlit/) | Web 共情体验游戏 | 「无光之城」：戴上耳机走进视障者的世界——白杖回声定位、听信号灯过马路、摸盲文读信、摸钱币结账、听水声做饭；6 章剧情 + 10 张助盲知识卡 | 原生 HTML/CSS/JS + Web Audio（零依赖，59 项测试） |
+| [synapse](./synapse/) | Web 教学沙盒 | 「神经织造」：亲手连线织一个神经网络——调权重/偏置/激活，实时看损失下降与决策边界成形；XOR/双月/螺旋/手写数字/井字棋 5 数据集 + 训练场挑战 + 13 张知识卡 | 原生 HTML/CSS/JS + Canvas + Web Audio（零依赖，91 项测试） |
+| [3d-car](./3d-car/) | Web 3D 车展 | 基于 Three.js 的 Ferrari 458 交互式 3D 车展：51 部件 PBR 材质、8 种涂装、夜景与行驶模式、摄影棚光照；完全离线可用 | Three.js r160（本地化）+ GLTF/DRACO（零运行时依赖） |
+| [ink-saga](./ink-saga/) | 汉字书写战斗 | 用笔写字来战斗：鼠标亲手写出敌人头顶的目标字即触发字诀，271 字词库 + 15 章剧情 + 6 结局 + 4 大模式 + 49 成就，识别/水墨/音效全程序化 | 原生 HTML/CSS/JS + Canvas + Web Audio + Node.js（零第三方依赖，36 项测试） |
+| [outlaw-city](./outlaw-city/) | 3D 开放世界 | GTA 风格纯前端第三人称开放世界：驾驶/枪战/警察追捕/任务系统/昼夜循环与实时阴影，双击即玩 | 原生 HTML/CSS/JS + three.min.js（零依赖） |
 
 ## 🌳 目录结构
 
@@ -115,12 +119,36 @@ ai_project/
     ├── vfsystem/           # 【运行时生成】虚拟系统目录（仿真实 Windows，不入库）
     ├── save/               # 【运行时生成】存档（不入库）
     └── start.bat           # 一键启动
-└── unlit/                  # UNLIT · 无光之城（听觉共情体验游戏）
+├── unlit/                  # UNLIT · 无光之城（听觉共情体验游戏）
     ├── index.html          # 入口（双击即玩，戴上耳机）
     ├── js/                 # shared 纯逻辑（盲文/声学/回声/引擎）+ 音频合成 + 渲染 UI
     ├── css/                # 墨黑 + 暖金主题
     ├── test/run.js         # 59 项测试（含 ch0→ch5 全流程通关）
     └── start.bat           # 一键打开
+├── synapse/                 # SYNAPSE · 神经织造（神经网络教学沙盒）
+    ├── index.html          # 入口（双击即玩）
+    ├── js/shared/          # 纯逻辑引擎：RNG / 激活 / 损失 / 网络 / 训练器 / 数据集 / 井字棋教师 / 编辑器
+    ├── js/                 # Canvas 渲染 + Web Audio 音效 + 主控制器
+    ├── css/                # 暗色神经实验室主题
+    ├── test/               # 91 项单元测试 + 前端冒烟测试
+    └── start.bat           # 一键打开
+├── 3d-car/                  # 3D 跑车展厅（Three.js Ferrari 458 交互式车展）
+    ├── index.html          # 入口（离线双击或联网 CDN）
+    ├── server.js           # 本地静态服务（零依赖）
+    ├── ferrari.glb         # DRACO 压缩车辆模型（51 部件）
+    ├── vendor/             # three.js + GLTF/DRACO/OrbitControls 本地化
+    └── start.bat           # 一键启动（http://127.0.0.1:8080）
+├── ink-saga/                # INK-SAGA · 墨战·天书纪（汉字书写战斗）
+    ├── server.js           # Node 后端（静态 + 存档 + 导出 + 排行榜）
+    ├── public/             # 前端：识别引擎 / 字诀 / 敌人 / 装备 / 剧情
+    ├── save/               # 【运行时生成】存档 / 报告 / 字帖（不入库）
+    ├── test/run.js         # 36 项单元测试
+    └── start.bat           # 一键启动（http://127.0.0.1:7337）
+└── outlaw-city/            # OUTLAW CITY · 亡命都市 3D（开放世界）
+    ├── index.html          # 入口（双击即玩）
+    ├── lib/three.min.js    # three.js r128 引擎（本地化）
+    ├── js/                 # 渲染 / 实体 / 战斗 / AI / 警察 / 任务 / HUD
+    └── css/style.css       # 界面样式
 ```
 
 ## 🚀 快速开始
@@ -254,9 +282,49 @@ node test\run.js           # 59 项单元测试（含脚本化全流程通关）
 
 **戴上耳机，屏幕几乎全黑。** 你是一个三个月前失去视力的人，今天是你重学日常的第一天：用白杖回声"看"路（Space）、听信号音独自过两条马路、摸盲文数字呼梯、摸钱币结账、听水开的声音做饭……6 章剧情约 40–60 分钟，通关解锁 10 张助盲知识卡。纯前端零依赖，所有声音由 Web Audio 实时合成；按 Tab 可在"沉浸/辅助"模式间切换，按 N 有语音导航。
 
+### synapse（SYNAPSE · 神经织造）
+
+```bash
+cd synapse
+.\start.bat                # 或直接双击 index.html（Chrome / Edge）
+node test/run.js           # 91 项单元测试（引擎 / 梯度校验 / 收敛 / 确定性）
+node test/smoke-ui.js      # 前端冒烟测试
+```
+
+手搓神经网络的活体教学沙盒：画布拖拽连线搭网络，调权重/偏置/激活，实时看损失曲线与决策边界成形；5 个数据集（XOR/双月/螺旋/手写数字/井字棋）从入门打到对战，训练场五张挑战卡等你通关。
+
+### 3d-car（3D 跑车展厅）
+
+```bash
+cd 3d-car
+.\start.bat          # 一键启动（http://127.0.0.1:8080，需本机 Node.js）
+# 或直接双击 index.html（联网时自动从 CDN 加载 three.js 与模型）
+```
+
+基于 Three.js 的 Ferrari 458 交互式 3D 车展：51 个部件逐一精细定做 PBR 材质（清漆车漆/透射玻璃/碳纤维/皮革），8 种车身涂装 + 3 种轮毂配色，夜景大灯、行驶跑圈、4 个快捷视角，摄影棚级环境反射（PMREM）。模型、引擎、解码器全部打包在项目内，离线可用。
+
+### ink-saga（INK-SAGA · 墨战·天书纪）
+
+```bash
+cd ink-saga
+.\start.bat          # 一键启动（http://127.0.0.1:7337）
+node test\run.js     # 36 项单元测试
+```
+
+全世界第一款「用笔写字来战斗」的汉字书写战斗史诗：天启七年纸镇的字都醒了，你握起秃狼毫笔——**你写的每一个字都是刀**。鼠标亲手写出敌人头顶的目标字即触发字诀（火焚/冰缓/雷链/盾御…）。271 字词库 + 114 双字词 + 78 成语 + 20 诗词 + 15 章剧情 + 6 结局 + 4 大模式 + 文房四宝装备 + 49 成就；识别引擎与水墨美术、音效全部程序化生成，零素材零依赖。
+
+### outlaw-city（OUTLAW CITY · 亡命都市 3D）
+
+```bash
+cd outlaw-city
+# 直接双击 index.html 即可游玩（需浏览器支持 WebGL），或 npx serve .
+```
+
+GTA 风格的纯前端第三人称 3D 开放世界：立体楼房、湖泊水面、街灯与远景雾效，昼夜循环 + 动态光照 + 实时阴影；驾驶、枪战、警察追捕与通缉星级、任务系统、HUD 与小地图。零依赖，双击即玩。
+
 ## 📝 仓库约定
 
-- **十三个项目相互独立**：各自维护代码、文档与依赖，不互相引用。
+- **十七个项目相互独立**：各自维护代码、文档与依赖，不互相引用。
 - **release 目录只跟踪 `*.exe` 安装包**：`latest.yml`、`*.blockmap` 等 electron-builder 自动生成的构建产物一律忽略，防止每次打包产生无关改动。
 - **敏感与依赖文件不入库**：`node_modules/`、`.env` / `config.json`（含 API 密钥）、`.superpowers/`、AI 助手说明文件（`AGENTS.md` / `CLAUDE.md`）等均已加入 `.gitignore`。
 - **练习素材可再生成**：cyber-academy 的 `practice/`、`lab/downloads/` 等由 `node make-practice.js` 生成，不入库；sound-archaeology 的语音素材可由 `tools/generate-voice.ps1` 重新生成。
@@ -273,4 +341,8 @@ node test\run.js           # 59 项单元测试（含脚本化全流程通关）
 - [eco-ark 详细文档](./eco-ark/README.md)
 - [houseguest 详细文档](./houseguest/README.md)
 - [unlit 详细文档](./unlit/README.md)
+- [synapse 详细文档](./synapse/README.md)
+- [3d-car 详细文档](./3d-car/README.md)
+- [ink-saga 详细文档](./ink-saga/README.md)
+- [outlaw-city 详细文档](./outlaw-city/README.md)
 - [devsaga 设计文档](./devsaga/docs/DESIGN.md)
