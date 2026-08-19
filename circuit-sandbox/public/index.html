@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>电路沙盒</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="toolbar">
+      <button id="btn-play" class="primary">▶ 播放</button>
+      <button id="btn-step">⏭ 单步</button>
+      <button id="btn-settle">⚙ settle</button>
+      <select id="sel-speed">
+        <option value="1">1x</option>
+        <option value="4">4x</option>
+        <option value="16">16x</option>
+      </select>
+      <button id="btn-clear">清空</button>
+      <button id="btn-save">保存</button>
+      <button id="btn-load">载入</button>
+      <label><input type="checkbox" id="chk-voltages"> 显示电压</label>
+      <label><input type="checkbox" id="chk-grid"> 网格</label>
+      <select id="sel-level">
+        <option value="">关卡选择</option>
+      </select>
+      <span id="status" class="status"></span>
+    </header>
+    <main>
+      <aside id="palette"></aside>
+      <section id="canvas-wrap">
+        <canvas id="canvas"></canvas>
+      </section>
+      <aside id="instruments">
+        <div id="oscilloscope"></div>
+        <div id="multimeter"></div>
+      </aside>
+    </main>
+    <div id="param-modal" class="modal hidden">
+      <div class="modal-card">
+        <h3 id="param-title">元件参数</h3>
+        <form id="param-form"></form>
+        <div class="modal-actions">
+          <button type="button" id="param-cancel">取消</button>
+          <button type="button" id="param-ok" class="primary">确定</button>
+        </div>
+      </div>
+    </div>
+    <div id="toast" class="toast"></div>
+  </div>
+  <script src="js/circuit.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/instruments.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/app.js"></script>
+  <script>document.addEventListener('DOMContentLoaded', () => window.App.start(document.getElementById('app'));</script>
+</body>
+</html>
