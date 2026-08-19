@@ -60,6 +60,8 @@ class Circuit {
       type,
       terminals: terminalNodeIds.map((nid) => ({ nodeId: nid, role: null })),
       params: Object.assign({}, params),
+      pos: params.pos || null,   // {x, y} 画布坐标，null 表示未布局
+      rot: params.rot || 0,      // 弧度
       state: {}
     };
     for (const nid of terminalNodeIds) this._ensureNode(nid);
@@ -98,7 +100,9 @@ class Circuit {
         id: c.id,
         type: c.type,
         terminals: c.terminals.map((t) => ({ nodeId: t.nodeId, role: t.role })),
-        params: c.params
+        params: c.params,
+        pos: c.pos,
+        rot: c.rot
       }))
     };
   }
@@ -120,6 +124,8 @@ class Circuit {
         type: c.type,
         terminals: c.terminals.map((t) => ({ nodeId: t.nodeId, role: t.role || null })),
         params: Object.assign({}, c.params),
+        pos: c.pos || null,
+        rot: c.rot || 0,
         state: {}
       });
       if (c.id >= this._nextComp) this._nextComp = c.id + 1;
@@ -137,3 +143,4 @@ class Circuit {
 }
 
 module.exports = { CT, GATE_TYPES, Circuit };
+if (typeof window !== 'undefined') { window.CT = CT; window.GATE_TYPES = GATE_TYPES; window.Circuit = Circuit; }

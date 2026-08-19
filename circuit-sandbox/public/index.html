@@ -24,7 +24,17 @@
       <label><input type="checkbox" id="chk-grid"> 网格</label>
       <select id="sel-level">
         <option value="">关卡选择</option>
+        <option value="1">1 点亮第一盏灯</option>
+        <option value="2">2 分压器</option>
+        <option value="3">3 二极管整流</option>
+        <option value="4">4 RC 充电</option>
+        <option value="5">5 二极管 NOT 门</option>
+        <option value="6">6 二极管 AND 门</option>
+        <option value="7">7 三极管开关</option>
+        <option value="8">8 同相放大器</option>
+        <option value="9">9 RC 振荡器</option>
       </select>
+      <span id="level-result" class="status"></span>
       <span id="status" class="status"></span>
     </header>
     <main>
@@ -33,20 +43,20 @@
         <canvas id="canvas"></canvas>
       </section>
       <aside id="instruments">
-        <div id="oscilloscope"></div>
-        <div id="multimeter"></div>
+        <div class="inst"><div class="inst-title">示波器</div><canvas id="oscilloscope"></canvas></div>
+        <div class="inst"><div class="inst-title">万用表</div><canvas id="multimeter"></canvas></div>
+        <div class="inst">
+          <div class="inst-title">探针</div>
+          <div style="padding:6px;font-size:12px;">
+            <label><input type="radio" name="probe" value="A"> A</label>
+            <label><input type="radio" name="probe" value="B"> B</label>
+            <label><input type="radio" name="probe" value="" checked> 无</label>
+            <div style="margin-top:4px;color:#9aa0a6;">点击节点设置探针</div>
+          </div>
+        </div>
       </aside>
     </main>
-    <div id="param-modal" class="modal hidden">
-      <div class="modal-card">
-        <h3 id="param-title">元件参数</h3>
-        <form id="param-form"></form>
-        <div class="modal-actions">
-          <button type="button" id="param-cancel">取消</button>
-          <button type="button" id="param-ok" class="primary">确定</button>
-        </div>
-      </div>
-    </div>
+    <div id="param-panel"></div>
     <div id="toast" class="toast"></div>
   </div>
   <script src="js/circuit.js"></script>
@@ -56,6 +66,15 @@
   <script src="js/instruments.js"></script>
   <script src="js/levels.js"></script>
   <script src="js/app.js"></script>
-  <script>document.addEventListener('DOMContentLoaded', () => window.App.start(document.getElementById('app'));</script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const app = new window.App({
+        canvas: document.getElementById('canvas'),
+        oscopeCanvas: document.getElementById('oscilloscope'),
+        meterCanvas: document.getElementById('multimeter')
+      });
+      window.app = app;
+    });
+  </script>
 </body>
 </html>

@@ -62,7 +62,7 @@ function evalWaveform(type, x) {
 
 // 电压源支路：施加电压、电流未知。约束 v_termB - v_termA = E。
 // 返回 {vbr:[{compId, termA, termB, E}], K}
-function collectVBRANCHES(circ, t, gateOut, prevV) {
+function collectVBRANCHES(circ, t, gateOut, prevV, vEst) {
   const vbr = [];
   for (const c of circ.comps.values()) {
     const a = c.terminals[0].nodeId;
@@ -76,12 +76,20 @@ function collectVBRANCHES(circ, t, gateOut, prevV) {
       const e = (c.params.amp || 1) * evalWaveform(c.params.waveform || 'sine', w * t + (c.params.phase || 0)) + (c.params.offset || 0);
       vbr.push({ compId: c.id, termA: a, termB: b, E: e });
     } else if (c.type === 'opamp') {
-      // 端点：[in-, in+, out]；用 上一步电压避免代数环
-      const vm = prevV.get(c.terminals[0].nodeId) || 0;
-      const vp = prevV.get(c.terminals[1].nodeId) || 0;
-      const supply = c.params.supply || VCC;
-      const e = clamp((c.params.gain || 1e5) * (vp - vm), -supply, supply);
-      vbr.push({ compId: c.id, termA: a, termB: b, E: e });
+      // 运放为 3 端器件：in-(0)、in+(1) 只感测电压、不取流；out(2) 为压控电压源（参考 GND）。
+      // E = clamp(gain*(Vp - Vm), -supply, supply)。此处只登记端点信息，
+      // 真正的牛顿线性化 stamp（含导数项）在 buildSystem 的 VBRANCH 组装中完成。
+      vbr.push({
+        compId: c.id,
+        termA: 0,
+        termB: c.terminals[2].nodeId,
+        E: 0,
+        opamp: true,
+        gain: c.params.gain || 1000,
+        supply: c.params.supply || VCC,
+        vpNode: c.terminals[1].nodeId,
+        vmNode: c.terminals[0].nodeId
+      });
     } else if (c.type === 'gate') {
       const level = gateOut.get(c.id) || 0;
       const outNode = c.terminals[c.terminals.length - 1].nodeId;
@@ -135,7 +143,7 @@ function buildSystem(circ, t, dt, vEst, gateOut, prevV) {
   const nodeIds = [...circ.nodes.keys()].filter((id) => id !== 0);
   const N = nodeIds.length;
   const idx = new Map(nodeIds.map((id, i) => [id, i]));
-  const vbr = collectVBRANCHES(circ, t, gateOut, prevV);
+  const vbr = collectVBRANCHES(circ, t, gateOut, prevV, vEst);
   const K = vbr.length;
   const S = N + K;
   const A = zeros(S);
@@ -235,13 +243,33 @@ function buildSystem(circ, t, dt, vEst, gateOut, prevV) {
     }
   }
   for (let k = 0; k < K; k++) {
-    const { termA: a, termB: b, E } = vbr[k];
+    const v = vbr[k];
     const row = N + k;
-    if (b !== 0) A[row][idx.get(b)] += 1;
-    if (a !== 0) A[row][idx.get(a)] -= 1;
-    if (a !== 0) A[idx.get(a)][row] += 1;
-    if (b !== 0) A[idx.get(b)][row] -= 1;
-    rhs[row] = E;
+    if (v.opamp) {
+      // 压控电压源 E = clamp(gain*(Vp - Vm), -supply, supply)，牛顿线性化（含导数项）
+      const vp0 = vEst.get(v.vpNode) || 0;
+      const vm0 = vEst.get(v.vmNode) || 0;
+      const raw = v.gain * (vp0 - vm0);
+      const clamped = Math.abs(raw) >= v.supply;
+      const E0 = clamped ? (raw > 0 ? v.supply : -v.supply) : raw;
+      const dVp = clamped ? 0 : v.gain;   // dE/dVp
+      const dVm = clamped ? 0 : -v.gain;  // dE/dVm
+      const b = v.termB; // out 节点（termA 恒为 GND）
+      // 约束行：Vout - dVp*Vp - dVm*Vm = E0 - dVp*vp0 - dVm*vm0
+      if (b !== 0) A[row][idx.get(b)] += 1;
+      if (v.vpNode !== 0) A[row][idx.get(v.vpNode)] -= dVp;
+      if (v.vmNode !== 0) A[row][idx.get(v.vmNode)] -= dVm;
+      rhs[row] = E0 - dVp * vp0 - dVm * vm0;
+      // 支路电流列：流入 out 节点
+      if (b !== 0) A[idx.get(b)][row] += 1;
+    } else {
+      const { termA: a, termB: b, E } = v;
+      if (b !== 0) A[row][idx.get(b)] += 1;
+      if (a !== 0) A[row][idx.get(a)] -= 1;
+      if (a !== 0) A[idx.get(a)][row] += 1;
+      if (b !== 0) A[idx.get(b)][row] -= 1;
+      rhs[row] = E;
+    }
   }
   return { A, rhs, vbr, N, nodeIds, idx };
 }
@@ -350,3 +378,4 @@ function settle(circ, maxSteps) {
 }
 
 module.exports = { step, settle, DT, VCC, VT, BETA, IS_DIODE, GATE_DELAY, clamp, expSafe };
+if (typeof window !== 'undefined') { window.Engine = { step, settle, DT, VCC, VT, BETA, IS_DIODE, GATE_DELAY, clamp, expSafe }; }

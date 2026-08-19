@@ -219,6 +219,20 @@ function drawWire(ctx, a, b, current, time, highlight) {
   }
 }
 
+// 收集某节点连接的所有端点世界坐标
+function nodeTerminals(circ, nid) {
+  const pts = [];
+  for (const c of circ.comps.values()) {
+    for (let i = 0; i < c.terminals.length; i++) {
+      const t = c.terminals[i];
+      if (t.nodeId === nid && c.pos) {
+        pts.push(terminalWorldPos(c, c.pos, c.rot || 0, i));
+      }
+    }
+  }
+  return pts;
+}
+
 // 主绘制函数
 function draw(ctx, circ, voltages, currents, opts) {
   opts = opts || {};
@@ -241,25 +255,24 @@ function draw(ctx, circ, voltages, currents, opts) {
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(ctx.canvas.width, y); ctx.stroke();
   }
 
-  // 先画所有连线（底层）
+  // 先画所有连线（底层）—— 按节点收集端点，两两相连
   const drawnWires = new Set();
   for (const c of circ.comps.values()) {
     const a = c.terminals[0], b = c.terminals[1];
-    if (!a || !b || a.nodeId == null || b.nodeId == null) continue;
+    if (!a || !b || a.nodeId == null || b.nodeId == null || !c.pos) continue;
     const key = [Math.min(a.nodeId, b.nodeId), Math.max(a.nodeId, b.nodeId)].join(',');
     if (drawnWires.has(key)) continue;
     drawnWires.add(key);
-    const pa = nodePos(circ, a.nodeId), pb = nodePos(circ, b.nodeId);
-    if (!pa || !pb) continue;
+    const pa = terminalWorldPos(c, c.pos, c.rot || 0, 0);
+    const pb = terminalWorldPos(c, c.pos, c.rot || 0, 1);
     const cur = currents ? currents.get(c.id) : null;
     drawWire(ctx, pa, pb, cur, time, c.id === selectedId);
   }
 
   // 画元件
   for (const c of circ.comps.values()) {
-    const pos = nodePos(circ, c.id);
-    if (!pos) continue;
-    drawSymbol(ctx, c, pos, c.rot || 0, c.id === selectedId, voltages, currents, time);
+    if (!c.pos) continue;
+    drawSymbol(ctx, c, c.pos, c.rot || 0, c.id === selectedId, voltages, currents, time);
   }
 
   // 画节点标签
@@ -267,25 +280,23 @@ function draw(ctx, circ, voltages, currents, opts) {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
   for (const [nid, node] of circ.nodes) {
-    const pos = nodePos(circ, nid);
-    if (!pos) continue;
+    const pts = nodeTerminals(circ, nid);
+    if (!pts.length) continue;
+    const pos = pts[0];
     const v = voltages ? (voltages.get(nid) || 0) : 0;
     ctx.fillStyle = '#9aa0a6';
     ctx.fillText(nid === 0 ? 'GND' : ('N' + nid), pos.x + 6, pos.y - 6);
   }
 }
 
-// 节点世界坐标缓存（由 app.js 维护布局，此处为 fallback：按节点 id 排列）
-const _nodeCache = new Map();
-function setNodePos(compId, x, y) { _nodeCache.set(compId, { x, y }); }
-function nodePos(circ, id) {
-  if (_nodeCache.has(id)) return _nodeCache.get(id);
-  // fallback：按 id 网格排列
-  let i = 0;
-  for (const k of circ.nodes.keys()) { if (k === id) break; i++; }
-  return { x: 100 + (i % 5) * 160, y: 100 + Math.floor(i / 5) * 120 };
+// 节点世界坐标：取该节点所有端点的平均值（多元件交汇处）
+function nodePos(circ, nid) {
+  const pts = nodeTerminals(circ, nid);
+  if (!pts.length) return null;
+  let x = 0, y = 0;
+  for (const p of pts) { x += p.x; y += p.y; }
+  return { x: x / pts.length, y: y / pts.length };
 }
-function clearNodeCache() { _nodeCache.clear(); }
 
 module.exports = {
   GEOMETRY,
@@ -293,7 +304,7 @@ module.exports = {
   drawSymbol,
   drawWire,
   draw,
-  setNodePos,
-  nodePos,
-  clearNodeCache
+  nodeTerminals,
+  nodePos
 };
+if (typeof window !== 'undefined') { window.Render = { GEOMETRY, terminalWorldPos, drawSymbol, drawWire, draw, nodeTerminals, nodePos }; }

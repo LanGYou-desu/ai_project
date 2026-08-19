@@ -198,5 +198,20 @@ test('NPN 三极管放大区 Ic ≈ β*Ib', () => {
   assert.ok(Math.abs(ic / Math.max(ibCalc, 1e-9) - 100) < 30, 'β=' + (ic / Math.max(ibCalc, 1e-9)));
 });
 
+console.log('电路沙盒 · 关卡');
+
+const { LEVELS, runLevel } = require('../public/js/levels');
+for (const lv of LEVELS) {
+  const r = runLevel(lv.id);
+  if (!r.ok) {
+    const v = [...r.voltages.entries()].map(([n, val]) => 'V' + n + '=' + val.toFixed(3)).join(' ');
+    const extra = r.osc ? ' osc[min=' + r.osc.min.toFixed(2) + ',max=' + r.osc.max.toFixed(2) + ']' : '';
+    console.log('  [debug] ' + lv.id + ' ' + lv.name + ': ' + r.reason + ' | ' + v + extra);
+  }
+  test('关卡 ' + lv.id + ' ' + lv.name, () => {
+    assert.ok(r.ok, lv.id + ' 号关卡未通过: ' + r.reason);
+  });
+}
+
 console.log('通过 ' + passed + '，失败 ' + failed);
 if (failed) process.exit(1);
