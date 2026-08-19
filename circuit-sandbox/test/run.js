@@ -87,7 +87,6 @@ test('欧姆定律：电阻支路电流', () => {
   const id = c.addComponent(CT.RESISTOR, { r: 1000 }, [1, 2]);
   c.addComponent(CT.RESISTOR, { r: 1000 }, [2, 0]);
   const r = step(c, 0, DT);
-  // R1 两端 5-2.5=2.5V，电流 2.5mA
   assert.ok(Math.abs(r.currents.get(id) - 0.0025) < 1e-4, 'I=' + r.currents.get(id));
 });
 
@@ -108,6 +107,95 @@ test('settle 达到稳态', () => {
   const r = settle(c);
   assert.ok(r.ok);
   assert.ok(Math.abs(r.voltages.get(2) - 2.5) < 1e-3, 'V=' + r.voltages.get(2));
+});
+
+console.log('电路沙盒 · 引擎（瞬态 / 非线性 / 逻辑门）');
+
+test('RC 充电：电容电压趋近源电压', () => {
+  const c = new Circuit();
+  c.addComponent(CT.VOLTAGE, { v: 5 }, [0, 1]);
+  c.addComponent(CT.RESISTOR, { r: 1000 }, [1, 2]);
+  c.addComponent(CT.CAPACITOR, { c: 1e-3 }, [2, 0]); // tau = 1s
+  let v;
+  for (let i = 0; i < 500; i++) v = step(c, i * DT, DT).voltages.get(2);
+  // 5ms 后 Vc ≈ 5*(1-exp(-0.005)) ≈ 0.02494
+  assert.ok(Math.abs(v - 0.02494) < 0.001, 'Vc=' + v);
+});
+
+test('NOT 门真值表', () => {
+  const c = new Circuit();
+  const inp = c.addComponent(CT.VOLTAGE, { v: 0 }, [0, 1]);
+  c.addComponent(CT.GATE, { gate: GATE_TYPES.NOT }, [1, 2]);
+  let r = step(c, 0, DT);
+  assert.ok((r.voltages.get(2) || 0) > 4, 'NOT(0) 应为高');
+  c.comps.get(inp).params.v = 5;
+  for (let i = 0; i < 300; i++) r = step(c, i * DT, DT);
+  assert.ok((r.voltages.get(2) || 0) < 1, 'NOT(5) 应为低');
+});
+
+test('AND 门真值表', () => {
+  const c = new Circuit();
+  const a = c.addComponent(CT.VOLTAGE, { v: 0 }, [0, 1]);
+  const b = c.addComponent(CT.VOLTAGE, { v: 0 }, [0, 3]);
+  c.addComponent(CT.GATE, { gate: GATE_TYPES.AND }, [1, 3, 2]);
+  for (const [va, vb, exp] of [[0, 0, 0], [5, 0, 0], [0, 5, 0], [5, 5, 5]]) {
+    c.comps.get(a).params.v = va;
+    c.comps.get(b).params.v = vb;
+    let r;
+    for (let i = 0; i < 300; i++) r = step(c, i * DT, DT);
+    const out = r.voltages.get(2) || 0;
+    const ok = exp === 0 ? out < 1 : out > 4;
+    assert.ok(ok, 'AND(' + va + ',' + vb + ')=' + out + ' 期望 ' + exp);
+  }
+});
+
+test('XOR 门真值表', () => {
+  const c = new Circuit();
+  const a = c.addComponent(CT.VOLTAGE, { v: 0 }, [0, 1]);
+  const b = c.addComponent(CT.VOLTAGE, { v: 0 }, [0, 3]);
+  c.addComponent(CT.GATE, { gate: GATE_TYPES.XOR }, [1, 3, 2]);
+  for (const [va, vb, exp] of [[0, 0, 0], [5, 0, 5], [0, 5, 5], [5, 5, 0]]) {
+    c.comps.get(a).params.v = va;
+    c.comps.get(b).params.v = vb;
+    let r;
+    for (let i = 0; i < 300; i++) r = step(c, i * DT, DT);
+    const out = r.voltages.get(2) || 0;
+    const ok = exp === 0 ? out < 1 : out > 4;
+    assert.ok(ok, 'XOR(' + va + ',' + vb + ')=' + out + ' 期望 ' + exp);
+  }
+});
+
+test('二极管正向导通', () => {
+  const c = new Circuit();
+  c.addComponent(CT.VOLTAGE, { v: 5 }, [0, 1]);
+  c.addComponent(CT.DIODE, {}, [1, 2]);
+  c.addComponent(CT.RESISTOR, { r: 1000 }, [2, 0]);
+  const r = step(c, 0, DT);
+  assert.ok((r.voltages.get(2) || 0) > 4, '正向二极管应导通');
+});
+
+test('二极管反向截止', () => {
+  const c = new Circuit();
+  c.addComponent(CT.VOLTAGE, { v: 5 }, [0, 1]);     // 节点 1 = 5V（阴极侧）
+  c.addComponent(CT.DIODE, {}, [2, 1]);             // 阳极 2，阴极 1 → 反向偏置
+  c.addComponent(CT.RESISTOR, { r: 1000 }, [2, 0]); // 阳极经电阻接地
+  const r = step(c, 0, DT);
+  assert.ok((r.voltages.get(2) || 0) < 0.1, '反向截止，阳极节点2应接近0, V2=' + r.voltages.get(2));
+});
+
+test('NPN 三极管放大区 Ic ≈ β*Ib', () => {
+  const c = new Circuit();
+  c.addComponent(CT.VOLTAGE, { v: 5 }, [0, 1]);        // Vcc 节点 1
+  c.addComponent(CT.RESISTOR, { r: 100000 }, [1, 2]);  // 基极电阻 → base(2)
+  const bjtc = c.addComponent(CT.BJT_N, {}, [3, 0, 2]); // collector=3, emitter=0, base=2
+  c.addComponent(CT.RESISTOR, { r: 1000 }, [3, 1]);    // 集电极电阻 → Vcc(1)
+  const r = settle(c);
+  assert.ok(r.ok, JSON.stringify(r.errors));
+  const vbe = (r.voltages.get(2) || 0);
+  const ibCalc = (5 - vbe) / 100000;
+  const ic = r.currents.get(bjtc);
+  assert.ok(ic > 0, '集电极电流应为正, ic=' + ic);
+  assert.ok(Math.abs(ic / Math.max(ibCalc, 1e-9) - 100) < 30, 'β=' + (ic / Math.max(ibCalc, 1e-9)));
 });
 
 console.log('通过 ' + passed + '，失败 ' + failed);
