@@ -1,6 +1,6 @@
-# AI Project 合集
+﻿# AI Project 合集
 
-> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录十七个项目：桌面端「AI 编译器」、网页端「赛博安全学院」、Python 游戏「DevSaga」、四款纯前端解谜/模拟游戏「NETIME 时光机」「声音考古学」「LINGUA 语言演化博物馆」「LASTBROADCAST 最后的广播」、生态模拟器「ECO-ARK 生态方舟」、听觉共情游戏「UNLIT 无光之城」（戴上耳机，在几乎全黑的世界里用白杖回声与盲文完成一天的生活）、神经网络教学沙盒「SYNAPSE 神经织造」（亲手连线织一个神经网络，看它学会 XOR、螺旋与手写数字）、3D 车展「3D CAR 跑车展厅」（Three.js 的 Ferrari 458 交互式展厅）、汉字书写战斗史诗「INK-SAGA 墨战·天书纪」（鼠标写对目标字，每一个字都是刀）、GTA 风格开放世界「OUTLAW CITY 亡命都市 3D」，以及四个**真机原生**游戏：「REAL SHELL QUEST 真实文件历险」（在真实磁盘上执行真实命令的解谜冒险）、「THE VANISHED 桌面悬疑事件」（用真实 Windows 通知上演的实时悬疑剧）、「DESKTOP SIEGE 桌面保卫战」（敌人由你电脑上的真实文件名生成的射击游戏）、「HOUSE GUEST 桌灵·房客」（住在你真实电脑里的幽灵，用真实资源管理器在虚拟 C 盘里解谜）。
+> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录十九个项目：桌面端「AI 编译器」、网页端「赛博安全学院」、Python 游戏「DevSaga」、四款纯前端解谜/模拟游戏「NETIME 时光机」「声音考古学」「LINGUA 语言演化博物馆」「LASTBROADCAST 最后的广播」、生态模拟器「ECO-ARK 生态方舟」、听觉共情游戏「UNLIT 无光之城」（戴上耳机，在几乎全黑的世界里用白杖回声与盲文完成一天的生活）、神经网络教学沙盒「SYNAPSE 神经织造」（亲手连线织一个神经网络，看它学会 XOR、螺旋与手写数字）、3D 车展「3D CAR 跑车展厅」（Three.js 的 Ferrari 458 交互式展厅）、汉字书写战斗史诗「INK-SAGA 墨战·天书纪」（鼠标写对目标字，每一个字都是刀）、GTA 风格开放世界「OUTLAW CITY 亡命都市 3D」、3D 箱庭小镇「HAKONIWA TOWN」（程序化高低错落岛屿小镇，昼夜循环与动态元素）、文学装置「HISTORY READER 历史朗读者」（把今天的浏览器历史写成一篇关于你的短篇小说），以及四个**真机原生**游戏：「REAL SHELL QUEST 真实文件历险」（在真实磁盘上执行真实命令的解谜冒险）、「THE VANISHED 桌面悬疑事件」（用真实 Windows 通知上演的实时悬疑剧）、「DESKTOP SIEGE 桌面保卫战」（敌人由你电脑上的真实文件名生成的射击游戏）、「HOUSE GUEST 桌灵·房客」（住在你真实电脑里的幽灵，用真实资源管理器在虚拟 C 盘里解谜）。
 
 | GitHub | https://github.com/LanGYou-desu/ai_project |
 | ------ | ------------------------------------------ |
@@ -24,6 +24,8 @@
 | [unlit](./unlit/) | Web 共情体验游戏 | 「无光之城」：戴上耳机走进视障者的世界——白杖回声定位、听信号灯过马路、摸盲文读信、摸钱币结账、听水声做饭；6 章剧情 + 10 张助盲知识卡 | 原生 HTML/CSS/JS + Web Audio（零依赖，59 项测试） |
 | [synapse](./synapse/) | Web 教学沙盒 | 「神经织造」：亲手连线织一个神经网络——调权重/偏置/激活，实时看损失下降与决策边界成形；XOR/双月/螺旋/手写数字/井字棋 5 数据集 + 训练场挑战 + 13 张知识卡 | 原生 HTML/CSS/JS + Canvas + Web Audio（零依赖，91 项测试） |
 | [3d-car](./3d-car/) | Web 3D 车展 | 基于 Three.js 的 Ferrari 458 交互式 3D 车展：51 部件 PBR 材质、8 种涂装、夜景与行驶模式、摄影棚光照；完全离线可用 | Three.js r160（本地化）+ GLTF/DRACO（零运行时依赖） |
+| [3d-hakoniwa-town](./3d-hakoniwa-town/) | Web 3D 箱庭沙盘 | 「箱庭小镇」：程序化高低错落岛屿小镇，城堡/港湾/缆车/列车/摩天轮，完整昼夜循环与丰富动态元素；完全离线可玩 | Three.js r160（本地化，零运行时依赖） |
+| [history-reader](./history-reader/) | Node.js 文学装置 | 「历史朗读者」：把今天的浏览器历史（Chrome/Edge）写成一篇关于你的短篇小说——时段章节、行为节奏、文学式总结；支持 JSON 上传，数据不出本机 | 原生 Node http + sql.js（SQLite 纯 JS 解析） |
 | [ink-saga](./ink-saga/) | 汉字书写战斗 | 用笔写字来战斗：鼠标亲手写出敌人头顶的目标字即触发字诀，271 字词库 + 15 章剧情 + 6 结局 + 4 大模式 + 49 成就，识别/水墨/音效全程序化 | 原生 HTML/CSS/JS + Canvas + Web Audio + Node.js（零第三方依赖，36 项测试） |
 | [outlaw-city](./outlaw-city/) | 3D 开放世界 | GTA 风格纯前端第三人称开放世界：驾驶/枪战/警察追捕/任务系统/昼夜循环与实时阴影，双击即玩 | 原生 HTML/CSS/JS + three.min.js（零依赖） |
 
@@ -138,6 +140,16 @@ ai_project/
     ├── ferrari.glb         # DRACO 压缩车辆模型（51 部件）
     ├── vendor/             # three.js + GLTF/DRACO/OrbitControls 本地化
     └── start.bat           # 一键启动（http://127.0.0.1:8080）
+├── 3d-hakoniwa-town/        # 3D 箱庭小镇（程序化岛屿 / 昼夜循环 / 动态沙盘）
+│     ├── index.html          # 入口（双击 run.bat 或本地服务打开）
+│     ├── js/                 # 地形 / 城镇 / 载具 / 昼夜动态 / 主循环
+│     ├── vendor/             # Three.js r160 本地化
+│     └── run.bat             # 一键启动（python -m http.server）
+├── history-reader/          # HISTORY READER · 历史朗读者（浏览器历史文学装置）
+│     ├── server.js           # 服务器：读取历史数据库 + 叙事 API
+│     ├── lib/                # 历史读取（sql.js）/ 叙事生成器
+│     ├── public/             # 阅读界面
+│     └── start.bat           # 一键启动（http://localhost:8769）
 ├── ink-saga/                # INK-SAGA · 墨战·天书纪（汉字书写战斗）
     ├── server.js           # Node 后端（静态 + 存档 + 导出 + 排行榜）
     ├── public/             # 前端：识别引擎 / 字诀 / 敌人 / 装备 / 剧情
@@ -303,6 +315,25 @@ cd 3d-car
 
 基于 Three.js 的 Ferrari 458 交互式 3D 车展：51 个部件逐一精细定做 PBR 材质（清漆车漆/透射玻璃/碳纤维/皮革），8 种车身涂装 + 3 种轮毂配色，夜景大灯、行驶跑圈、4 个快捷视角，摄影棚级环境反射（PMREM）。模型、引擎、解码器全部打包在项目内，离线可用。
 
+### 3d-hakoniwa-town（3D 箱庭小镇）
+
+```bash
+cd 3d-hakoniwa-town
+.\run.bat               # 或 python -m http.server 8080，打开 http://localhost:8080
+```
+
+程序化高低错落岛屿小镇：中央台地 + 神社丘陵 + 城堡山 + 海角灯塔，湖泊河流入海；昼夜循环（入夜亮灯、灯塔光束、摩天轮彩灯、萤火虫、水灯、烟花）、小车队与空中飞艇、数百株实例化花草与全程序化纹理。Three.js r160 本地化，支持 `file://` 直接打开。
+
+### history-reader（HISTORY READER · 历史朗读者）
+
+```bash
+cd history-reader
+npm install             # 首次安装（仅 sql.js）
+.\start.bat             # 或 node server.js，打开 http://localhost:8769
+```
+
+把你的浏览器历史变成一首关于今天的小说：自动检测 Chrome / Edge 的 SQLite 历史数据库，按行为节奏（专注/寻找/漂移/切换）分章生成文学叙事；历史不可用时支持上传 JSON。所有数据只在本地处理，不上传任何服务器。
+
 ### ink-saga（INK-SAGA · 墨战·天书纪）
 
 ```bash
@@ -324,7 +355,7 @@ GTA 风格的纯前端第三人称 3D 开放世界：立体楼房、湖泊水面
 
 ## 📝 仓库约定
 
-- **十七个项目相互独立**：各自维护代码、文档与依赖，不互相引用。
+- **十九个项目相互独立**：各自维护代码、文档与依赖，不互相引用。
 - **release 目录只跟踪 `*.exe` 安装包**：`latest.yml`、`*.blockmap` 等 electron-builder 自动生成的构建产物一律忽略，防止每次打包产生无关改动。
 - **敏感与依赖文件不入库**：`node_modules/`、`.env` / `config.json`（含 API 密钥）、`.superpowers/`、AI 助手说明文件（`AGENTS.md` / `CLAUDE.md`）等均已加入 `.gitignore`。
 - **练习素材可再生成**：cyber-academy 的 `practice/`、`lab/downloads/` 等由 `node make-practice.js` 生成，不入库；sound-archaeology 的语音素材可由 `tools/generate-voice.ps1` 重新生成。
@@ -343,6 +374,8 @@ GTA 风格的纯前端第三人称 3D 开放世界：立体楼房、湖泊水面
 - [unlit 详细文档](./unlit/README.md)
 - [synapse 详细文档](./synapse/README.md)
 - [3d-car 详细文档](./3d-car/README.md)
+- [3d-hakoniwa-town 详细文档](./3d-hakoniwa-town/README.md)
+- [history-reader 详细文档](./history-reader/README.md)
 - [ink-saga 详细文档](./ink-saga/README.md)
 - [outlaw-city 详细文档](./outlaw-city/README.md)
 - [devsaga 设计文档](./devsaga/docs/DESIGN.md)
