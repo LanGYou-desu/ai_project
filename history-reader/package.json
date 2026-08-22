@@ -1,0 +1,13 @@
+{
+  "name": "history-reader",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The History Reader · 历史朗读者 — 把你的浏览器历史变成一首关于今天的小说",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "sql.js": "^1.8.0"
+  }
+}

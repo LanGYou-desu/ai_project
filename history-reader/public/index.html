@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The History Reader · 历史朗读者</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="date-header">
+      <h1 id="date">历史朗读者</h1>
+      <p class="summary" id="summary">选择时间段，读一段关于你的小说</p>
+    </header>
+
+    <!-- 时间段选择器 -->
+    <div class="range-picker" id="rangePicker">
+      <div class="range-presets">
+        <button class="preset" data-days="1">1 天</button>
+        <button class="preset" data-days="3">3 天</button>
+        <button class="preset active" data-days="7">7 天</button>
+        <button class="preset" data-days="14">14 天</button>
+        <button class="preset" data-days="30">30 天</button>
+      </div>
+      <div class="range-custom">
+        <input type="date" id="customStart" class="date-input">
+        <span class="range-sep">—</span>
+        <input type="date" id="customEnd" class="date-input">
+        <button class="btn-range" id="btnRange">自定义</button>
+      </div>
+    </div>
+
+    <nav class="timeline" id="timeline"></nav>
+
+    <main class="chapters" id="chapters">
+      <div class="loading">正在翻阅你的今天……</div>
+    </main>
+
+    <footer class="ending" id="ending" style="display:none"></footer>
+  </div>
+
+  <div class="upload-hint">
+    <p>没有历史数据？<a href="#" id="uploadLink">上传 JSON 文件</a></p>
+    <input type="file" id="uploadInput" accept=".json" style="display:none">
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
