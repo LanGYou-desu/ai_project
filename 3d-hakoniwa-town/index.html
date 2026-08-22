@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>箱庭小镇 · Hakoniwa Town</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏝</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <!-- 标题卡 -->
+  <header class="panel title-card">
+    <img class="mascot" src="mascot.svg" alt="小镇吉祥物">
+    <div>
+      <h1>箱庭小镇 <span>HAKONIWA TOWN</span></h1>
+      <p>一个漂浮在云海之上的微型世界 · 昼夜轮转 · 生机盎然</p>
+    </div>
+  </header>
+
+  <!-- 时间卡 -->
+  <div class="panel time-card">
+    <div class="clock" id="clock">07:12</div>
+    <div class="phase" id="phase">清晨</div>
+    <div class="sun-track"><div class="sun-dot" id="sunDot"></div></div>
+  </div>
+
+  <!-- 控制面板 -->
+  <div class="panel controls">
+    <div class="row">
+      <label class="lbl">时间</label>
+      <input type="range" id="timeSlider" min="0" max="1000" value="300">
+      <span class="time-val" id="timeVal">07:12</span>
+    </div>
+    <div class="row btns">
+      <button class="btn" data-speed="0">暂停</button>
+      <button class="btn" data-speed="0.5">0.5×</button>
+      <button class="btn active" data-speed="1">1×</button>
+      <button class="btn" data-speed="3">3×</button>
+      <button class="btn" data-speed="10">10×</button>
+      <span class="sep"></span>
+      <button class="btn" data-time="0.27">清晨</button>
+      <button class="btn" data-time="0.5">正午</button>
+      <button class="btn" data-time="0.75">黄昏</button>
+      <button class="btn" data-time="0.02">夜晚</button>
+    </div>
+    <div class="row btns">
+      <button class="btn toggle active" id="btnRotate">🔄 自动旋转</button>
+      <button class="btn toggle active" id="btnDyn">✨ 动态元素</button>
+      <button class="btn toggle active" id="btnFx">🎆 夜晚烟花</button>
+      <span class="sep"></span>
+      <button class="btn" id="btnShot">📷 截图</button>
+      <button class="btn" id="btnFull">⛶ 全屏</button>
+    </div>
+  </div>
+
+  <!-- 操作提示 -->
+  <div class="panel hint">
+    🖱 左键拖动 · 旋转视角 &nbsp;|&nbsp; 滚轮 · 缩放 &nbsp;|&nbsp; 右键拖动 · 平移 &nbsp;|&nbsp; 空格 · 暂停时间
+  </div>
+
+  <!-- 加载层 -->
+  <div id="loading">
+    <div class="loader-ring"></div>
+    <p>正在搭建箱庭小镇…</p>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/terrain.js"></script>
+  <script src="js/town.js"></script>
+  <script src="js/vehicles.js"></script>
+  <script src="js/dynamics.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
