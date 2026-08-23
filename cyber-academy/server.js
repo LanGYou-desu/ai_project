@@ -33,7 +33,9 @@ function createStaticHandler(root) {
     try { urlPath = decodeURIComponent(req.url.split('?')[0]); } catch (e) { urlPath = '/'; }
     if (urlPath === '/') urlPath = '/index.html';
     const file = path.normalize(path.join(root, urlPath));
-    if (!file.startsWith(root)) { res.writeHead(403); return res.end('403 Forbidden'); }
+    // path.relative 回推防穿越：startsWith 前缀匹配会被 root 的兄弟目录骗过
+    const rel = path.relative(root, file);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) { res.writeHead(403); return res.end('403 Forbidden'); }
     fs.readFile(file, (err, data) => {
       if (err) { res.writeHead(404); return res.end('404 Not Found'); }
       res.writeHead(200, { 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream' });

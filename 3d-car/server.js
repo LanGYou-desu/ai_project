@@ -25,7 +25,9 @@ function start(port) {
       let p = decodeURIComponent((req.url || '/').split('?')[0].split('#')[0]);
       if (p === '/') p = '/index.html';
       const file = path.normalize(path.join(ROOT, p));
-      if (!file.startsWith(ROOT)) { res.writeHead(403); res.end('Forbidden'); return; }
+      // path.relative 回推防穿越：startsWith 前缀匹配会被 ROOT 的兄弟目录（如 3d-car-x）骗过
+      const rel = path.relative(ROOT, file);
+      if (rel.startsWith('..') || path.isAbsolute(rel)) { res.writeHead(403); res.end('Forbidden'); return; }
       fs.readFile(file, (err, data) => {
         if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('404 Not Found: ' + p); return; }
         res.writeHead(200, {
