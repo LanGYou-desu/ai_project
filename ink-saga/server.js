@@ -100,6 +100,13 @@ function route(req, res) {
   }
   const cors = { 'Access-Control-Allow-Origin': '*' };
 
+  // 读请求体（超过 1MB 断开，防恶意大包）
+  function readBody(cb) {
+    let body = '';
+    req.on('data', c => { body += c; if (body.length > 1e6) req.destroy(); });
+    req.on('end', () => cb(body));
+  }
+
   // ---- API ----
   if (p === '/api/health') { return sendJson(res, { ok: true, name: 'INK-SAGA', time: Date.now() }, cors); }
 
@@ -125,9 +132,7 @@ function route(req, res) {
 
   // 保存玩家存档
   if (p === '/api/save' && req.method === 'POST') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
+    readBody(body => {
       try {
         const data = JSON.parse(body || '{}');
         writeJson(SAVE_FILE, data);
@@ -142,9 +147,7 @@ function route(req, res) {
 
   // 导出内容（报告/字帖/星图）到真实磁盘
   if (p === '/api/export' && req.method === 'POST') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
+    readBody(body => {
       try {
         const data = JSON.parse(body || '{}');
         const kind = data.kind === 'report' ? REPORT_DIR : EXPORT_DIR;
@@ -168,9 +171,7 @@ function route(req, res) {
     return sendJson(res, { ok: true, board }, cors);
   }
   if (p === '/api/leaderboard' && req.method === 'POST') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
+    readBody(body => {
       try {
         const entry = JSON.parse(body || '{}');
         const board = readJson(LB_FILE, []);
@@ -184,9 +185,11 @@ function route(req, res) {
   }
 
   // ---- 静态资源 ----
-  const safePath = path.normalize(p).replace(/^(\\..\/|\/)+/g, '');
-  let fp = path.join(PUBLIC, safePath);
-  if (!fp.startsWith(PUBLIC)) { res.writeHead(403); return res.end('Forbidden'); }
+  let fp = path.join(PUBLIC, p);
+  // 用 path.relative 回推判断是否越出 PUBLIC：前缀 startsWith 会被 public-evil 这类兄弟目录骗过。
+  // 空字符串表示请求的就是 PUBLIC 本身（如 "/"），放行走下面的目录回退分支。
+  const rel = path.relative(PUBLIC, fp);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) { res.writeHead(403); return res.end('Forbidden'); }
   if (!fs.existsSync(fp) || fs.statSync(fp).isDirectory()) fp = path.join(PUBLIC, 'index.html');
   if (!fs.existsSync(fp)) { res.writeHead(404); return res.end('Not Found'); }
   const ext = path.extname(fp).toLowerCase();
