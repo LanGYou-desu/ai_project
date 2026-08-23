@@ -40,8 +40,8 @@
 
 ```bash
 cd 3d-hakoniwa-town
-python -m http.server 8080
-# 浏览器打开 http://localhost:8080
+# 双击 run.bat：有 Node.js 时自动启动本地服务并打开浏览器；
+# 无 Node.js 时回退到 python -m http.server 8080
 ```
 
 Windows 也可双击 `run.bat` 一键启动。

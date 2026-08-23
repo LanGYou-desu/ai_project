@@ -4,4 +4,4 @@ rem  LAB-7 · 声音考古学 — 双击即玩
 rem  用默认浏览器打开 index.html
 rem ============================================
 cd /d "%~dp0"
-start "" "index.html"
+start "" "%~dp0index.html"
