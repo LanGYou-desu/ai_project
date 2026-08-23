@@ -26,3 +26,6 @@ pnpm-debug.log*
 
 # Runtime browser/CDP profiles (created by headless browser smoke tests)
 .edge-cdp/
+
+# Extracted APK / reverse-engineering working dirs (huge, not part of the repo)
+reverse experiment/
