@@ -24,7 +24,7 @@
 | [unlit](./unlit/) | Web 共情体验游戏 | 「无光之城」：戴上耳机走进视障者的世界——白杖回声定位、听信号灯过马路、摸盲文读信、摸钱币结账、听水声做饭；6 章剧情 + 10 张助盲知识卡 | 原生 HTML/CSS/JS + Web Audio（零依赖，59 项测试） |
 | [synapse](./synapse/) | Web 教学沙盒 | 「神经织造」：亲手连线织一个神经网络——调权重/偏置/激活，实时看损失下降与决策边界成形；XOR/双月/螺旋/手写数字/井字棋 5 数据集 + 训练场挑战 + 13 张知识卡 | 原生 HTML/CSS/JS + Canvas + Web Audio（零依赖，91 项测试） |
 | [3d-car](./3d-car/) | Web 3D 车展 | 基于 Three.js 的 Ferrari 458 交互式 3D 车展：51 部件 PBR 材质、8 种涂装、夜景与行驶模式、摄影棚光照；完全离线可用 | Three.js r160（本地化）+ GLTF/DRACO（零运行时依赖） |
-| [3d-hakoniwa-town](./3d-hakoniwa-town/) | Web 3D 箱庭沙盘 | 「箱庭小镇」：程序化高低错落岛屿小镇，城堡/港湾/缆车/列车/摩天轮，完整昼夜循环与丰富动态元素；完全离线可玩 | Three.js r160（本地化，零运行时依赖） |
+| [3d-hakoniwa-town](./3d-hakoniwa-town/) | Web 3D 箱庭沙盘 | 「箱庭小镇」：程序化高低错落岛屿小镇，城堡/港湾/缆车/列车/摩天轮，完整昼夜循环与丰富动态元素；完全离线可玩 | Three.js r158（本地化，零运行时依赖） |
 | [history-reader](./history-reader/) | Node.js 文学装置 | 「历史朗读者」：把今天的浏览器历史（Chrome/Edge）写成一篇关于你的短篇小说——时段章节、行为节奏、文学式总结；支持 JSON 上传，数据不出本机 | 原生 Node http + sql.js（SQLite 纯 JS 解析） |
 | [ink-saga](./ink-saga/) | 汉字书写战斗 | 用笔写字来战斗：鼠标亲手写出敌人头顶的目标字即触发字诀，271 字词库 + 15 章剧情 + 6 结局 + 4 大模式 + 49 成就，识别/水墨/音效全程序化 | 原生 HTML/CSS/JS + Canvas + Web Audio + Node.js（零第三方依赖，36 项测试） |
 | [outlaw-city](./outlaw-city/) | 3D 开放世界 | GTA 风格纯前端第三人称开放世界：驾驶/枪战/警察追捕/任务系统/昼夜循环与实时阴影，双击即玩 | 原生 HTML/CSS/JS + three.min.js（零依赖） |
@@ -143,7 +143,7 @@ ai_project/
 ├── 3d-hakoniwa-town/        # 3D 箱庭小镇（程序化岛屿 / 昼夜循环 / 动态沙盘）
 │     ├── index.html          # 入口（双击 run.bat 或本地服务打开）
 │     ├── js/                 # 地形 / 城镇 / 载具 / 昼夜动态 / 主循环
-│     ├── vendor/             # Three.js r160 本地化
+│     ├── vendor/             # Three.js r158 本地化
 │     └── run.bat             # 一键启动（python -m http.server）
 ├── history-reader/          # HISTORY READER · 历史朗读者（浏览器历史文学装置）
 │     ├── server.js           # 服务器：读取历史数据库 + 叙事 API
@@ -322,7 +322,7 @@ cd 3d-hakoniwa-town
 .\run.bat               # 或 python -m http.server 8080，打开 http://localhost:8080
 ```
 
-程序化高低错落岛屿小镇：中央台地 + 神社丘陵 + 城堡山 + 海角灯塔，湖泊河流入海；昼夜循环（入夜亮灯、灯塔光束、摩天轮彩灯、萤火虫、水灯、烟花）、小车队与空中飞艇、数百株实例化花草与全程序化纹理。Three.js r160 本地化，支持 `file://` 直接打开。
+程序化高低错落岛屿小镇：中央台地 + 神社丘陵 + 城堡山 + 海角灯塔，湖泊河流入海；昼夜循环（入夜亮灯、灯塔光束、摩天轮彩灯、萤火虫、水灯、烟花）、小车队与空中飞艇、数百株实例化花草与全程序化纹理。Three.js r158 本地化，支持 `file://` 直接打开。
 
 ### history-reader（HISTORY READER · 历史朗读者）
 
