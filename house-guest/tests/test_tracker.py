@@ -77,5 +77,79 @@ class TestTracker(unittest.TestCase):
         self.assertTrue(any('newfile' in p for p in created))
 
 
+class TestTrackerRobustness(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.sd = SystemDir(os.path.join(self.tmp.name, 'vfsystem'))
+        self.sd.build('测试员')
+        self.state = State.load(os.path.join(self.tmp.name, 'game.json'))
+        self.eggs = []
+        self.tracker = tracker_mod.Tracker(
+            self.sd, self.state, on_stage_done=lambda: None, on_egg=lambda n: self.eggs.append(n))
+
+    def tearDown(self):
+        self.tracker.stop()
+        self.tmp.cleanup()
+
+    def test_contains_list_without_contains_does_not_raise(self):
+        """stage 只有 contains_list 时，不能因为 eager 取 stage['contains'] 而判负。"""
+        stage = {'type': 'file', 'op': 'create_file', 'path': 'Logs/a.txt',
+                 'contains_list': ['甲', '乙']}
+        self.assertFalse(self.tracker.check_file_objective(stage))
+        self.sd.write_file('Logs/a.txt', '甲乙')
+        self.assertTrue(self.tracker.check_file_objective(stage))
+        self.sd.write_file('Logs/a.txt', '甲')
+        self.assertFalse(self.tracker.check_file_objective(stage))
+
+    def test_create_file_stage_without_keywords(self):
+        stage = {'type': 'file', 'op': 'create_file', 'path': 'Logs/b.txt'}
+        self.assertFalse(self.tracker.check_file_objective(stage))
+        self.sd.write_file('Logs/b.txt', '随便')
+        self.assertTrue(self.tracker.check_file_objective(stage))
+
+    def test_escaping_objective_path_is_rejected(self):
+        """story 数据被污染时也不能读写 vfsystem 之外的东西。"""
+        stage = {'type': 'file', 'op': 'create_file', 'path': '../../evil.txt'}
+        self.assertFalse(self.tracker.check_file_objective(stage))
+        stage2 = {'type': 'file', 'op': 'delete', 'name': 'x.txt', 'from_dir': '../..'}
+        self.assertFalse(self.tracker.check_file_objective(stage2))
+        stage3 = {'type': 'file', 'op': 'collect', 'names': ['../x.txt'], 'to_dir': '$Recycle.Bin'}
+        self.assertFalse(self.tracker.check_file_objective(stage3))
+
+    def test_egg_regex_requires_exact_filename(self):
+        self.sd.write_file('$Recycle.Bin/egg7.txt.bak', 'x')
+        self.tracker._check_eggs(tracker_mod.snapshot(self.sd))
+        self.assertEqual(self.eggs, [])
+        self.sd.write_file('$Recycle.Bin/egg7.txt', 'x')
+        self.tracker._check_eggs(tracker_mod.snapshot(self.sd))
+        self.assertEqual(self.eggs, [7])
+
+    def test_egg_in_subfolder_counts(self):
+        self.sd.write_file('$Recycle.Bin/sub/egg3.txt', 'x')
+        self.tracker._check_eggs(tracker_mod.snapshot(self.sd))
+        self.assertEqual(self.eggs, [3])
+
+    def test_egg_outside_recycle_bin_is_ignored(self):
+        self.sd.write_file('Logs/egg1.txt', 'x')
+        self.tracker._check_eggs(tracker_mod.snapshot(self.sd))
+        self.assertEqual(self.eggs, [])
+
+    def test_tracker_can_restart_after_stop(self):
+        """reset_game 会重建观测器；同一个实例重启后也必须真的跑起来。"""
+        self.tracker.start()
+        self.tracker.stop()
+        self.assertIsNone(self.tracker._thread)
+        self.tracker.start()
+        self.assertIsNotNone(self.tracker._thread)
+        self.assertTrue(self.tracker._thread.is_alive())
+        self.tracker.stop()
+
+    def test_stage_done_advances_flag_and_saves(self):
+        self.state.chapter = 3
+        self.sd.write_file('Windows/System32/passport.txt', '396')
+        self.tracker._tick()
+        self.assertEqual(self.state.flags.get('stage_3'), 1)
+
+
 if __name__ == '__main__':
     unittest.main()

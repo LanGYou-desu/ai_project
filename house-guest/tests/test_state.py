@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+import json
 import os
 import tempfile
+import threading
 import unittest
 
 from game.state import State
@@ -63,6 +65,85 @@ class TestState(unittest.TestCase):
         st.add_egg(3)
         self.assertTrue(st.egg_found(3))
         self.assertEqual(len(st.eggs), 1)
+
+
+class TestStateDurability(unittest.TestCase):
+    """存档写入的健壮性：原子替换、线程安全、目录缺失、损坏文件。"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_save_without_directory(self):
+        """save_path 只有文件名时（没有目录）也必须能保存。"""
+        cwd = os.getcwd()
+        os.chdir(self.tmp.name)
+        try:
+            st = State('game.json')
+            st.chapter = 3
+            st.save()
+            self.assertTrue(os.path.exists(os.path.join(self.tmp.name, 'game.json')))
+            self.assertEqual(State.load('game.json').chapter, 3)
+        finally:
+            os.chdir(cwd)
+
+    def test_save_is_atomic_and_creates_parent_dir(self):
+        path = os.path.join(self.tmp.name, 'deep', 'nested', 'game.json')
+        st = State.load(path)
+        st.save()
+        self.assertTrue(os.path.exists(path))
+        self.assertFalse(os.path.exists(path + '.tmp'))
+        with open(path, 'r', encoding='utf-8') as f:
+            json.load(f)  # 必须是完整合法的 JSON
+
+    def test_concurrent_saves_keep_file_valid(self):
+        """观测线程与主线程同时存档时，文件不能被写坏。"""
+        path = os.path.join(self.tmp.name, 'game.json')
+        st = State.load(path)
+        errors = []
+
+        def worker(n):
+            try:
+                for i in range(30):
+                    st.chapter = n
+                    st.flags['stage_%d' % n] = i
+                    st.save()
+            except Exception as e:  # pragma: no cover
+                errors.append(e)
+
+        threads = [threading.Thread(target=worker, args=(n,)) for n in range(1, 5)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        self.assertIn('chapter', data)
+        self.assertEqual(State.load(path).flags.keys() >= {'stage_1'}, True)
+
+    def test_loaded_flag_marks_fresh_start(self):
+        path = os.path.join(self.tmp.name, 'game.json')
+        self.assertFalse(State.load(path).loaded)
+        st = State.load(path)
+        st.save()
+        self.assertTrue(State.load(path).loaded)
+
+    def test_corrupt_save_falls_back_to_defaults(self):
+        path = os.path.join(self.tmp.name, 'game.json')
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write('{ not json')
+        st = State.load(path)
+        self.assertEqual(st.chapter, 1)
+        self.assertFalse(st.loaded)
+
+    def test_on_close_adds_at_least_one_minute(self):
+        st = State.load(os.path.join(self.tmp.name, 'game.json'))
+        st.on_launch()
+        st.on_close()
+        self.assertGreaterEqual(st.metrics['total_minutes'], 1)
 
 
 if __name__ == '__main__':

@@ -67,11 +67,12 @@ class Tracker:
         self._snap: Dict[str, Dict] = {}
         self._stop = False
         self._thread: Optional[threading.Thread] = None
-        self._egg_re = re.compile(r'egg(\d+)\.txt')
+        self._egg_re = re.compile(r'(?:^|/)egg(\d+)\.txt$')
 
     # ---------------- 生命周期 ----------------
     def start(self) -> None:
         self._snap = snapshot(self.sd)
+        self._stop = False
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
 
@@ -79,6 +80,7 @@ class Tracker:
         self._stop = True
         if self._thread:
             self._thread.join(timeout=3)
+            self._thread = None
 
     def _loop(self) -> None:
         while not self._stop:
@@ -150,6 +152,10 @@ class Tracker:
                 pass
 
     # ---------------- 文件目标校验 ----------------
+    def _in(self, dirpath: str, name: str) -> str:
+        """vfsystem 内的目标路径；越界（'..' 等）由 SystemDir 拒绝。"""
+        return self.sd.full('%s/%s' % (dirpath, name))
+
     def check_file_objective(self, stage: Dict) -> bool:
         op = stage.get('op')
         try:
@@ -158,26 +164,30 @@ class Tracker:
                 if not os.path.exists(path):
                     return False
                 content = _norm(read_text(path))
-                for kw in stage.get('contains_list', [stage['contains']]):
+                # contains_list 可选；缺省回退到单个 contains（惰性求值，避免 KeyError）
+                keywords = stage.get('contains_list')
+                if keywords is None:
+                    keywords = [stage['contains']] if 'contains' in stage else []
+                for kw in keywords:
                     if _norm(kw) not in content:
                         return False
                 return True
             if op == 'move_file':
                 name = stage['name']
-                in_from = os.path.exists(os.path.join(self.sd.full(stage['from_dir']), name))
-                in_to = os.path.exists(os.path.join(self.sd.full(stage['to_dir']), name))
+                in_from = os.path.exists(self._in(stage['from_dir'], name))
+                in_to = os.path.exists(self._in(stage['to_dir'], name))
                 return (not in_from) and in_to
             if op == 'collect':
                 for name in stage['names']:
-                    if not os.path.exists(os.path.join(self.sd.full(stage['to_dir']), name)):
+                    if not os.path.exists(self._in(stage['to_dir'], name)):
                         return False
                 return True
             if op == 'delete':
-                return not os.path.exists(os.path.join(self.sd.full(stage['from_dir']), stage['name']))
+                return not os.path.exists(self._in(stage['from_dir'], stage['name']))
             if op == 'rename':
                 return (not os.path.exists(self.sd.full(stage['from']))) and os.path.exists(self.sd.full(stage['to']))
             if op == 'copy_or_move':
-                return os.path.exists(os.path.join(self.sd.full(stage['to_dir']), stage['name']))
+                return os.path.exists(self._in(stage['to_dir'], stage['name']))
         except Exception:
             return False
         return False

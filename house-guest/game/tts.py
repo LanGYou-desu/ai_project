@@ -30,6 +30,9 @@ class TTS:
         self._proc = None
         self._lock = threading.Lock()
         self.enabled = True
+        # 语音不可用时（没有 powershell / 没有 SAPI / 非 Windows）置位，
+        # 避免每一句台词都重新尝试启动一次注定失败的子进程。
+        self._unavailable = False
 
     def _ensure(self) -> None:
         if self._proc is None or self._proc.poll() is not None:
@@ -41,18 +44,22 @@ class TTS:
             )
 
     def speak(self, text: str, async_ok: bool = True) -> None:
-        if not self.enabled or not text:
+        if not self.enabled or self._unavailable or not text:
             return
         text = text.strip()[:180]
 
         def _do():
             try:
                 with self._lock:
+                    if self._unavailable:
+                        return
                     self._ensure()
                     self._proc.stdin.write(text + '\n')
                     self._proc.stdin.flush()
             except Exception:
-                pass
+                # 静默降级为纯文字；不再反复尝试
+                self._unavailable = True
+                self._proc = None
 
         if async_ok:
             threading.Thread(target=_do, daemon=True).start()
@@ -60,13 +67,19 @@ class TTS:
             _do()
 
     def shutdown(self) -> None:
+        """退出时常驻 PowerShell 进程；超时则强杀，避免留下孤儿进程。"""
+        proc, self._proc = self._proc, None
+        if proc is None or proc.poll() is not None:
+            return
         try:
-            if self._proc and self._proc.poll() is None:
-                with self._lock:
-                    self._proc.stdin.write('__QUIT__\n')
-                    self._proc.stdin.flush()
-                self._proc.wait(timeout=3)
+            with self._lock:
+                if proc.stdin:
+                    proc.stdin.write('__QUIT__\n')
+                    proc.stdin.flush()
+                    proc.stdin.close()
+            proc.wait(timeout=2)
         except Exception:
-            pass
-        finally:
-            self._proc = None
+            try:
+                proc.kill()
+            except Exception:
+                pass

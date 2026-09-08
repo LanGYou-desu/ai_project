@@ -48,7 +48,3 @@ def chime() -> None:
 
 def creepy() -> None:
     play([(160, 250), (130, 350)])
-
-
-def boop() -> None:
-    play([(600, 60)])

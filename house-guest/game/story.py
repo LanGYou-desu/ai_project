@@ -122,7 +122,7 @@ CHAPTERS: List[Dict[str, Any]] = [
         'inject': [
             {'path': 'Program Files/Calculator/clue_a.txt', 'content': 'clue A\n「这间房里只有 3 扇窗。」\n（把窗户数记下来）', 'year': 2005, 'note': '密码线索A'},
             {'path': 'Program Files/ChatRoom/clue_b.txt', 'content': 'clue B\n「猫有 9 条命。幽灵呢？幽灵没有命，只有 9 次后悔的机会。」', 'year': 2005, 'note': '密码线索B'},
-            {'path': 'Program Files/MusicBox/clue_c.txt', 'content': 'clue C\n「八条腿的是蜘蛛，六条腿的是……音乐盒里的蟋蟀。」', 'year': 2005, 'note': '密码线索C'},
+            {'path': 'Program Files/MusicBox/clue_c.txt', 'content': 'clue C\n「音乐盒里的蟋蟀有 6 条腿。它只会在半夜唱歌。」\n（把腿数记下来）', 'year': 2005, 'note': '密码线索C'},
             _egg(3, 'Users/{p}/Pictures/egg3.txt', 'Pictures 文件夹里没图片，只有一颗蛋。画质：4K。'),
         ],
         'solved': [
@@ -234,25 +234,25 @@ CHAPTERS: List[Dict[str, Any]] = [
         'intro': [
             '你注意到没有，「Users」文件夹里除了你，还有三个账号：guest_1、guest_2、guest_3。我们管他们叫"访客"。',
             '他们走的时候都留下了一封信。我从来没敢拆开看。',
-            '你去读读吧。三封信，每封取第一个字，连起来读。',
+            '你去读读吧。三封信，把每封信正文每一段的第一个字，按 guest_1 → guest_2 → guest_3 连起来读。',
         ],
         'mission': {'title': '读三封旧信', 'steps': [
             '打开 Users\\guest_1、guest_2、guest_3 的「Documents」文件夹，各有一封 信.txt',
-            '每封信取第一行第一个字',
-            '三封信的首字连起来，回来告诉我',
+            '每封信正文每一段的第一个字（署名那行不算）',
+            '按 guest_1 → guest_2 → guest_3 的顺序连起来，回来告诉我',
         ]},
         'stages': [
-            {'type': 'answer', 'question': '三封信的首字连起来是什么？', 'answers': ['深夜勿入夜', '深夜勿入夜！', '深夜勿入']},
+            {'type': 'answer', 'question': '三封旧信连起来是什么？', 'answers': ['深夜勿入夜', '深夜勿入夜！']},
         ],
         'hints': [
             '三封信分别在 Users\\guest_1、guest_2、guest_3 的 Documents\\信.txt。',
-            '每封信用「第一行第一个字」取字。',
+            '每封信都有几段正文，取每一段的第一个字（署名那行—— guest_N 不算）。',
             '五个字：深、夜、勿、入、夜。',
         ],
         'inject': [
-            {'path': 'Users/guest_1/Documents/信.txt', 'content': '深更半夜，我终于明白了。\n这个系统的「用户」会被定期清理。\n—— guest_1（2001）', 'year': 2001, 'note': 'guest_1的信'},
-            {'path': 'Users/guest_2/Documents/信.txt', 'content': '夜里的灯一灭，就不要再看窗外了。\n我看到过「它」。\n—— guest_2（2004）', 'year': 2004, 'note': 'guest_2的信'},
-            {'path': 'Users/guest_3/Documents/信.txt', 'content': '勿要打开「System Volume Information」和「ProgramData」。\n那里有我还不敢写完的东西。\n—— guest_3（2005）', 'year': 2005, 'note': 'guest_3的信'},
+            {'path': 'Users/guest_1/Documents/信.txt', 'content': '深夜三点，我第一次听见文件夹里有东西在动。\n夜里的清理，从来不会提前通知任何人。\n—— guest_1（2001）', 'year': 2001, 'note': 'guest_1的信'},
+            {'path': 'Users/guest_2/Documents/信.txt', 'content': '勿要相信那个每天 00:00 准时出现的东西。\n入夜之后我见过它一次。它没有脸。\n—— guest_2（2004）', 'year': 2004, 'note': 'guest_2的信'},
+            {'path': 'Users/guest_3/Documents/信.txt', 'content': '夜里的门我只推开过一条缝，后面的字我还没敢写完。\n—— guest_3（2005）', 'year': 2005, 'note': 'guest_3的信'},
             _egg(7, 'Users/guest_2/Desktop/egg7.txt', 'guest_2 的桌面也有一颗蛋。它说 guest_2 是个好人，就是爱藏东西。'),
         ],
         'solved': [
@@ -590,10 +590,6 @@ def get_chapter(n: int) -> Optional[Dict]:
 def stage_index(state) -> int:
     """当前章节进行到第几个 stage（0 起）"""
     return int(state.flags.get('stage_%d' % state.chapter, 0))
-
-
-def stage_count(ch: Dict) -> int:
-    return len(ch.get('stages', []))
 
 
 def current_stage(ch: Dict, idx: int) -> Optional[Dict]:

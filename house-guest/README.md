@@ -16,8 +16,8 @@
 - **透明桌面悬浮层**：无边框、置顶、透明抠图的幽灵，真的飘在你的桌面上，可拖拽、会说话（Windows 语音合成）、会整蛊、会半夜讲鬼故事。
 - **真实虚拟系统目录**：游戏在项目目录下创建 `vfsystem\` 文件夹，**这个文件夹本身模拟你的 C 盘**，目录结构仿照真实 Windows：`Windows`、`Program Files`、`Users`、`Logs`、`$Recycle.Bin`、`System Volume Information`、`ProgramData`、`Recovery`、`Temp`。系统层**目录与文件一律英文命名**（含用户账号 `guest_1/2/3`、个人资料夹 `Desktop/Documents/Pictures/Music/Secret`、系统文件 `boot.ini`、`ghost.sys`、`users.dat`、`tasks.ini`…），带真实的**隐藏属性**（`attrib +h`，如 `System Volume Information`、`ProgramData`、`Recovery`）与**伪造的历史时间戳**（2001/2005 年）。只有用户个人内容（`Documents\薯片.txt`、`信.txt`、回收站里的便签）保留中文——就像一台真实的中国用户电脑。
 - **你的操作 = 游戏操作**：找文件用真实资源管理器、解谜用真实 cmd（`dir /a`、`type`、`findstr`、`move`）、开锁就是真的把一个 `key.key` 拖进 `ProgramData` 文件夹。游戏后台每 1.5 秒轮询这个目录，**检测你的每一次真实操作**。
-- **12 章主线 · 四幕**：爆笑日常（咕噜整蛊你）→ 烧脑寻宝（摩斯/Base64/ROT13/藏头诗/文件探案）→ 细思极恐（前房客的信、清理者、真相）→ 终章桌面暴走（三选一结局）。
-- **它知道得太多了**：咕噜会说出**真实的本地数据**——你启动过几次、累计玩了多久、上次离开的时间。全部来自项目内的 `save\game.json`，**不联网**。
+- **12 章主线 · 四幕**：爆笑日常（咕噜整蛊你）→ 烧脑寻宝（摩斯/Base64/ROT13/首字连读/文件探案）→ 细思极恐（前房客的信、清理者、真相）→ 终章桌面暴走（三选一结局）。
+- **它知道得太多了**：直接问咕噜「你知道什么」，它会说出**真实的本地数据**——你启动过几次、累计玩了多久、第一次来的时间。全部来自项目内的 `save\game.json`，**不联网**。
 - **3 种结局 + 1 个隐藏结局**：带它走 / 让它留下 / 删除它；集齐 12 颗「咕噜彩蛋」（藏在虚拟系统里的隐藏文件，找到后丢进回收站）解锁隐藏结局。
 - **通关后 · 陪伴模式**：咕噜常住你的桌面文件夹，每天整蛊、讲笑话、找你玩记忆游戏。
 
@@ -32,9 +32,12 @@ python main.py                 # 正常启动
 python main.py --name 阿明     # 指定房客名字
 python main.py --reset         # 重置进度并重建虚拟系统
 python main.py --no-tts        # 关闭语音（电脑没装中文语音时）
+python main.py --no-gui        # 不用图形悬浮层，改用纯文本界面（服务器/非 Windows 也能玩）
 ```
 
 > 首次启动会让你输入名字（回车默认「主人」），然后自动创建 `vfsystem\` 虚拟系统目录。
+> 没有 tkinter 或没有图形显示时，会自动退化为纯文本界面（也可以显式加 `--no-gui`）。
+> 系统不支持窗口透明抠图（例如 Linux/X11）时，悬浮层会退化成屏幕右下角一块小面板，而不是铺满整屏。
 
 ## 🎮 怎么玩
 
@@ -42,8 +45,9 @@ python main.py --no-tts        # 关闭语音（电脑没装中文语音时）
 2. 听咕噜布置任务 → 点任务卡「**打开位置**」→ 真实资源管理器会跳到 `vfsystem\…`。
 3. 按任务卡步骤操作真实文件：读文件、解密码、移动/新建/删除。
 4. 完成后任务会自动判定（观测台会显示你做了什么）；卡住了点「**提示**」或在输入框发 `提示`。
-5. 需要解密时，输入框直接发：`解码 rot13 <内容>` / `解码 base64 <内容>` / `解码 摩斯 <内容>` / `解码 hex <内容>`。
-6. 想跟咕噜聊天：随便打字；点一下幽灵也可以；发 `玩` 可以开记忆游戏。
+5. 需要解密时，输入框直接发：`解码 rot13 <内容>` / `解码 base64 <内容>` / `解码 摩斯 <内容>` / `解码 hex <内容>` / `解码 caesar:3 <内容>` / `解码 auto <内容>`（auto 会挨个试一遍）。
+6. 想跟咕噜聊天：随便打字；点一下幽灵也可以；发 `玩` 开记忆游戏，发 `反应` 开反应测试。
+7. 纯文本模式（`--no-gui`）下输入 `help` 看命令，`quit` 退出；结局/选择用序号回答。
 
 > 💡 **关键技巧**：`vfsystem` 里的隐藏文件/隐藏系统目录（`System Volume Information`、`ProgramData`、`Recovery`）需要勾选资源管理器「查看 → 隐藏的项目」才看得到（第 1 章的彩蛋就会教你这件事）。
 > 💡 **彩蛋**：咕噜在 12 章里各藏了一颗 `eggN.txt`（隐藏文件，内容是「咕噜彩蛋」），找到后**丢进 `$Recycle.Bin`（回收站）**即算收集。
@@ -53,21 +57,22 @@ python main.py --no-tts        # 关闭语音（电脑没装中文语音时）
 
 ```
 houseguest/
-├── main.py            # 入口（单实例 + 章节状态机 + 观测台）
+├── main.py            # 入口（单实例 + 章节状态机 + 观测台 + 界面选择）
 ├── start.bat          # 一键启动
 ├── run_tests.bat      # 一键跑测试
 ├── game/
-│   ├── ciphers.py     # 密码工具箱（ROT13/凯撒/Base64/摩斯/藏头/hex）
-│   ├── systemdir.py   # 虚拟系统目录构建器（仿真实 Windows 结构/隐藏属性/伪造时间戳）
+│   ├── ciphers.py     # 密码工具箱（ROT13/凯撒/Base64/摩斯/藏头/hex/自动尝试）
+│   ├── systemdir.py   # 虚拟系统目录构建器（路径限制/隐藏属性/伪造时间戳）
 │   ├── story.py       # 12 章剧情 + 结局 + 陪伴模式文案
-│   ├── state.py       # 存档与本地指标（save/game.json）
+│   ├── state.py       # 存档与本地指标（save/game.json，原子写入）
 │   ├── tracker.py     # 目录轮询 + 真实操作检测 + 彩蛋检测
 │   ├── ghost.py       # 咕噜的性格/对话/提示/环境台词
 │   ├── overlay.py     # tkinter 透明悬浮层（幽灵/气泡/任务卡/小游戏/结局）
+│   ├── console_ui.py  # 纯文本界面（无 tkinter / --no-gui 时的退化方案）
 │   ├── tts.py         # Windows SAPI 语音
 │   └── audiofx.py     # 程序化音效
-├── tools/smoke.py     # GUI 冒烟测试
-├── tests/             # 38 项单元测试（含无头全流程通关测试）
+├── tools/smoke.py     # 界面冒烟测试（用临时目录，不碰你的存档）
+├── tests/             # 125 项单元测试（含无头全流程通关测试）
 ├── vfsystem/          # 【运行时生成】虚拟系统目录（仿真实 Windows，删除即卸载系统）
 └── save/              # 【运行时生成】存档（删除即重置）
 ```
@@ -75,25 +80,47 @@ houseguest/
 ## 🔒 安全边界（重要）
 
 - 游戏**只读写** `vfsystem\` 与 `save\` 两个文件夹，**绝不触碰**系统目录、注册表、开机启动项、其他任何路径。
-- **不联网**：咕噜"知道"的信息全部来自本机（系统时间、你的用户名、本地存档里的启动次数/时长）。
-- 语音用 Windows 自带 SAPI（PowerShell 子进程），失败自动静默降级为纯文字。
+- 所有进出 `vfsystem\` 的路径都会被规范化：`..`、绝对路径、盘符（`C:`）、UNC 一律被拒绝（`ValueError`），越界读写无法发生。
+- 你输入的名字会先被清洗（去掉 `/ \ : " * ? < > |`、控制字符、保留设备名，截断到 24 字符）再用于 `Users\<名字>\`，所以名字里塞引号/`&` 也没法变成命令。
+- 设置隐藏属性用 `attrib` 的**参数列表**调用（不走 `cmd /c`），不存在命令注入。
+- **不联网**：咕噜"知道"的信息全部来自本机（系统时间、本地存档里的启动次数/时长）。
+- 语音用 Windows 自带 SAPI（PowerShell 子进程），失败自动静默降级为纯文字，并且不会反复重试。
 - **卸载**：删掉整个 `houseguest` 文件夹即彻底干净；想单独重置进度就删 `save`，想重装"系统"就删 `vfsystem`。
 
 ## 🧪 测试
 
 ```bash
-python -m unittest discover -s tests -t . -v   # 或双击 run_tests.bat
-python tools/smoke.py                          # GUI 冒烟（会闪一下窗口）
+python -m unittest discover -s tests -p "test_*.py"   # 等价于下面两条
+python -m unittest discover -s tests -t .             # 或双击 run_tests.bat
+python tools/smoke.py                                 # 界面冒烟（会闪一下窗口）
+python tools/smoke.py --console                       # 纯文本界面冒烟（无需 tkinter）
+python tools/smoke.py --keep                          # 保留临时目录，便于事后翻看
 ```
 
-38 项测试：密码工具 / 系统目录构建 / 剧情数据完整性（12 章可解、3+1 结局可达、12 颗彩蛋）/ 存档 / 目录观测与操作检测 / **无头全流程通关**。
+**125 项测试**（全部离线、不依赖真实桌面）：
+
+| 测试文件 | 项数 | 覆盖 |
+| --- | --- | --- |
+| `test_ciphers.py` | 7 | ROT13 / 凯撒 / Base64 / 摩斯 / hex / 异或 / 频率 |
+| `test_console_ui.py` | 12 | 纯文本界面：任务卡、序号选择、结局动作、定时器 |
+| `test_game_flow.py` | 11 | 无头整局流程：答题推进、第 7→8 章谜题、结局触发、重置 |
+| `test_ghost.py` | 19 | 提示按章推进、解码命令、真实本地数据台词 |
+| `test_overlay.py` | 10 | 窗口几何、粒子生命周期、关闭后不再回调（tkinter 缺失时自动跳过） |
+| `test_puzzles.py` | 7 | 每章谜题**真能做出来**：线索→答案一致、路径都在 vfsystem 内 |
+| `test_security.py` | 14 | 路径越界拒绝、玩家名清洗、attrib 不走 shell |
+| `test_state.py` | 11 | 存档原子写入/并发/损坏文件/无目录路径 |
+| `test_story.py` | 10 | 12 章数据完整性、3+1 结局、12 颗彩蛋、密文可解 |
+| `test_systemdir.py` | 6 | 虚拟系统结构、时间戳、隐藏属性、覆盖隐藏文件 |
+| `test_tracker.py` | 15 | 目录差异、各类文件目标、彩蛋判定、观测器重启 |
+| `test_walkthrough.py` | 3 | 无头全流程通关 + 三种结局可达 |
 
 ## 📚 玩法提示（轻微剧透）
 
-- 第 1 章答案就在 `boot.ini` 第一行；第 3 章三位密码按 Calculator→ChatRoom→MusicBox 的顺序拼，写入 `Windows\System32\passport.txt`。
-- 第 5 章把 `$Recycle.Bin` 里的碎片按**文件大小**排序，读每片第一个字。
+- 第 1 章答案就在 `boot.ini` 第一行（`[boot loader]`）。
+- 第 3 章三位密码按 Calculator→ChatRoom→MusicBox 的顺序拼（3、9、6），写入 `Windows\System32\passport.txt`。
+- 第 5 章把 `$Recycle.Bin` 里的碎片按**文件大小**从小到大排序，读每片第一个字 →「别进深处」。
 - 第 6 章 Base64 要解**两层**（`virus.zip.txt`）；第 11 章 ROT13 要解**两次**（`truth.txt`）。
-- 三封旧信的首字连读 = 第 8 章「夜」的通行证内容，写入 `System Volume Information\passport.txt`。
+- 第 7 章三封旧信：**每封信正文每一段的第一个字**（署名行不算），按 guest_1 → guest_2 → guest_3 连读 =「深夜勿入夜」，这就是第 8 章「夜」的通行证内容，写进 `System Volume Information\passport.txt`。
 - 隐藏结局：集齐 12 颗蛋后，在终章选择「带它走」。
 
 ---

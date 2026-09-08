@@ -2,13 +2,20 @@
 """
 state.py — 存档与"它知道你的事"（本地指标）
 全部数据只存在项目目录下的 save/game.json，不联网。
+
+写入策略：主线程与目录观测线程都会调用 save()，因此这里用一把锁串行化，
+并且先写临时文件再 os.replace 原子替换——避免两个线程同时写导致存档被截断。
 """
 from __future__ import annotations
 import datetime
 import json
 import os
 import socket
+import threading
 from typing import Dict, List, Optional
+
+# 进程内所有 State 实例共用（同一进程只有一个存档文件）
+_SAVE_LOCK = threading.RLock()
 
 
 class State:
@@ -29,7 +36,7 @@ class State:
         }
         self.daily = {'days_met': 0, 'last_day': '', 'pranks_today': []}
         self._session_start: Optional[datetime.datetime] = None
-        self._loaded = False
+        self.loaded = False   # 是否真的读到了已有存档（首次启动为 False）
 
     # ---------------- 存取 ----------------
     @classmethod
@@ -48,13 +55,12 @@ class State:
                 st.endings = list(data.get('endings', []))
                 st.metrics.update(data.get('metrics', {}))
                 st.daily.update(data.get('daily', {}))
-                st._loaded = True
+                st.loaded = True
             except Exception:
                 pass
         return st
 
     def save(self) -> None:
-        os.makedirs(os.path.dirname(self.save_path), exist_ok=True)
         data = {
             'player_name': self.player_name,
             'chapter': self.chapter,
@@ -66,8 +72,16 @@ class State:
             'metrics': self.metrics,
             'daily': self.daily,
         }
-        with open(self.save_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=1)
+        parent = os.path.dirname(self.save_path)
+        with _SAVE_LOCK:
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            tmp = self.save_path + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=1)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, self.save_path)
 
     # ---------------- 生命周期 ----------------
     def on_launch(self) -> None:
@@ -141,9 +155,6 @@ class State:
                 pass
 
     # ---------------- 便捷 ----------------
-    def has_key(self, key: str) -> bool:
-        return key in self.inventory
-
     def give_key(self, key: str) -> None:
         if key not in self.inventory:
             self.inventory.append(key)

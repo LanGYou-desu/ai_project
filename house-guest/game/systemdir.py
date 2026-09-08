@@ -8,15 +8,52 @@ systemdir.py — 虚拟系统目录构建器
 - 历史文件用 os.utime 伪造"修改日期"（资源管理器里显示 2001/2005 年）。
 - 系统层目录/文件一律英文命名；仅用户个人内容（文档/回收站里的文件）保留中文。
 - 游戏的全部"系统活动"都被圈在这个目录里，删掉 vfsystem 即彻底干净。
+
+安全边界（见 _safe_rel / _abs）：
+- 所有相对路径都会被规范化，包含 ".."、绝对路径、盘符（C:）、UNC 的一律抛 ValueError；
+- 玩家名会被 sanitize_name 清洗后才用于 Users/<名字>/ 目录；
+- attrib 调用使用参数列表（shell=False），玩家名里的引号/& 无法注入命令。
 """
 from __future__ import annotations
 import datetime
 import json
 import os
+import re
 import subprocess
 from typing import Dict, List, Optional
 
 MANIFEST = "manifest.json"
+
+# Windows 文件名非法字符 + 控制字符
+_ILLEGAL_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+# Windows 保留设备名（不能作为文件/目录名）
+_RESERVED_NAMES = frozenset(
+    ['CON', 'PRN', 'AUX', 'NUL'] +
+    ['COM%d' % i for i in range(1, 10)] +
+    ['LPT%d' % i for i in range(1, 10)]
+)
+
+
+def sanitize_name(name: str, fallback: str = '主人') -> str:
+    """把玩家名清洗成一个安全的目录名（去掉路径分隔符/引号/控制字符等）。
+
+    玩家名会直接参与 Users/<名字>/ 这样的路径，也可能被拼进 attrib 参数，
+    因此这里必须拒绝一切有特殊含义的字符。
+    另外还要挡掉代理对（surrogate）——终端编码不对时 input() 可能返回
+    \\udcxx 之类的字符，它们没法写进 UTF-8 存档（会让 json.dump 直接崩）。
+    """
+    cleaned = []
+    for ch in _ILLEGAL_CHARS.sub('', str(name or '')):
+        if 0xD800 <= ord(ch) <= 0xDFFF:      # 孤立的代理字符
+            continue
+        if not ch.isprintable():
+            continue
+        cleaned.append(ch)
+    s = ''.join(cleaned).strip().strip('. ')
+    s = s[:24]
+    if not s or s.upper() in _RESERVED_NAMES:
+        return fallback
+    return s
 
 
 def _fmt(ts: datetime.datetime) -> float:
@@ -32,16 +69,20 @@ def set_mtime(path: str, year: int, month: int = 1, day: int = 1, hour: int = 0,
 
 
 def hide(path: str) -> None:
-    """给文件/目录设置真实隐藏属性（attrib +h，路径需加引号防空格）"""
+    """给文件/目录设置真实隐藏属性（attrib +h）。
+
+    用参数列表调用（shell=False）：路径里的引号、&、| 等不会被 cmd 解释，
+    既避免命令注入，也正确处理含空格的路径。
+    """
     try:
-        subprocess.run('attrib +h "%s"' % path, check=False, capture_output=True, shell=True)
+        subprocess.run(['attrib', '+h', path], check=False, capture_output=True)
     except Exception:
         pass
 
 
 def show(path: str) -> None:
     try:
-        subprocess.run('attrib -h "%s"' % path, check=False, capture_output=True, shell=True)
+        subprocess.run(['attrib', '-h', path], check=False, capture_output=True)
     except Exception:
         pass
 
@@ -68,9 +109,34 @@ class SystemDir:
     def rel(self, abspath: str) -> str:
         return os.path.relpath(abspath, self.cdrive)
 
+    # ---------------- 路径限制（安全边界） ----------------
+    def _safe_rel(self, relpath: str) -> str:
+        """把相对路径规范化；越界（..、绝对路径、盘符、UNC）抛 ValueError。"""
+        raw = str(relpath or '').replace('\\', '/').strip()
+        if not raw:
+            return ''
+        if raw.startswith('/') or raw.startswith('//') or re.match(r'^[A-Za-z]:', raw):
+            raise ValueError('拒绝绝对路径: %r' % (relpath,))
+        parts: List[str] = []
+        for part in raw.split('/'):
+            if part in ('', '.'):
+                continue
+            if part == '..':
+                raise ValueError('拒绝越界路径: %r' % (relpath,))
+            parts.append(part)
+        return os.path.join(*parts) if parts else ''
+
+    def _abs(self, relpath: str) -> str:
+        """相对 vfsystem 根的绝对路径；越界抛 ValueError。"""
+        full = os.path.abspath(os.path.join(self.cdrive, self._safe_rel(relpath)))
+        root = os.path.abspath(self.cdrive)
+        if full != root and not full.startswith(root + os.sep):
+            raise ValueError('路径越出 vfsystem: %r' % (relpath,))
+        return full
+
     # ---------------- 文件/目录操作（都会记录进清单） ----------------
     def ensure_dir(self, relpath: str, year: Optional[int] = None) -> str:
-        path = os.path.join(self.cdrive, relpath)
+        path = self._abs(relpath)
         os.makedirs(path, exist_ok=True)
         if year:
             set_mtime(path, year)
@@ -78,8 +144,10 @@ class SystemDir:
 
     def write_file(self, relpath: str, content: str, year: Optional[int] = None,
                    hidden: bool = False, binary_hint: bool = False) -> str:
-        path = self.ensure_dir(os.path.dirname(relpath))
-        full = os.path.join(path, os.path.basename(relpath))
+        full = self._abs(relpath)
+        parent = os.path.dirname(full)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
         # Windows 上对"已存在的隐藏文件"直接写会 PermissionError，
         # 因此先删除旧文件再写（隐藏属性随新文件重建）。
         if os.path.exists(full):
@@ -99,17 +167,23 @@ class SystemDir:
             hide(full)
         return full
 
-    def manifest_add(self, relpath: str, note: str = '') -> None:
-        data = {}
+    def _manifest_read(self) -> Dict:
         if os.path.exists(self.manifest_path):
             try:
                 with open(self.manifest_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
+                    return json.load(f)
             except Exception:
-                data = {}
-        data[relpath] = {'note': note, 'created': datetime.datetime.now().isoformat(timespec='seconds')}
+                return {}
+        return {}
+
+    def _manifest_write(self, data: Dict) -> None:
         with open(self.manifest_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=1)
+
+    def manifest_add(self, relpath: str, note: str = '') -> None:
+        data = self._manifest_read()
+        data[relpath] = {'note': note, 'created': datetime.datetime.now().isoformat(timespec='seconds')}
+        self._manifest_write(data)
 
     # ---------------- 构建基础系统 ----------------
     def build(self, player_name: str) -> None:
@@ -202,7 +276,7 @@ class SystemDir:
         for guest in ['guest_1', 'guest_2', 'guest_3']:
             self.ensure_dir('Users/%s/Documents' % guest, 2001)
             self.ensure_dir('Users/%s/Desktop' % guest, 2001)
-        player = player_name.strip() or '主人'
+        player = sanitize_name(player_name)
         self.ensure_dir('Users/%s/Documents' % player, 2025)
         self.ensure_dir('Users/%s/Desktop' % player, 2025)
         self.ensure_dir('Users/%s/Pictures' % player, 2025)
@@ -266,14 +340,18 @@ class SystemDir:
     def inject(self, files: List[Dict]) -> None:
         """story 章节开始时调用：向虚拟系统写入新文件（真实出现在资源管理器里）。
         files: [{path:'Users/x/y.txt', content:'...', year:2005, hidden:True, note:'章节5线索'}]
+        清单只读写一次（原先每个文件都要重读重写整个 manifest.json）。
         """
+        data = self._manifest_read()
+        now = datetime.datetime.now().isoformat(timespec='seconds')
         for spec in files:
             self.write_file(spec['path'], spec.get('content', ''),
                             year=spec.get('year'), hidden=spec.get('hidden', False))
-            self.manifest_add(spec['path'], spec.get('note', '章节注入'))
+            data[spec['path']] = {'note': spec.get('note', '章节注入'), 'created': now}
+        self._manifest_write(data)
 
     def exists(self, relpath: str) -> bool:
-        return os.path.exists(os.path.join(self.cdrive, relpath))
+        return os.path.exists(self._abs(relpath))
 
     def full(self, relpath: str) -> str:
-        return os.path.join(self.cdrive, relpath)
+        return self._abs(relpath)

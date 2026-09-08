@@ -19,11 +19,10 @@ class GhostBrain:
 
     def __init__(self, state: State):
         self.state = state
-        self._hint_idx = int(state.flags.get('hint_%d' % state.chapter, 0))
 
     # ---------------- 工具：解码 ----------------
     def try_decode(self, text: str) -> Optional[str]:
-        """输入形如：解码 rot13 <内容> / 解码 base64 <内容> / 解码 摩斯 <内容>"""
+        """输入形如：解码 rot13 <内容> / 解码 base64 <内容> / 解码 摩斯 <内容> / 解码 auto <内容>"""
         low = text.strip().lower()
         for prefix in ['解码', '解密', 'translate', 'decode']:
             if low.startswith(prefix):
@@ -44,6 +43,8 @@ class GhostBrain:
                 return ciphers.hex_decode(payload)
             if alg in ('morse', '摩斯', '摩斯电码'):
                 return ciphers.morse_decode(payload)
+            if alg in ('auto', 'guess', '猜', '自动'):
+                return self._auto_decode(payload)
             if alg.startswith('caesar') or alg.startswith('凯撒'):
                 shift = 13
                 for part in alg.replace('：', ':').split(':'):
@@ -51,9 +52,20 @@ class GhostBrain:
                         shift = int(part)
                         break
                 return ciphers.caesar(payload, shift)
-            return '我不认识「%s」这种编码。我知道：rot13 / caesar / b64 / hex / 摩斯' % alg
+            return '我不认识「%s」这种编码。我知道：rot13 / caesar / b64 / hex / 摩斯 / auto' % alg
         except Exception as e:
             return '……解不动。这段不像是我认识的编码（%s）' % str(e)[:40]
+
+    @staticmethod
+    def _auto_decode(payload: str) -> str:
+        """挨个试常见编码（ciphers.decode_guess），把有结果且与原串不同的列出来。"""
+        lines = []
+        for name, value in ciphers.decode_guess(payload):
+            if value and value != payload:
+                lines.append('%s → %s' % (name, value[:80]))
+        if not lines:
+            return '……我挨个试了一遍，什么都没解出来。'
+        return '我挨个试了一遍：\n' + '\n'.join(lines)
 
     # ---------------- 回复 ----------------
     def respond(self, text: str) -> str:
@@ -68,7 +80,11 @@ class GhostBrain:
             return dec
 
         if '解码' in low or '解密' in low:
-            return '用法：解码 <算法> <内容>，算法可选 rot13 / caesar / b64 / hex / 摩斯'
+            return '用法：解码 <算法> <内容>，算法可选 rot13 / caesar / b64 / hex / 摩斯 / auto'
+
+        if any(k in low for k in ['你知道什么', '我的数据', '数据', '隐私', '监视', '跟踪']):
+            facts = self.state.real_facts()[:5]
+            return '（咕噜掰着手指）' + '；'.join(facts) + '。这些都是我在你自己的电脑里翻到的，我从不联网。'
 
         if '(戳了戳咕噜)' in low or '戳' in low and len(low) <= 6:
             return random.choice([
@@ -142,13 +158,18 @@ class GhostBrain:
 
     # ---------------- 提示 ----------------
     def hint(self, ch_id: int) -> str:
+        """按章节分别推进提示：计数存在 flags['hint_<章节号>']。
+
+        注意：不能把计数缓存在实例属性里——GhostBrain 在整局游戏里只创建一次，
+        那样会让上一章用掉的提示次数带到下一章（下一章会直接跳到最后一条提示）。
+        """
         ch = story.get_chapter(ch_id)
         if not ch or not ch.get('hints'):
             return '这一章没有提示——它已经给你全部线索了。'
         hints = ch['hints']
-        idx = min(self._hint_idx, len(hints) - 1)
-        self._hint_idx += 1
-        self.state.flags['hint_%d' % ch_id] = self._hint_idx
+        idx = int(self.state.flags.get('hint_%d' % ch_id, 0) or 0)
+        idx = min(max(idx, 0), len(hints) - 1)
+        self.state.flags['hint_%d' % ch_id] = idx + 1
         self.state.save()
         return '提示 %d/%d：%s' % (idx + 1, len(hints), hints[idx])
 
