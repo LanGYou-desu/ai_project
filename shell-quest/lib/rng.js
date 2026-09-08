@@ -14,18 +14,7 @@ function mulberry32(seed) {
 function createRng(seed) {
   const rnd = mulberry32(seed);
   return {
-    rnd,
-    int(min, max) { return min + Math.floor(rnd() * (max - min + 1)); },
-    pick(arr) { return arr[Math.floor(rnd() * arr.length)]; },
-    shuffle(arr) {
-      const a = arr.slice();
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(rnd() * (i + 1));
-        const t = a[i]; a[i] = a[j]; a[j] = t;
-      }
-      return a;
-    },
-    chance(p) { return rnd() < p; }
+    pick(arr) { return arr[Math.floor(rnd() * arr.length)]; }
   };
 }
 

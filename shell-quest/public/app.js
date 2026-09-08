@@ -79,19 +79,34 @@
   }
 
   async function fetchState() {
-    const r = await fetch('/api/state');
-    state = await r.json();
-    renderState();
+    try {
+      const r = await fetch('/api/state');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      state = await r.json();
+      renderState();
+    } catch (e) {
+      addLine('无法连接服务器：' + e.message, 'err');
+    }
   }
 
   async function runCommand(line) {
     addPrompt(state ? '' : '');
-    const r = await fetch('/api/exec', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ line: line })
-    });
-    const data = await r.json();
+    let data = null;
+    try {
+      const r = await fetch('/api/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ line: line })
+      });
+      data = await r.json();
+      if (!r.ok) {
+        addLine(String(data.error || ('请求失败：HTTP ' + r.status)), 'err');
+        return;
+      }
+    } catch (e) {
+      addLine('无法连接服务器：' + e.message, 'err');
+      return;
+    }
     state = data.state;
     const out = String(data.output || '');
     if (out) {
@@ -144,7 +159,7 @@
 
   resetBtn.addEventListener('click', function () {
     if (confirm('确定重置进度？世界文件会保留。')) {
-      fetch('/api/reset', { method: 'POST' }).then(function (r) { return r.json(); }).then(function (d) {
+      fetch('/api/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(function (r) { return r.json(); }).then(function (d) {
         state = d.state;
         termOut.innerHTML = '';
         renderState();

@@ -2,15 +2,66 @@
 // ============================================================
 // 档案馆-7 · 世界生成器
 // 生成一个真实的、确定性的沙盒目录（默认 world/）。
-// 同一种子 → 同一个世界（文件树与内容完全一致，可复现可测试）。
+// 同一种子 → 同一个世界（文件树、文件内容、清单完全一致）。
+//
+// 安全性：generateWorld 会先删除目标目录，因此必须拒绝
+// 项目根目录、项目上级目录、文件系统根目录以及符号链接/目录联接，
+// 避免 `node lib/worldgen.js .` 这类误操作毁掉源码。
+// 生成过程先写临时目录，成功后再替换目标，避免半成品世界。
 // ============================================================
 const fs = require('fs');
 const path = require('path');
 const { createRng } = require('./rng');
 const { b64e, rot13, caesar, xorBytes } = require('./crypto-utils');
-const { WORLD, FLAGS, ACT_TASKS, ACT_HINTS } = require('./worlddata');
+const { WORLD, FLAGS } = require('./worlddata');
 
 const SEED = 20810719;
+// 清单版本：worlddata 结构或生成规则变化时递增，服务器据此自动重建旧世界。
+const WORLD_VERSION = 2;
+
+function assertSafeWorldDir(rootDir) {
+  if (typeof rootDir !== 'string' || rootDir.trim() === '') {
+    throw new Error('世界目录不能为空');
+  }
+  const target = path.resolve(rootDir);
+  const projectRoot = path.resolve(__dirname, '..');
+  if (path.parse(target).root === target) {
+    throw new Error('拒绝把文件系统根目录作为世界目录：' + target);
+  }
+  const rel = path.relative(target, projectRoot);
+  if (rel === '') {
+    throw new Error('拒绝把项目根目录作为世界目录：' + target);
+  }
+  if (rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel)) {
+    throw new Error('拒绝把项目上级目录作为世界目录：' + target);
+  }
+  let lst = null;
+  try { lst = fs.lstatSync(target); }
+  catch (e) { if (e.code !== 'ENOENT') throw e; }
+  if (lst && lst.isSymbolicLink()) {
+    throw new Error('世界目录是符号链接/目录联接，拒绝删除：' + target);
+  }
+  return target;
+}
+
+function worldIsStale(rootDir, opts) {
+  const seed = opts && opts.seed !== undefined ? opts.seed : SEED;
+  const target = path.resolve(rootDir);
+  let lst;
+  try { lst = fs.lstatSync(target); } catch (e) { return true; }
+  if (lst.isSymbolicLink() || !lst.isDirectory()) return true;
+  const manifestPath = path.join(path.dirname(target), '世界清单.json');
+  let m;
+  try { m = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch (e) { return true; }
+  if (!m || m.version !== WORLD_VERSION || m.seed !== seed) return true;
+  if (!Array.isArray(m.files) || m.files.length === 0) return true;
+  if (typeof m.diskFileCount !== 'number' || m.diskFileCount !== m.files.length) return true;
+  for (const f of m.files) {
+    if (typeof f !== 'string' || f.length === 0 || f.indexOf('..') >= 0 || path.isAbsolute(f)) return true;
+    if (!fs.existsSync(path.join(target, f))) return true;
+  }
+  return false;
+}
 
 // ---- tar (ustar, 无压缩) ----
 function tarHeader(name, size) {
@@ -81,7 +132,7 @@ function resolveContent(desc, rng) {
         return buildTar(entries);
       }
       default:
-        return Buffer.from('（生成失败）\n', 'utf8');
+        throw new Error('未知内容类型：' + desc.kind);
     }
   }
   return Buffer.from('\n', 'utf8');
@@ -92,45 +143,71 @@ function resolveLine(line, rng) {
   return String(line);
 }
 
-// ---- 写入磁盘 ----
+// ---- 写入磁盘：先写临时目录，成功后再替换目标 ----
 function generateWorld(rootDir, opts) {
   const seed = opts && opts.seed !== undefined ? opts.seed : SEED;
+  const target = assertSafeWorldDir(rootDir);
+  const parent = path.dirname(target);
+  const staging = path.join(parent, '.world-staging-' + process.pid + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8));
   const rng = createRng(seed);
 
-  fs.rmSync(rootDir, { recursive: true, force: true });
-  fs.mkdirSync(rootDir, { recursive: true });
+  fs.rmSync(staging, { recursive: true, force: true });
+  fs.mkdirSync(staging, { recursive: true });
 
   const written = [];
   let totalFiles = 0;
-  for (const [rel, desc] of Object.entries(WORLD)) {
-    const abs = path.join(rootDir, rel);
-    fs.mkdirSync(path.dirname(abs), { recursive: true });
-    const content = resolveContent(desc, rng);
-    fs.writeFileSync(abs, content);
-    written.push(rel);
-    totalFiles++;
-    if (desc && desc.kind === 'tar' && Array.isArray(desc.entries)) totalFiles += desc.entries.length;
+  try {
+    for (const [rel, desc] of Object.entries(WORLD)) {
+      const abs = path.join(staging, rel);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      const content = resolveContent(desc, rng);
+      fs.writeFileSync(abs, content);
+      written.push(rel);
+      totalFiles++;
+      if (desc && desc.kind === 'tar' && Array.isArray(desc.entries)) totalFiles += desc.entries.length;
+    }
+
+    fs.rmSync(target, { recursive: true, force: true });
+    fs.renameSync(staging, target);
+
+    // 清单在替换成功后再写：万一写清单失败，下一次启动会因为清单陈旧而重建，而不是出现“新清单+旧世界”。
+    const manifest = {
+      version: WORLD_VERSION,
+      seed: seed,
+      diskFileCount: written.length,
+      fileCount: totalFiles,
+      files: written.slice().sort()
+    };
+    fs.writeFileSync(path.join(parent, '世界清单.json'), JSON.stringify(manifest, null, 2), 'utf8');
+  } catch (e) {
+    try { fs.rmSync(staging, { recursive: true, force: true }); } catch (e2) { /* 清理失败就算了 */ }
+    throw e;
   }
 
-  const manifest = {
-    seed: seed,
-    generatedAt: new Date().toISOString(),
-    fileCount: totalFiles,
-    files: written.slice().sort()
-  };
-  const manifestPath = path.join(rootDir, '..', '世界清单.json');
-  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
-
-  return { seed: seed, fileCount: totalFiles, files: written.slice().sort() };
+  return { seed: seed, fileCount: totalFiles, diskFileCount: written.length, files: written.slice().sort() };
 }
 
 if (require.main === module) {
-  const dir = process.argv[2] || path.join(__dirname, '..', 'world');
-  const seed = process.argv[3] !== undefined ? Number(process.argv[3]) : SEED;
-  const res = generateWorld(dir, { seed: seed });
-  console.log('[worldgen] 世界已生成：' + res.fileCount + ' 个文件，种子 ' + res.seed);
-  console.log('目录：' + path.resolve(dir));
+  try {
+    const dir = process.argv[2] || path.join(__dirname, '..', 'world');
+    const seedArg = process.argv[3] !== undefined ? Number(process.argv[3]) : SEED;
+    if (!Number.isFinite(seedArg)) throw new Error('种子必须是数字');
+    const res = generateWorld(dir, { seed: seedArg });
+    console.log('[worldgen] 世界已生成：' + res.diskFileCount + ' 个磁盘文件（含 tar 内条目共 ' + res.fileCount + ' 个内容单元），种子 ' + res.seed);
+    console.log('目录：' + path.resolve(dir));
+  } catch (e) {
+    console.error('[worldgen] ' + e.message);
+    process.exit(1);
+  }
 }
 
-module.exports = { generateWorld, buildTar, FLAGS, ACT_TASKS, ACT_HINTS, SEED };
+module.exports = {
+  generateWorld,
+  buildTar,
+  tarHeader,
+  assertSafeWorldDir,
+  worldIsStale,
+  WORLD_VERSION,
+  FLAGS,
+  SEED
+};

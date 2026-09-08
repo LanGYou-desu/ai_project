@@ -30,8 +30,10 @@ function xorBytes(buf, key) {
 }
 
 function hexToBuf(hexText) {
-  const clean = String(hexText).replace(/[^0-9a-fA-F]/g, '');
-  if (clean.length % 2 !== 0) return null;
+  const s = String(hexText);
+  if (!/^[0-9a-fA-F\s]*$/.test(s)) return null;
+  const clean = s.replace(/\s+/g, '');
+  if (clean.length === 0 || clean.length % 2 !== 0) return null;
   return Buffer.from(clean, 'hex');
 }
 
