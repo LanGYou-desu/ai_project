@@ -52,13 +52,15 @@
   let lastNoticeCount = 0;
   let lastFileCount = 0;
   let pendingCid = null;
-  let currentFile = null;
+  let awaitingClose = false;   // 正在展示检查点解析，别被下一次轮询关掉
+  let endingShown = false;     // 结局弹窗只自动弹一次
 
   function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
   function fmtClock(sec) {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
+    const s = Number(sec) > 0 ? Number(sec) : 0;
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
     return pad2(h) + ':' + pad2(m);
   }
 
@@ -104,7 +106,6 @@
   }
 
   async function openFile(file) {
-    currentFile = file;
     const r = await fetch('/api/view', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -113,7 +114,7 @@
     const d = await r.json();
     fileViewer.innerHTML = '';
     const pre = document.createElement('pre');
-    pre.textContent = d.content || '（文件读取失败）';
+    pre.textContent = d.content || (d.message || '（文件读取失败）');
     fileViewer.appendChild(pre);
     refresh();
   }
@@ -145,9 +146,11 @@
     head.style.cssText = 'font-size:11px;color:var(--dim);margin-bottom:8px;';
     head.textContent = '关系人';
     board.appendChild(head);
+    // 老周只有在值班表（ev-3）出现之后才被标红，否则等于提前剧透检查点 2
+    const hintReady = state.delivered.some(function (e) { return e.id === 'ev-3'; });
     for (const s of SUSPECTS) {
       const div = document.createElement('div');
-      div.className = 'suspect' + (s.name.indexOf('老周') >= 0 ? ' hot' : '');
+      div.className = 'suspect' + (hintReady && s.name.indexOf('老周') >= 0 ? ' hot' : '');
       const n = document.createElement('div');
       n.className = 'sname';
       n.textContent = s.name;
@@ -176,6 +179,7 @@
   }
 
   function renderCheckpoint() {
+    if (awaitingClose) return;   // 玩家还没点“继续”，保持解析可见
     if (!state.checkpoint) {
       cpModal.classList.add('hidden');
       pendingCid = null;
@@ -193,6 +197,7 @@
       const b = document.createElement('button');
       b.className = 'cpOption';
       b.textContent = opt.label;
+      b.dataset.oid = opt.id;
       b.addEventListener('click', async function () {
         const r = await fetch('/api/answer', {
           method: 'POST',
@@ -200,70 +205,57 @@
           body: JSON.stringify({ cid: cp.cid, option: opt.id })
         });
         const d = await r.json();
-        // 标色
+        // 标色：正确选项由服务器在作答后返回（correctOption），作答前不下发
         const btns = cpOptions.querySelectorAll('.cpOption');
         btns.forEach(function (btn) {
           const id = btn.dataset.oid;
-          if (id === cp.correct) btn.classList.add('correct');
+          if (id === d.correctOption) btn.classList.add('correct');
           else if (id === opt.id) btn.classList.add('wrong');
           btn.disabled = true;
         });
-        cpExplain.textContent = (d.correct ? '✓ 正确。' : '✗ 错误。') + d.explain;
+        if (d.ok === false) {
+          cpExplain.textContent = d.message || '作答失败。';
+        } else {
+          cpExplain.textContent = (d.correct ? '✓ 正确。' : '✗ 错误。') + d.explain;
+        }
         cpExplain.classList.remove('hidden');
         cpClose.classList.remove('hidden');
+        awaitingClose = true;   // 阻止下一次轮询把弹窗和解析一起关掉
         refresh();
       });
-      b.dataset.oid = opt.id;
       cpOptions.appendChild(b);
     }
     cpModal.classList.remove('hidden');
   }
 
-  function renderEnding() {
-    if (state.ended) {
-      const r = fetch('/api/state').then(function (x) { return x.json(); }).then(function (d) {
-        state = d;
-        const ending = d.ending;
-        const map = {
-          perfect: '真相大白',
-          good: '营救成功，真凶在逃',
-          okay: '迟到的救援',
-          bad: '一夜之差',
-          worst: '沉默的夜班'
-        };
-        endTitle.textContent = '结局：' + (map[ending] || ending);
-        endScore.textContent = '注意力 ' + d.finalScore + ' 分 · 查看了 ' + d.evidenceViewed.length + ' 份证据 · 答对 ' + answeredCount(d) + ' 个检查点';
-        endText.textContent = endingText(ending);
-        endModal.classList.remove('hidden');
-      });
-    } else {
-      endModal.classList.add('hidden');
-    }
-  }
-
-  function answeredCount(d) {
+  function correctCount() {
     let n = 0;
-    for (const e of d.delivered) {
-      if (e.kind === 'checkpoint' && e.answered) n++;
+    for (const e of state.delivered) {
+      if (e.kind === 'checkpoint' && e.answeredCorrectly === true) n++;
     }
     return n;
   }
 
-  function endingText(ending) {
-    const texts = {
-      perfect: '00:40，你带着打印好的证据叫上门卫赵师傅，撬开配电间的锁。林薇蜷缩在角落里，还活着。警方从老周的电脑里找到了 ECHO 数据外传的完整记录。一周后，老周被捕。林薇出院那天给你发来一条消息："谢谢你，侦探。"你升任安全组长。',
-      good: '你在配电间找到了林薇。但因为你没能第一时间固定证据，老周连夜删除了所有记录并从后门离开。林薇安全了，真相却被埋掉了一半。',
-      okay: '你根据线索找到配电间，但门被反锁。等你联系安保砸开门时，已经 01:20。林薇自己想办法敲墙引起了赵师傅注意，勉强撑到了救援。老周利用这一夜销毁了大部分证据。',
-      bad: '你犹豫得太久。第二天清晨，保洁陈姐在 3 号机房配电间发现了昏迷的林薇。她被送进医院，但老周利用这一整夜销毁了全部证据。你总是想起那晚的敲门声。',
-      worst: '接下来的三天，你照常值班。直到第四天，才有人在 3 号机房配电间发现了林薇的工牌和一部没电的手机。她在里面被困了 52 个小时。你始终不知道那天晚上到底发生了什么。'
-    };
-    return texts[ending] || '';
+  function renderEnding() {
+    if (!state.ended) {
+      endModal.classList.add('hidden');
+      endingShown = false;
+      return;
+    }
+    if (endingShown) return;   // 玩家关掉之后不再自动弹出
+    endingShown = true;
+    endTitle.textContent = '结局：' + (state.endingTitle || state.ending || '');
+    endScore.textContent = '注意力 ' + state.finalScore + ' 分 · 查看了 ' +
+      state.evidenceViewed.length + ' 份证据 · 答对 ' + correctCount() + ' 个检查点';
+    // 结局正文由服务器从 lib/story.js 的 ENDINGS 下发，前端不再重复维护一份
+    endText.textContent = state.endingText || '';
+    endModal.classList.remove('hidden');
   }
 
   async function refresh() {
     const r = await fetch('/api/state');
     state = await r.json();
-    clock.textContent = fmtClock(state.elapsed);
+    clock.textContent = '已过 ' + fmtClock(state.elapsed);
     attentionEl.textContent = '注意力 ' + state.attention;
     renderChat();
     renderNotices();
@@ -280,18 +272,25 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ speed: Number(speedSel.value) })
     });
+    refresh();
   });
 
   restartBtn.addEventListener('click', function () {
     if (confirm('确定重新开始？所有进度和证据文件将被重置。')) {
-      fetch('/api/restart?fresh=1', { method: 'POST' }).then(function (r) { return r.json(); }).then(function () {
+      fetch('/api/restart?fresh=1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}'
+      }).then(function (r) { return r.json(); }).then(function () {
         location.reload();
       });
     }
   });
 
   cpClose.addEventListener('click', function () {
+    awaitingClose = false;
     cpModal.classList.add('hidden');
+    pendingCid = null;
     refresh();
   });
 
