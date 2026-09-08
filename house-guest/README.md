@@ -56,7 +56,7 @@ python main.py --no-gui        # 不用图形悬浮层，改用纯文本界面�
 ## 🗂 目录结构
 
 ```
-houseguest/
+house-guest/
 ├── main.py            # 入口（单实例 + 章节状态机 + 观测台 + 界面选择）
 ├── start.bat          # 一键启动
 ├── run_tests.bat      # 一键跑测试
@@ -85,7 +85,7 @@ houseguest/
 - 设置隐藏属性用 `attrib` 的**参数列表**调用（不走 `cmd /c`），不存在命令注入。
 - **不联网**：咕噜"知道"的信息全部来自本机（系统时间、本地存档里的启动次数/时长）。
 - 语音用 Windows 自带 SAPI（PowerShell 子进程），失败自动静默降级为纯文字，并且不会反复重试。
-- **卸载**：删掉整个 `houseguest` 文件夹即彻底干净；想单独重置进度就删 `save`，想重装"系统"就删 `vfsystem`。
+- **卸载**：删掉整个 `house-guest` 文件夹即彻底干净；想单独重置进度就删 `save`，想重装"系统"就删 `vfsystem`。
 
 ## 🧪 测试
 

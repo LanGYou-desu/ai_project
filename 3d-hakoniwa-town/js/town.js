@@ -519,9 +519,8 @@
     // 台面固定为局部 0.9（社殿墙体/台阶都以此为基准），
     // 台基向下加深到占地范围内的最低地形，四角不会悬空
     var platTop = 0.9;
-    var platH = platTop - (sbi.min - (sbi.max + platTop)) + 0.4;
-    platH = platTop - (sbi.min - sbi.max - platTop) + 0.4;
-    platH = 2 * platTop + (sbi.max - sbi.min) + 0.4;
+    /* 台基高度 = 台面厚度 ×2 + 占地高差 + 余量（前两版公式已被推导取代，勿再回退） */
+    var platH = 2 * platTop + (sbi.max - sbi.min) + 0.4;
     g.position.set(x, sbi.max + platTop - platH, z);
     g.rotation.y = -0.88;
     var plat = box(6.4, platH, 6.4, '#b7b2a7');

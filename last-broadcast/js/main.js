@@ -809,7 +809,7 @@
     var blob = new Blob([lines.join('\r\n')], { type: 'text/plain;charset=utf-8' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'lastbroadcast-log.txt';
+    a.download = 'last-broadcast-log.txt';
     document.body.appendChild(a);
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 400);
