@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOOM · 织机编程</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">▤</span>
+    <div class="brand-text">
+      <h1>LOOM</h1>
+      <p>织机编程 · 写一份织造程序，让打孔卡片把它变成布</p>
+    </div>
+  </div>
+  <div class="tools">
+    <label class="sel"><span>纹样库</span><select id="library"></select></label>
+    <label class="sel"><span>配色</span><select id="palette"></select></label>
+    <button id="btn-run" class="primary">运行 <kbd>Ctrl ↵</kbd></button>
+    <button id="btn-png">导出 PNG</button>
+    <button id="btn-copy">复制程序</button>
+    <button id="btn-help" class="icon" title="语法速查">?</button>
+    <button id="btn-sound" class="icon" title="织机音效">🔇</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ── 左：织造程序 ── -->
+  <section class="panel editor-panel">
+    <div class="panel-head">
+      <h2>织造程序</h2>
+      <span id="draft-title" class="muted"></span>
+    </div>
+    <div class="editor-wrap">
+      <div class="gutter" id="gutter"></div>
+      <textarea id="editor" spellcheck="false" autocomplete="off" wrap="off"></textarea>
+    </div>
+    <div class="diagnostics" id="diagnostics"></div>
+  </section>
+
+  <!-- ── 中：织物 ── -->
+  <section class="panel stage-panel">
+    <div class="panel-head">
+      <h2>织物</h2>
+      <div class="seg" id="view-seg">
+        <button data-view="real" class="active">写实织物</button>
+        <button data-view="drawdown">组织图</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="chk-grid"> 网格</label>
+      <label class="chk"><input type="checkbox" id="chk-paint"> 手绘提花</label>
+      <div class="zoom">
+        <button id="zoom-out">−</button>
+        <span id="zoom-label">100%</span>
+        <button id="zoom-in">+</button>
+        <button id="zoom-fit">适应</button>
+      </div>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="fabric"></canvas>
+      <div class="hint" id="hint">滚轮缩放 · 拖拽平移 · 双击适应</div>
+    </div>
+    <div class="dock">
+      <div class="dock-tabs" id="dock-tabs">
+        <button data-dock="cards" class="active">打孔卡片链</button>
+        <button data-dock="loom">织机</button>
+        <button data-dock="draft">织造图</button>
+      </div>
+      <div class="dock-body">
+        <canvas id="dock-canvas"></canvas>
+        <div class="loom-controls" id="loom-controls" hidden>
+          <button id="loom-play">▶ 开织</button>
+          <button id="loom-reset">重来</button>
+          <label>速度 <input type="range" id="loom-speed" min="0.2" max="3" step="0.1" value="1"></label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 右：分析 ── -->
+  <aside class="panel side-panel">
+    <div class="panel-head"><h2>分析</h2></div>
+    <div class="side-body">
+
+      <div class="card">
+        <h3>组织识别</h3>
+        <div class="identify" id="identify-label">—</div>
+        <ul class="kv" id="identify-kv"></ul>
+      </div>
+
+      <div class="card">
+        <h3>循环与浮长</h3>
+        <ul class="kv" id="stats-kv"></ul>
+        <div class="hist" id="hist"></div>
+      </div>
+
+      <div class="card">
+        <h3>结构提醒</h3>
+        <ul class="warn-list" id="warn-list"></ul>
+      </div>
+
+      <div class="card">
+        <h3>织物规格</h3>
+        <div class="spec-grid">
+          <label>经密 <input id="spec-epc" type="number" value="24" min="1" step="1"> 根/cm</label>
+          <label>纬密 <input id="spec-ppc" type="number" value="20" min="1" step="1"> 根/cm</label>
+          <label>经纱 <input id="spec-tw" type="number" value="20" min="1" step="1"> tex</label>
+          <label>纬纱 <input id="spec-tf" type="number" value="25" min="1" step="1"> tex</label>
+        </div>
+        <ul class="kv" id="spec-kv"></ul>
+      </div>
+
+    </div>
+  </aside>
+</main>
+
+<!-- ── 语法速查 ── -->
+<div class="overlay" id="help" hidden>
+  <div class="overlay-card">
+    <div class="overlay-head">
+      <h2>织造程序语法</h2>
+      <button id="help-close">关闭 ✕</button>
+    </div>
+    <div class="overlay-body">
+      <p class="lead">一份程序描述一台织机怎么动。数字一律从 1 开始数。</p>
+      <pre><code># 井号后面是注释
+title 2/2 斜纹
+warp 32 / weft 32        # 经线数 / 纬线数
+shafts 4 / treadles 4    # 综框数 / 踏杆数
+
+threading 1 2 3 4        # 穿综：第几根经线穿在第几片综框
+tieup                    # 提综：每根踏杆抬起哪些综框
+  1: 1 2
+  2: 2 3
+  3: 3 4
+  4: 4 1
+treadling 1 2 3 4        # 踏综：每一纬踩哪根踏杆
+
+warp-yarn #c8623c        # 经纱颜色（也支持 茜红 / 靛蓝 这样的中文色名）
+weft-yarn #2f4f63</code></pre>
+
+      <h3>也可以直接写提升计划</h3>
+      <p>跳过提综 / 踏综，逐纬指定抬起的经线 —— 这就是打孔卡片本身。</p>
+      <pre><code>warp 12 / weft 12
+liftplan
+  1: 5 6
+  2: 4 7
+  3: 3 8
+  4: -                # 空行表示这一纬不抬任何经线</code></pre>
+
+      <h3>小技巧</h3>
+      <ul class="tips">
+        <li>穿综 / 踏综给少了会按织造惯例自动循环补齐。</li>
+        <li><code>1-4</code> 等于 <code>1 2 3 4</code>，逗号也能用。</li>
+        <li>勾上「手绘提花」，直接在布面上涂改，松手后程序会自动改写 —— 画布就是代码。</li>
+        <li>织造图（右下角标签）是织工真正看的四象限图：穿综、提综、踏综、织物。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script src="js/shared/yarn.js"></script>
+<script src="js/shared/weave.js"></script>
+<script src="js/shared/dsl.js"></script>
+<script src="js/shared/patterns.js"></script>
+<script src="js/fabric.js"></script>
+<script src="js/draftview.js"></script>
+<script src="js/punchcards.js"></script>
+<script src="js/loomview.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

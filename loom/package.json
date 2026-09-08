@@ -1,0 +1,12 @@
+{
+  "name": "loom",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LOOM · 织机编程 —— 写一份织造程序，让打孔卡片把它变成布（纯前端零依赖）",
+  "scripts": {
+    "start": "cmd /c start.bat",
+    "test": "node test/run.js && node test/smoke-ui.js",
+    "smoke": "node test/smoke-ui.js",
+    "preview": "node tools/render-png.js all preview"
+  }
+}
