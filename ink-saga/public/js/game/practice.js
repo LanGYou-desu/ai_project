@@ -41,16 +41,18 @@
       this.input.onStrokeEnd = (pts) => { this.brush.end(); this._judge(InkInput.smooth(pts)); };
 
       this._resize();
-      window.addEventListener('resize', this._resize.bind(this));
+      this._onResize = this._resize.bind(this);
+      window.addEventListener('resize', this._onResize);
       this._buildBg();
       if (this.audio) this.audio.startMelody({ tempo: 0.7, gain: 0.02 });
     }
 
     _resize() {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
-      if (!w || !h) return;
-      this.canvas.width = w * dpr; this.canvas.height = h * dpr;
+      const w = this.canvas.clientWidth || 600;
+      const h = this.canvas.clientHeight || 420;
+      this.canvas.width = Math.max(1, Math.round(w * dpr));
+      this.canvas.height = Math.max(1, Math.round(h * dpr));
       this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       this._buildBg();
     }
@@ -183,6 +185,7 @@
 
     destroy() {
       this._destroyed = true;
+      if (this._onResize) window.removeEventListener('resize', this._onResize);
       if (this.input) this.input.destroy();
       if (this.audio) this.audio.stopMelody();
     }

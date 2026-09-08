@@ -26,7 +26,20 @@
     stone: { stat: 'qiMul', base: 0.06 }
   };
 
-  let uid = 1;
+  // uid 不再每次刷新都从 1 开始：避免重新打开页面后新装备与存档里的旧 uid 撞车，
+  // 导致 equipItem 误装备同 uid 的另一件装备。
+  let uid = Math.floor(Date.now() % 1000000000) * 1000;
+  function nextUid() { return uid++; }
+  function syncUid(source) {
+    let max = 0;
+    const scan = (it) => { if (it && typeof it.uid === 'number' && it.uid > max) max = it.uid; };
+    if (source) {
+      for (const slot of SLOTS) scan(source[slot]);
+      for (const it of source.inventory || []) scan(it);
+    }
+    if (max >= uid) uid = max + 1;
+    return uid;
+  }
   function rollRarity(rng) {
     const r = rng || Math.random;
     const total = RARITY.reduce((s, x) => s + x.w, 0);
@@ -41,7 +54,7 @@
     const mult = r.mult;
     const flavor = SLOT_FLAVOR[slot][Math.floor((rng || Math.random)() * SLOT_FLAVOR[slot].length)];
     const item = {
-      uid: uid++,
+      uid: nextUid(),
       slot,
       rarity: r.id,
       name: r.name + '·' + flavor,
@@ -76,6 +89,8 @@
     const sorted = [...items].sort((a, b) => rankOf(a.rarity) - rankOf(b.rarity));
     const three = sorted.slice(0, 3);
     const slot = three[0].slot;
+    if (!three.every(x => x && x.slot === slot)) return { ok: false, reason: '必须使用同槽位装备' };
+    if (three.some(x => rankOf(x.rarity) < 0)) return { ok: false, reason: '存在未知品质' };
     const next = rankOf(three[0].rarity) + 1;
     if (next >= RARITY.length) return { ok: false, reason: '已是圣品，无法再升' };
     const newItem = makeItem(slot, RARITY[next].id, r);
@@ -95,11 +110,5 @@
     return parts.join('　');
   }
 
-  // 求购价（按品质）
-  function priceOf(rarityId) {
-    const base = { white: 80, green: 200, blue: 500, purple: 1200, gold: 3000 };
-    return base[rarityId] || 80;
-  }
-
-  g.INK_EQUIP = { SLOTS, SLOT_CN, RARITY, RARITY_MAP, makeItem, statBonus, craftUpgrade, statText, priceOf, rollRarity };
+  g.INK_EQUIP = { SLOTS, SLOT_CN, RARITY, RARITY_MAP, makeItem, statBonus, craftUpgrade, statText, rollRarity, syncUid };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

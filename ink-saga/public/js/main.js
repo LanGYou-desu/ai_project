@@ -3,7 +3,7 @@
   'use strict';
 
   const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   // ---------- 数据 ----------
   const DICT = window.INK_DICT || [];
@@ -22,7 +22,7 @@
   let battleResolve = null; // 战斗结束后继续流程的闭包
 
   // ---------- 屏幕管理 ----------
-  const screens = ['menu', 'story', 'endless', 'gallery', 'growth', 'achievements', 'report', 'settings', 'battle'];
+  const screens = ['menu', 'story', 'stats', 'endless', 'gallery', 'equip', 'growth', 'achievements', 'report', 'settings', 'practice', 'timeattack', 'battle'];
   function showScreen(name) {
     for (const s of screens) {
       const el = $('#screen-' + s);
@@ -104,11 +104,14 @@
   let sceneIdx = 0;
   let sceneList = [];
   let sceneEl = null;
+  let sceneTimer = null;
   let currentChapterId = null;
+  let routeFlags = { wenyin: false };   // 本次剧情路线的选择标记（隐藏结局用）
   function startChapter(chapterId) {
     const ch = chapterById(chapterId);
     if (!ch) return;
     currentChapterId = chapterId;
+    if (chapterId === 'prologue' || chapterId === 'ch6') routeFlags = { wenyin: false };
     showScreen('battle');
     $('#battle-title').textContent = ch.title;
     // 展示开场场景
@@ -137,17 +140,16 @@
     let i = 0;
     const speed = 30;
     AUDIO.ensure();
-    const timer = setInterval(() => {
+    if (sceneTimer) clearInterval(sceneTimer);
+    sceneTimer = setInterval(() => {
       i += 1;
       $('#scene-text').textContent = txt.slice(0, i);
-      if (i >= txt.length) clearInterval(timer);
+      if (i >= txt.length) { clearInterval(sceneTimer); sceneTimer = null; }
     }, speed);
-    $('#scene-text').dataset.timer = timer;
     $('#scene-next').textContent = '点击继续 ▸';
   }
   function sceneNext() {
-    const timer = $('#scene-text').dataset.timer;
-    if (timer) { clearInterval(Number(timer)); $('#scene-text').dataset.timer = ''; }
+    if (sceneTimer) { clearInterval(sceneTimer); sceneTimer = null; }
     sceneIdx++;
     if (sceneIdx >= sceneList.length) {
       // 场景结束，进入战斗
@@ -157,6 +159,7 @@
     }
   }
   function closeSceneAndGo() {
+    if (sceneTimer) { clearInterval(sceneTimer); sceneTimer = null; }
     sceneEl.classList.remove('open');
     const go = battleResolve;
     battleResolve = null;
@@ -188,7 +191,8 @@
       config,
       dict: DICT,
       words: WORDS,
-      getState: () => ({ growth: st.growth }),
+      getState: () => ({ growth: st.growth, equipment: st.equipment }),
+      seed: config.seed,
       theme: window.INK_THEMES.themeOf(config.chapterId, config.mode),
       threshold: st.settings.threshold,
       perfectTh: st.settings.perfectTh || 0.5,
@@ -228,14 +232,8 @@
   }
 
   function onBattleEnd(stats, player, config, chapter) {
-    // 写错字等统计并入
+    // 统计、图鉴、Boss 击杀、错字记录统一并入存档
     const st = window.INK_SAVE.load();
-    if (stats.result === 'clear') {
-      // 收集图鉴
-      for (const ch of Object.keys(stats.charsUsed || {})) window.INK_SAVE.addGalleryChar(ch);
-      // Boss 击杀
-      if (chapter && chapter.boss) window.INK_SAVE.addBossKill(chapter.boss.id);
-    }
     window.INK_SAVE.applyRun(stats, player);
     // 装备掉落入包
     for (const it of (stats.drops || [])) {
@@ -249,9 +247,13 @@
         const st2 = window.INK_SAVE.load();
         st2.story.cleared = st2.story.cleared || [];
         if (!st2.story.cleared.includes(config.chapterId)) st2.story.cleared.push(config.chapterId);
-        // 解锁字
-        if (chapter && chapter.reward && chapter.reward.unlockChars) {
-          for (const c of chapter.reward.unlockChars) window.INK_SAVE.addGalleryChar(c);
+        // 章节奖励：文气 + 解锁字
+        if (chapter && chapter.reward) {
+          if (chapter.reward.unlockChars) window.INK_SAVE.unlockChars(chapter.reward.unlockChars);
+          if (chapter.reward.qi) {
+            st2.growth.qi += chapter.reward.qi;
+            showToast('章节奖励：+' + chapter.reward.qi + ' 文气');
+          }
         }
         st2.story.chapterProgress = config.chapterId;
         window.INK_SAVE.save();
@@ -271,30 +273,33 @@
         }, true);
       }
     } else if (config.daily) {
-      // 每日一墨
+      // 每日一墨：只有打完全部层数才算完成，失败不计入完成次数/连胜
       const st2 = window.INK_SAVE.load();
-      if (stats.result === 'clear' && config.level < (config.dailyLevels || 5)) {
+      const lastLevel = config.dailyLevels || 5;
+      const finished = stats.result === 'clear' && config.level >= lastLevel;
+      if (stats.result === 'clear' && config.level < lastLevel) {
         showResultModal(stats, 'clear', () => {
-          beginBattle({ mode: 'endless', level: config.level + 1, seed: config.seed, daily: true, dailyLevels: config.dailyLevels });
+          beginBattle({ mode: 'endless', level: config.level + 1, seed: config.seed, daily: true, dailyLevels: lastLevel });
         }, false, '进入今日第 ' + (config.level + 1) + ' 层');
       } else {
-        st2.stats.dailyDone = (st2.stats.dailyDone || 0) + 1;
-        const today = String(dailySeed());
-        if (st2.stats.lastDailyReward !== today) {
-          const y = new Date(); y.setDate(y.getDate() - 1);
-          const yesterday = String(y.getFullYear() * 10000 + (y.getMonth() + 1) * 100 + y.getDate());
-          const streak = st2.stats.dailyLast === yesterday ? (st2.stats.dailyStreak || 0) + 1 : 1;
-          st2.stats.dailyLast = today;
-          st2.stats.dailyStreak = streak;
-          st2.stats.lastDailyReward = today;
-          const bonus = 200 + (streak - 1) * 50;
-          st2.growth.qi += bonus;
+        if (finished) {
+          st2.stats.dailyDone = (st2.stats.dailyDone || 0) + 1;
+          const today = String(dailySeed());
+          if (st2.stats.lastDailyReward !== today) {
+            const y = new Date(); y.setDate(y.getDate() - 1);
+            const yesterday = String(y.getFullYear() * 10000 + (y.getMonth() + 1) * 100 + y.getDate());
+            const streak = st2.stats.dailyLast === yesterday ? (st2.stats.dailyStreak || 0) + 1 : 1;
+            st2.stats.dailyLast = today;
+            st2.stats.dailyStreak = streak;
+            st2.stats.lastDailyReward = today;
+            const bonus = 200 + (streak - 1) * 50;
+            st2.growth.qi += bonus;
+            showToast('每日一墨完成奖励：+' + bonus + ' 文气' + (streak > 1 ? '（连胜 ' + streak + ' 天！）' : ''));
+          }
           window.INK_SAVE.save();
-          showToast('每日一墨完成奖励：+' + bonus + ' 文气' + (streak > 1 ? '（连胜 ' + streak + ' 天！）' : ''));
         }
-        window.INK_SAVE.save();
         submitLeaderboard(st2, stats, config.level, 'daily');
-        showResultModal(stats, stats.result, () => { showScreen('menu'); buildMenu(); }, stats.result === 'defeat', stats.result === 'clear' ? '今日挑战完成' : null, true, 'daily');
+        showResultModal(stats, stats.result, () => { showScreen('menu'); buildMenu(); }, stats.result === 'defeat', finished ? '今日挑战完成' : null, true, 'daily');
       }
     } else {
       // 无尽模式
@@ -347,6 +352,7 @@
       b.textContent = opt.label;
       b.onclick = () => {
         closeModal('choice-modal');
+        if (chapter.id === 'ch6') routeFlags.wenyin = (opt.next === 'ch6b');
         if (opt.ending) {
           finishEnding(opt.ending, chapter.id);
         } else if (opt.next) {
@@ -359,10 +365,8 @@
   }
 
   function finishEnding(endingId, chapterId) {
-    let eid = endingId;
-    // 隐藏结局：问天路线的「人」字 → 问天者
-    const st = window.INK_SAVE.load();
-    if (endingId === 'hengmo' && (st.story.cleared || []).includes('ch6b')) eid = 'wenyin';
+    // 隐藏结局：只有本次路线选择「问天」时，「人」字才会通向问天者
+    const eid = window.INK_STORYFLOW ? window.INK_STORYFLOW.resolveEnding(endingId, routeFlags) : endingId;
     const e = STORY.endings[eid];
     const st2 = window.INK_SAVE.load();
     st2.story.endings = st2.story.endings || [];
@@ -386,7 +390,6 @@
 
   // ---------- 无尽模式 ----------
   function startEndless() {
-    const st = window.INK_SAVE.load();
     beginBattle({ mode: 'endless', level: 1 });
   }
 
@@ -418,12 +421,25 @@
       const res = await fetch('/api/leaderboard' + q);
       const data = await res.json();
       const board = (data.board || []).slice(0, 10);
-      el.innerHTML = '<div class="lb-head">' + (m === 'daily' ? '今日一墨榜' : '无尽排行榜') + ' · 墨迹榜</div>';
-      if (!board.length) { el.innerHTML += '<div class="empty-tip">暂无记录，等你来写第一笔</div>'; return; }
+      el.innerHTML = '';
+      const head = document.createElement('div');
+      head.className = 'lb-head';
+      head.textContent = (m === 'daily' ? '今日一墨榜' : '无尽排行榜') + ' · 墨迹榜';
+      el.appendChild(head);
+      if (!board.length) {
+        const tip = document.createElement('div');
+        tip.className = 'empty-tip';
+        tip.textContent = '暂无记录，等你来写第一笔';
+        el.appendChild(tip);
+        return;
+      }
       board.forEach((b, i) => {
         const row = document.createElement('div');
         row.className = 'lb-row' + (b.score === myScore ? ' me' : '');
-        row.innerHTML = '<span class="lb-rank">' + (i + 1) + '</span><span class="lb-name">' + b.name + '</span><span class="lb-score">' + b.score + '</span>';
+        const rank = document.createElement('span'); rank.className = 'lb-rank'; rank.textContent = String(i + 1);
+        const name = document.createElement('span'); name.className = 'lb-name'; name.textContent = String(b.name == null ? '' : b.name);
+        const score = document.createElement('span'); score.className = 'lb-score'; score.textContent = String(b.score == null ? 0 : b.score);
+        row.appendChild(rank); row.appendChild(name); row.appendChild(score);
         el.appendChild(row);
       });
     } catch (e) {
@@ -455,7 +471,7 @@
       item.className = 'growth-item';
       item.innerHTML = '<div class="gi-name">' + up.name + ' <span class="gi-lv">Lv.' + lv + '/' + up.max + '</span></div>' +
         '<div class="gi-desc">' + up.desc + '</div>' +
-        '<div class="gi-cur">当前：' + (up.id === 'power' ? '伤害 ' + sts.power : up.id === 'crit' ? '暴击 ' + Math.round(sts.critChance * 100) + '%' : up.id === 'pool' ? '砚血 ' + sts.maxHp : '文气 ×' + sts.qiMul) + '</div>' +
+        '<div class="gi-cur">当前：' + (up.id === 'power' ? '伤害 ' + sts.power : up.id === 'crit' ? '暴击 ' + Math.round(sts.critChance * 100) + '%' : up.id === 'pool' ? '砚血 ' + sts.maxHp : up.id === 'combo' ? '连击窗口 ' + sts.comboWindow.toFixed(2) + 's' : up.id === 'boss' ? 'Boss 伤害 ×' + sts.bossMul.toFixed(2) : '文气 ×' + sts.qiMul) + '</div>' +
         '<button class="btn gi-btn" ' + (maxed ? 'disabled' : '') + '>' + (maxed ? '已满级' : '升级 ' + cost + ' 文气') + '</button>';
       const btn = item.querySelector('.gi-btn');
       btn.onclick = () => {
@@ -584,7 +600,7 @@
     const st = window.INK_SAVE.load();
     const s = st.stats;
     const acc = (s.totalWritten + s.totalWrong) > 0 ? Math.round(s.totalWritten / (s.totalWritten + s.totalWrong) * 100) : 100;
-    $('#stats-title').innerHTML = '<span class="st-title-name">' + st.name + '</span> <span class="st-title-tag">' + titleOf(st) + '</span>';
+    $('#stats-title').innerHTML = '<span class="st-title-name">' + esc(st.name) + '</span> <span class="st-title-tag">' + esc(titleOf(st)) + '</span>';
     const cards = [
       { k: '出征次数', v: s.runs || 0 }, { k: '累计杀敌', v: s.totalKills || 0 },
       { k: '最高连墨', v: s.maxComboEver || 0 }, { k: '完美笔法', v: s.totalPerfects || 0 },
@@ -592,7 +608,7 @@
       { k: '无尽最高层', v: s.bestEndless || 0 }, { k: '每日一墨', v: s.dailyDone || 0 },
       { k: '练习场次数', v: s.practiceSessions || 0 }, { k: '字库收集', v: st.gallery.chars.length + '/' + DICT.length },
       { k: '词语收集', v: st.gallery.words.length + '/' + WORDS.words2.length }, { k: '成语收集', v: st.gallery.idioms.length + '/' + WORDS.idioms.length },
-      { k: '结局', v: (st.story.endings || []).length + '/6' }, { k: '成就', v: st.achievements.length + '/' + window.INK_ACHIEVEMENTS.ACHIEVEMENTS.length }
+      { k: '结局', v: (st.story.endings || []).length + '/' + Object.keys(STORY.endings).length }, { k: '成就', v: st.achievements.length + '/' + window.INK_ACHIEVEMENTS.ACHIEVEMENTS.length }
     ];
     const grid = $('#stats-grid');
     grid.innerHTML = '';
@@ -603,7 +619,7 @@
       grid.appendChild(d);
     }
     // 杀敌明细
-    const KB_LABEL = { mote: '墨点', wrong: '错字妖', radical: '部首兽', word: '废词魔', idiom: '成语魇', 'boss:idiom_beast': 'Boss 成语魇', 'boss:calligrapher': 'Boss 大书法家', 'boss:oracle': 'Boss 甲骨文之灵', 'boss:inkdragon': 'Boss 墨龙' };
+    const KB_LABEL = { mote: '墨点', wrong: '错字妖', radical: '部首兽', word: '废词魔', idiom: '成语魇', mimic: '墨傀', inkchild: '墨童', inkgen: '墨将', pen: '笔妖', poem: '诗魔', 'boss:idiom_beast': 'Boss 成语魇', 'boss:calligrapher': 'Boss 大书法家', 'boss:oracle': 'Boss 甲骨文之灵', 'boss:inkdragon': 'Boss 墨龙', 'boss:zhenzhi': 'Boss 镇纸兽', 'boss:luobi': 'Boss 落笔仙' };
     const breakEl = $('#stats-killbreak');
     breakEl.innerHTML = '';
     const kbt = s.killByType || {};
@@ -642,9 +658,9 @@
     const wrong = [...(st.stats.wrongChars || [])].sort((a, b) => b.count - a.count).slice(0, 30);
     const rows = wrong.map(w => {
       const d = DICT.find(c => c.ch === w.ch);
-      return '<tr><td>' + w.ch + '</td><td>' + (d ? d.pinyin : '—') + '</td><td>' + (d ? d.meaning : '—') + '</td><td>' + w.count + '</td></tr>';
+      return '<tr><td>' + esc(w.ch) + '</td><td>' + esc(d ? d.pinyin : '—') + '</td><td>' + esc(d ? d.meaning : '—') + '</td><td>' + (Number(w.count) || 0) + '</td></tr>';
     }).join('');
-    const html = '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>汉字体检报告</title><style>body{font-family:"KaiTi",serif;background:#f6f1e3;color:#2a2018;padding:40px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #8a7a6a;padding:8px 12px}th{background:#e8dfc8}h1{text-align:center;border-bottom:3px double #8a2818;padding-bottom:10px}</style></head><body><h1>墨战 · 天书纪 — 汉字体检报告</h1><p>生成时间：' + new Date().toLocaleString('zh-CN') + '　｜　书生：' + st.name + '</p><p>总场次：' + st.stats.runs + '　累计杀敌：' + st.stats.totalKills + '　最高连击：' + st.stats.maxComboEver + '</p><table><thead><tr><th>字</th><th>拼音</th><th>释义</th><th>写错次数</th></tr></thead><tbody>' + rows + '</tbody></table><p style="margin-top:20px;color:#7a6a5a">建议：对着这些字多写几遍，然后回到《墨战》里用它们杀敌——记忆最牢的字，是打过仗的字。</p></body></html>';
+    const html = '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>汉字体检报告</title><style>body{font-family:"KaiTi",serif;background:#f6f1e3;color:#2a2018;padding:40px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #8a7a6a;padding:8px 12px}th{background:#e8dfc8}h1{text-align:center;border-bottom:3px double #8a2818;padding-bottom:10px}</style></head><body><h1>墨战 · 天书纪 — 汉字体检报告</h1><p>生成时间：' + esc(new Date().toLocaleString('zh-CN')) + '　｜　书生：' + esc(st.name) + '</p><p>总场次：' + st.stats.runs + '　累计杀敌：' + st.stats.totalKills + '　最高连击：' + st.stats.maxComboEver + '</p><table><thead><tr><th>字</th><th>拼音</th><th>释义</th><th>写错次数</th></tr></thead><tbody>' + rows + '</tbody></table><p style="margin-top:20px;color:#7a6a5a">建议：对着这些字多写几遍，然后回到《墨战》里用它们杀敌——记忆最牢的字，是打过仗的字。</p></body></html>';
     try {
       const res = await fetch('/api/export', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -725,7 +741,8 @@
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const data = JSON.parse(reader.result);
+        const parsed = JSON.parse(reader.result);
+        const data = window.INK_SAVE.sanitize ? window.INK_SAVE.sanitize(parsed) : parsed;
         if (!data || data.version !== 1) { showToast('不是有效的墨战存档'); return; }
         const cur = window.INK_SAVE.load();
         const merged = Object.assign(window.INK_SAVE.defaultState(), data);
@@ -762,11 +779,13 @@
       canvas,
       dict: DICT,
       verdictEl: $('#practice-verdict'),
+      statsEls: { streak: $('#practice-streak'), best: $('#practice-best'), total: $('#practice-total') },
       onUpdate: () => {}
     });
     const st = window.INK_SAVE.load();
     $('#practice-total').textContent = st.stats.practiceSessions || 0;
     practice.randomTarget();
+    requestAnimationFrame(() => { if (practice) practice._resize(); });
     requestAnimationFrame((ts) => practice.loop(ts));
   }
   function buildPicker() {
@@ -833,6 +852,7 @@
         openModal('result-modal');
       }
     });
+    requestAnimationFrame(() => { if (ta) ta._resize(); });
     requestAnimationFrame((ts) => ta.loop(ts));
   }
 
@@ -886,7 +906,7 @@
       'menu-report': () => { initAudio(); buildReport(); showScreen('report'); },
       'menu-settings': () => { initAudio(); buildSettings(); showScreen('settings'); },
       'menu-export-report': () => { initAudio(); exportReport(); },
-      'menu-practice': () => { initAudio(); genPractice(); }
+      'menu-practice-sheet': () => { initAudio(); genPractice(); }
     };
     for (const [id, fn] of Object.entries(menuBtns)) {
       const el = document.getElementById(id);

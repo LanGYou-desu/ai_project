@@ -30,7 +30,11 @@ function makeCanvasCtx() {
 global.document = {
   createElement(tag) {
     if (tag === 'canvas') {
-      return { width: 64, height: 64, getContext: () => makeCanvasCtx(), getBoundingClientRect: () => ({ left: 0, top: 0 }) };
+      return {
+        width: 64, height: 64, clientWidth: 400, clientHeight: 300,
+        getContext: () => makeCanvasCtx(), getBoundingClientRect: () => ({ left: 0, top: 0 }),
+        addEventListener() {}, removeEventListener() {}
+      };
     }
     return { style: {}, classList: { add() {}, remove() {}, toggle() {} }, addEventListener() {} };
   },
@@ -40,7 +44,10 @@ global.document = {
 };
 global.window = global;
 global.performance = global.performance || { now: () => Date.now() };
-global.fetch = global.fetch || (() => Promise.resolve({ json: () => Promise.resolve({}), ok: false }));
+// 固定 fetch，避免测试里真的去请求 /api/*；同时保证 window.addEventListener 存在（Battle/Practice 会绑定 resize）
+global.fetch = () => Promise.resolve({ json: () => Promise.resolve({}), ok: false });
+global.addEventListener = global.addEventListener || (() => {});
+global.removeEventListener = global.removeEventListener || (() => {});
 
 // ---------- 加载模块 ----------
 function load(file) {
@@ -350,6 +357,233 @@ test('存档：默认状态完整', () => {
   const d = global.INK_SAVE.defaultState();
   assert.ok(d.growth.levels.power === 1);
   assert.ok(Array.isArray(d.achievements));
+});
+
+
+// ---------- 7) 新增：剧情结局 / 存档统计 / 装备 / 识别 / 服务器安全 ----------
+load('js/game/storyflow.js');
+load('js/core/audio.js');
+
+test('剧情：结局总数为 5（含隐藏问天者）', () => {
+  assert.strictEqual(Object.keys(global.INK_STORY.endings).length, 5);
+  assert.ok(global.INK_STORY.endings.wenyin, 'wenyin missing');
+});
+test('剧情：问天路线才映射隐藏结局，其它路线不劫持承墨者', () => {
+  const F = global.INK_STORYFLOW;
+  assert.strictEqual(F.resolveEnding('hengmo', { wenyin: true }), 'wenyin');
+  assert.strictEqual(F.resolveEnding('hengmo', { wenyin: false }), 'hengmo');
+  assert.strictEqual(F.resolveEnding('zhenmo', { wenyin: true }), 'zhenmo');
+});
+
+test('存档：applyRun 写入击杀类型/词/成语/Boss/错字', () => {
+  const S = global.INK_SAVE;
+  S._inject(S.defaultState());
+  S.applyRun({
+    kills: 3, qiEarned: 20, written: 5, wrong: 1, maxCombo: 7, perfects: 2,
+    killByType: { mote: 2, idiom: 1 }, charsUsed: { '火': 1, '龘': 1 },
+    wordsUsed: ['火海'], idiomsUsed: ['火冒三丈'], bosses: ['idiom_beast'],
+    misses: [{ ch: '火', count: 2 }]
+  });
+  const st = S.load();
+  assert.strictEqual(st.stats.killMote, 2);
+  assert.strictEqual(st.stats.killIdiom, 1);
+  assert.deepStrictEqual(st.stats.bosses, ['idiom_beast']);
+  assert.ok(st.gallery.words.includes('火海'));
+  assert.ok(st.gallery.idioms.includes('火冒三丈'));
+  assert.strictEqual(st.stats.wrongChars[0].count, 2);
+  assert.strictEqual(st.growth.qi, 20);
+});
+test('存档：图鉴只收词库内的字，词/成语生僻字不撑爆 271 字图鉴', () => {
+  const S = global.INK_SAVE;
+  S._inject(S.defaultState());
+  S.addGalleryChar('火');
+  S.addGalleryChar('龘');
+  assert.deepStrictEqual(S.load().gallery.chars, ['火']);
+});
+
+test('装备：uid 不再每次刷新从 1 开始，且能被存档同步抬高', () => {
+  const E = global.INK_EQUIP;
+  const a = E.makeItem('pen', 'white');
+  assert.ok(a.uid > 1, 'uid=' + a.uid);
+  E.syncUid({ pen: { uid: a.uid + 100 }, ink: null, paper: null, stone: null, inventory: [] });
+  const b = E.makeItem('pen', 'white');
+  assert.ok(b.uid > a.uid + 100, 'uid=' + b.uid);
+});
+test('装备：合成拒绝混槽位', () => {
+  const E = global.INK_EQUIP;
+  const r = E.craftUpgrade([E.makeItem('pen', 'white'), E.makeItem('ink', 'white'), E.makeItem('paper', 'white')]);
+  assert.strictEqual(r.ok, false);
+});
+
+test('识别：symmetrize 把方向直方图对称化', () => {
+  const h = global.INK_RECOGNITION.symmetrize([1, 0, 0, 0, 0, 0, 0, 0]);
+  assert.strictEqual(h[0], 0.5);
+  assert.strictEqual(h[4], 0.5);
+});
+test('识别：recognize 对候选去重', () => {
+  const pts = [];
+  for (let x = 10; x <= 50; x += 3) pts.push({ x, y: 30 });
+  for (let y = 10; y <= 50; y += 3) pts.push({ x: 30, y });
+  assert.strictEqual(global.INK_RECOGNITION.recognize(pts, ['火', '火', '水']).length, 2);
+});
+
+// ---------- 8) 服务器纯函数（安全 + 校验） ----------
+const SRV = require(path.join(ROOT, 'server.js'));
+
+test('服务器：safeFilename 阻断路径穿越与 Windows 保留名', () => {
+  const f = SRV.safeFilename('../../server.js', 'fb');
+  assert.ok(f !== '..' && f !== '.' && f.indexOf('/') < 0 && f.indexOf(String.fromCharCode(92)) < 0, 'f=' + f);
+  assert.strictEqual(SRV.safeFilename('..', 'fb'), 'fb');
+  assert.strictEqual(SRV.safeFilename('.', 'fb'), 'fb');
+  assert.ok(SRV.safeFilename('CON', 'fb').indexOf('CON') !== 0);
+  assert.strictEqual(SRV.safeFilename('汉字体检报告-1.html', 'fb'), '汉字体检报告-1.html');
+});
+test('服务器：sanitizeLeaderboardEntry 校验 mode/数值/名字/日期', () => {
+  const e = SRV.sanitizeLeaderboardEntry({ name: '<b>x</b>', mode: 'hack', score: Infinity, chars: -1, date: '2025-01-01abc' });
+  assert.strictEqual(e.mode, 'endless');
+  assert.strictEqual(e.score, 0);
+  assert.strictEqual(e.chars, 0);
+  assert.ok(e.name.indexOf('<') < 0);
+  assert.strictEqual(e.date, '2025-01-01');
+  assert.strictEqual(SRV.sanitizeLeaderboardEntry(null), null);
+});
+test('服务器：sanitizeSavePayload 拒绝原型污染与数组', () => {
+  assert.strictEqual(SRV.sanitizeSavePayload(JSON.parse('{"a":{"__proto__":{"x":1}}}')), null);
+  assert.strictEqual(SRV.sanitizeSavePayload([]), null);
+  assert.ok(SRV.sanitizeSavePayload({ version: 1 }));
+});
+test('服务器：resolveStaticPath 阻断穿越并回退 index.html', () => {
+  assert.ok(SRV.resolveStaticPath('/../server.js').forbidden);
+  const root = SRV.resolveStaticPath('/');
+  assert.ok(root.fp && root.fp.endsWith('index.html'));
+  const missing = SRV.resolveStaticPath('/definitely-not-here.js');
+  assert.ok(missing.fp && missing.fp.endsWith('index.html'));
+});
+test('服务器：clampCount 处理非法/越界 count', () => {
+  assert.strictEqual(SRV.clampCount('abc', 10, 1, 60), 10);
+  assert.strictEqual(SRV.clampCount('-5', 10, 1, 60), 1);
+  assert.strictEqual(SRV.clampCount('999', 10, 1, 60), 60);
+});
+
+
+// ---------- 9) 战斗引擎（种子 / 装备加成 / 字诀 / Boss 越界 / 灼烧清理 / 收集） ----------
+function makeBattle(overrides) {
+  const opts = {
+    canvas: global.document.createElement('canvas'),
+    mode: 'endless',
+    config: { mode: 'endless', level: 1, seed: 123 },
+    dict: [
+      { ch: '光', pinyin: 'g', meaning: 'm', cat: '光', el: 'light' },
+      { ch: '火', pinyin: 'h', meaning: 'm', cat: '火', el: 'fire' },
+      { ch: '水', pinyin: 's', meaning: 'm', cat: '水', el: 'water' }
+    ],
+    words: { words2: [{ w: '火海', p: '', m: '' }], idioms: [{ w: '火冒三丈', p: '', m: '' }], poems: [] },
+    getState: () => ({ growth: { levels: { power: 1, crit: 1, pool: 1, qi: 1, combo: 1, boss: 1 } }, equipment: {} }),
+    theme: { bg: 'paper', weather: null, scale: [1, 2, 3, 4, 5] },
+    threshold: 0.15, perfectTh: 0.5,
+    onEnd: () => {}, onHud: () => {}
+  };
+  return new global.INK_BATTLE.Battle(Object.assign(opts, overrides || {}));
+}
+
+test('战斗：config.seed 决定随机序列（每日同题）', () => {
+  const a = makeBattle(), b = makeBattle();
+  assert.deepStrictEqual([a._pickChar(), a._pickChar(), a._pickChar()], [b._pickChar(), b._pickChar(), b._pickChar()]);
+});
+test('战斗：装备加成进入玩家属性', () => {
+  const b = makeBattle({ getState: () => ({ growth: { levels: {} }, equipment: { pen: { power: 100 }, ink: null, paper: null, stone: null } }) });
+  assert.ok(b.power >= 116, 'power=' + b.power);
+});
+test('战斗：光克暗字诀的 ×1.5 加成真正生效', () => {
+  const b = makeBattle();
+  b.critChance = 0; b.power = 100; b.boss = null;
+  b.player.combo = 0;
+  const dark = new global.INK_ENEMIES.Enemy({ type: 'wrong', target: { type: 'char', ch: '光' } });
+  dark.el = 'dark'; dark.hp = dark.maxHp = 10000; b.enemies = [dark];
+  b._applyHit(dark, '光', 0.3, false);
+  assert.ok(Math.abs((10000 - dark.hp) - 288) < 1e-6, 'dark dmg=' + (10000 - dark.hp));
+  b.player.combo = 0;
+  const fire = new global.INK_ENEMIES.Enemy({ type: 'wrong', target: { type: 'char', ch: '光' } });
+  fire.el = 'fire'; fire.hp = fire.maxHp = 10000; b.enemies = [fire];
+  b._applyHit(fire, '光', 0.3, false);
+  assert.ok(Math.abs((10000 - fire.hp) - 120) < 1e-6, 'fire dmg=' + (10000 - fire.hp));
+});
+test('战斗：Boss 越界不会卡死，重击后推回战场', () => {
+  const b = makeBattle();
+  b._spawnBoss({ id: 'idiom_beast' });
+  const boss = b.boss, hp0 = b.player.hp;
+  boss.x = b.boundary;
+  b._enemyReached(boss);
+  assert.ok(b.enemies.includes(boss));
+  assert.strictEqual(boss.hp, boss.maxHp);
+  assert.ok(b.player.hp < hp0);
+});
+test('战斗：灼烧致死会被清理并计入击杀', () => {
+  const b = makeBattle();
+  b.spawnQueue = []; b.bossSpec = null; b.boss = null;
+  const e = b._spawn('wrong');
+  b.enemies = [e];
+  e.hp = 0.1; e.burn = 1;
+  b.update(0.05);
+  assert.ok(!b.enemies.includes(e));
+  assert.strictEqual(b.stats.kills, 1);
+});
+test('战斗：连续写完整词会记入收集', () => {
+  const b = makeBattle();
+  b.spawnQueue = []; b.bossSpec = null; b.boss = null;
+  const w = new global.INK_ENEMIES.Enemy({ type: 'word', target: { type: 'word', chars: ['火', '海'] } });
+  b.enemies = [w];
+  b._applyHit(w, '火', 0.3, false);
+  assert.strictEqual(w.needIdx, 1);
+  b._applyHit(w, '海', 0.3, false);
+  assert.ok(b.stats.wordsUsed.includes('火海'));
+});
+
+
+// ---------- 10) 前端静态回归（重复 id / 屏幕切换 / 按钮绑定） ----------
+test('前端：index.html 没有重复 id', () => {
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf-8');
+  const ids = [...html.matchAll(/id="([^"]+)"/g)].map(m => m[1]);
+  const dup = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))];
+  assert.deepStrictEqual(dup, []);
+});
+test('前端：main.js 的 screens 覆盖 index.html 全部 screen-*', () => {
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf-8');
+  const screens = [...html.matchAll(/id="screen-([a-z0-9-]+)"/g)].map(m => m[1]);
+  assert.ok(screens.length >= 10, 'screens=' + screens.length);
+  const main = fs.readFileSync(path.join(PUB, 'js', 'main.js'), 'utf-8');
+  const m = main.match(/const screens = \[([^\]]+)\]/);
+  assert.ok(m, 'screens array missing');
+  for (const s of screens) assert.ok(m[1].indexOf("'" + s + "'") >= 0, 'missing screen ' + s);
+});
+test('前端：书法练习场与生成字帖是两个独立按钮', () => {
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf-8');
+  assert.ok(html.indexOf('id="menu-practice"') >= 0);
+  assert.ok(html.indexOf('id="menu-practice-sheet"') >= 0);
+  const main = fs.readFileSync(path.join(PUB, 'js', 'main.js'), 'utf-8');
+  assert.ok(main.indexOf("'menu-practice-sheet'") >= 0);
+  assert.ok(main.indexOf('id="menu-practice-sheet"') < 0);
+});
+
+
+test('存档：sanitize 过滤 __proto__/constructor/prototype', () => {
+  const S = global.INK_SAVE;
+  const cleaned = S.sanitize(JSON.parse('{"a":{"__proto__":{"x":1},"constructor":1},"b":2}'));
+  assert.strictEqual(cleaned.b, 2);
+  assert.ok(!Object.prototype.hasOwnProperty.call(cleaned.a, '__proto__'));
+  assert.ok(!Object.prototype.hasOwnProperty.call(cleaned.a, 'constructor'));
+  assert.strictEqual(Object.getPrototypeOf(cleaned.a), Object.prototype);
+});
+
+
+test('战斗：击杀 Boss 会记录 bossId（供 Boss 成就判定）', () => {
+  const b = makeBattle();
+  b.spawnQueue = []; b.bossSpec = { id: 'idiom_beast' }; b.boss = null;
+  b._spawnBoss(b.bossSpec);
+  const boss = b.boss;
+  boss.hp = 1;
+  b._applyHit(boss, '火', 0.3, false);
+  assert.ok(b.stats.bosses.indexOf('idiom_beast') >= 0, JSON.stringify(b.stats.bosses));
 });
 
 console.log('==============================');

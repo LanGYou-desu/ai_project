@@ -74,7 +74,7 @@
       }
     }
 
-    function mountain(ctx, w, h, base, amp, alpha) {
+    function mountain(ctx, w, h, base, amp) {
       ctx.beginPath();
       ctx.moveTo(0, h);
       for (let x = 0; x <= w; x += 8) {

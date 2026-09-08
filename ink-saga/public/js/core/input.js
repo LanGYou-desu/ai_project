@@ -16,54 +16,76 @@
 
     _bind() {
       const c = this.canvas;
-      // 去重：如果该 canvas 已绑定过，先移除
+      // 去重：如果该 canvas 已绑定过，先移除旧监听
       if (c.__inkHandlers) {
-        for (const [ev, fn] of c.__inkHandlers) c.removeEventListener(ev, fn);
+        for (const h of c.__inkHandlers) {
+          h.target.removeEventListener(h.ev, h.fn);
+        }
         c.__inkHandlers = null;
       }
       const rect = () => c.getBoundingClientRect();
 
-      const down = (e) => {
-        e.preventDefault();
+      const pos = (clientX, clientY) => {
         const r = rect();
+        return { x: clientX - r.left, y: clientY - r.top, t: performance.now() };
+      };
+      const down = (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;  // 只响应左键
+        if (this.drawing) return;                                  // 忽略第二根手指/第二次按下
+        if (e.preventDefault) e.preventDefault();
         this.drawing = true;
-        this.points = [{ x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() }];
+        this.points = [pos(e.clientX, e.clientY)];
+        if (c.setPointerCapture && e.pointerId != null) {
+          try { c.setPointerCapture(e.pointerId); } catch (err) {}
+        }
         if (this.onStrokeStart) this.onStrokeStart();
         if (this.onStrokeMove) this.onStrokeMove(this.points);
       };
       const move = (e) => {
         if (!this.drawing) return;
-        e.preventDefault();
-        const r = rect();
-        const p = { x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() };
+        if (e.preventDefault) e.preventDefault();
+        const p = pos(e.clientX, e.clientY);
         const last = this.points[this.points.length - 1];
         if (last && Math.hypot(p.x - last.x, p.y - last.y) < 1.5) return;
         this.points.push(p);
-        if (this.points.length > 600) this.points.shift();
+        // 长笔画只保留最近的 900 个采样点，避免识别阶段做无意义的 O(n) 扫描
+        if (this.points.length > 900) this.points.shift();
         if (this.onStrokeMove) this.onStrokeMove(this.points);
       };
-      const up = () => {
+      const up = (e) => {
         if (!this.drawing) return;
         this.drawing = false;
+        if (e && c.releasePointerCapture && e.pointerId != null) {
+          try { c.releasePointerCapture(e.pointerId); } catch (err) {}
+        }
         const pts = this.points;
         this.points = [];
         if (pts.length >= 3 && this.onStrokeEnd) this.onStrokeEnd(pts);
       };
-      const touchDown = (e) => { e.preventDefault(); const t = e.touches[0]; down({ preventDefault: () => {}, clientX: t.clientX, clientY: t.clientY }); };
-      const touchMove = (e) => { e.preventDefault(); const t = e.touches[0]; move({ preventDefault: () => {}, clientX: t.clientX, clientY: t.clientY }); };
 
-      const handlers = [
-        ['pointerdown', down], ['pointermove', move], ['pointerup', up], ['pointerleave', up],
-        ['touchstart', touchDown], ['touchmove', touchMove], ['touchend', up]
-      ];
-      for (const [ev, fn] of handlers) c.addEventListener(ev, fn);
+      const handlers = [];
+      const bind = (target, ev, fn) => { target.addEventListener(ev, fn); handlers.push({ target, ev, fn }); };
+      bind(c, 'pointerdown', down);
+      bind(c, 'pointermove', move);
+      bind(c, 'pointerup', up);
+      bind(c, 'pointercancel', up);
+      // 指针在画布外松开时也能结束笔画（没有 PointerEvent 的旧环境用 touch 事件兜底）
+      if (typeof window !== 'undefined' && window.addEventListener) bind(window, 'pointerup', up);
+      if (typeof PointerEvent === 'undefined') {
+        const touchDown = (e) => { const t = e.touches[0]; if (t) down({ pointerType: 'touch', clientX: t.clientX, clientY: t.clientY, preventDefault: () => e.preventDefault() }); };
+        const touchMove = (e) => { const t = e.touches[0]; if (t) move({ clientX: t.clientX, clientY: t.clientY, preventDefault: () => e.preventDefault() }); };
+        bind(c, 'touchstart', touchDown);
+        bind(c, 'touchmove', touchMove);
+        bind(c, 'touchend', up);
+        bind(c, 'touchcancel', up);
+      }
       c.__inkHandlers = handlers;
       this._handlers = handlers;
     }
 
     destroy() {
       if (this._handlers) {
-        for (const [ev, fn] of this._handlers) this.canvas.removeEventListener(ev, fn);
+        for (const h of this._handlers) h.target.removeEventListener(h.ev, h.fn);
         this.canvas.__inkHandlers = null;
         this._handlers = null;
       }

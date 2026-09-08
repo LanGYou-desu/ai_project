@@ -23,7 +23,7 @@
 
   function rasterize(normPoints, lineW) {
     const img = new Uint8Array(SIZE * SIZE);
-    if (!normPoints) return img;
+    if (!normPoints || !normPoints.length) return img;
     const lw = Math.max(2, lineW || 3.5);
     const ctx = g.__inkRasterCtx;
     if (!ctx) return img;
@@ -141,6 +141,13 @@
     return h.map(v => v / total);
   }
 
+  // 把方向直方图对称化：手写不规定笔顺，同一笔画正写/反写都应被视为相同特征
+  function symmetrize(h) {
+    const out = new Array(h.length);
+    for (let i = 0; i < h.length; i++) out[i] = (h[i] + h[(i + h.length / 2) % h.length]) / 2;
+    return out;
+  }
+
   function cosine(a, b) {
     let dot = 0, na = 0, nb = 0;
     for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
@@ -163,7 +170,7 @@
     for (const ch of unique) {
       const ref = renderReference(ch);
       const i = iou(strokeImg, ref);
-      const cs = cosine(sHist, chainHistFromRef(ref, ch));
+      const cs = cosine(symmetrize(sHist), chainHistFromRef(ref, ch));
       const dd = 1 - Math.min(1, Math.abs(sDensity - inkDensity(ref)) * 1.6);
       const rAspect = aspectRatio(ref);
       const as = 1 - Math.min(1, Math.abs(Math.log(sAspect / Math.max(0.2, rAspect))) * 1.2);
@@ -178,10 +185,13 @@
   function chainHistFromRef(ref, ch) {
     if (histCache.has(ch)) return histCache.get(ch);
     const h = new Array(8).fill(0);
+    // 8 邻域而不是原来的 4 个半平面方向：否则只写右/下方向的手写才能和参考图对齐，
+    // 反写、上挑、左撇都会被方向特征误伤。
+    const dirs = [[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
     for (let y = 0; y < SIZE; y++) {
       for (let x = 0; x < SIZE; x++) {
         if (!ref[y * SIZE + x]) continue;
-        for (const [dx, dy] of [[1,0],[0,1],[1,1],[1,-1]]) {
+        for (const [dx, dy] of dirs) {
           const nx = x + dx, ny = y + dy;
           if (nx >= 0 && ny >= 0 && nx < SIZE && ny < SIZE && ref[ny * SIZE + nx]) {
             const ang = Math.atan2(dy, dx);
@@ -192,7 +202,7 @@
       }
     }
     const total = h.reduce((s, v) => s + v, 0) || 1;
-    const norm = h.map(v => v / total);
+    const norm = symmetrize(h.map(v => v / total));
     histCache.set(ch, norm);
     return norm;
   }
@@ -239,5 +249,5 @@
     ctx.restore();
   }
 
-  g.INK_RECOGNITION = { recognize, match, renderReference, getGuideCanvas, drawGuideAnimated, SIZE, normalizePoints, rasterize, dilate, iou, inkDensity, aspectRatio, chainHist, cosine, clearCache: () => { refCache.clear(); histCache.clear(); guideCache.clear(); } };
+  g.INK_RECOGNITION = { recognize, match, renderReference, getGuideCanvas, drawGuideAnimated, SIZE, normalizePoints, rasterize, dilate, iou, inkDensity, aspectRatio, chainHist, symmetrize, cosine, clearCache: () => { refCache.clear(); histCache.clear(); guideCache.clear(); } };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

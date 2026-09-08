@@ -34,7 +34,7 @@
 
       this.input = new InkInput(this.canvas);
       this.brush = new InkBrush(this.ctx);
-      this.audio = g.INK_AUDIO.instance || null;
+      this.audio = (g.INK_AUDIO && g.INK_AUDIO.instance) || null;
 
       this.bg = null;
       this.enemies = [];
@@ -45,7 +45,7 @@
       this.time = 0;
       this.state = 'running';
       this.paused = false;
-      this.stats = { kills: 0, written: 0, wrong: 0, perfects: 0, misses: [], maxCombo: 0, qiEarned: 0, score: 0, charsUsed: {}, startTime: 0, wavesCleared: 0 };
+      this.stats = { kills: 0, written: 0, wrong: 0, perfects: 0, misses: [], maxCombo: 0, qiEarned: 0, score: 0, charsUsed: {}, wordsUsed: [], idiomsUsed: [], bosses: [], startTime: 0, wavesCleared: 0 };
       this.scrambled = 0;
       this.shake = { t: 0, mag: 0 };
       this.waveBonusPending = false;
@@ -54,8 +54,10 @@
       this.guideTarget = null;   // 导引水印 {ch, key}
 
       this.boundary = 96;
-      this.rnd = (opts.seed != null && opts.seed !== undefined) ? mulberry32(opts.seed) : Math.random;
-      this.theme = opts.theme || g.INK_THEMES.themeOf(this.config.chapterId, this.mode) || { bg: 'paper', weather: null, scale: g.INK_THEMES.SCALE_BRIGHT };
+      // 每日一墨的种子优先取 opts.seed，其次取 config.seed；否则用 Math.random。
+      const seed = (opts.seed != null) ? opts.seed : (this.config ? this.config.seed : null);
+      this.rnd = (seed != null) ? mulberry32(seed) : Math.random;
+      this.theme = opts.theme || (g.INK_THEMES ? g.INK_THEMES.themeOf(this.config.chapterId, this.mode) : null) || { bg: 'paper', weather: null, scale: [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25] };
       this.threshold = opts.threshold ?? 0.15;
       this.perfectTh = opts.perfectTh ?? 0.50;
       this._setupPlayer();
@@ -85,7 +87,8 @@
       const lv = (id) => gr.levels ? (gr.levels[id] || 1) : 1;
       // 文房四宝加成
       let eb = { power: 0, crit: 0, hp: 0, qiMul: 0 };
-      if (g.INK_EQUIP && st && st.equipment) eb = g.INK_EQUIP.statBonus(st.equipment);
+      const equipment = (st && st.equipment) || (g.INK_SAVE && g.INK_SAVE.load ? (g.INK_SAVE.load().equipment) : null);
+      if (g.INK_EQUIP && equipment) eb = g.INK_EQUIP.statBonus(equipment);
       this.power = (16 + (lv('power') - 1) * 6) + eb.power;
       this.critChance = (0.05 + (lv('crit') - 1) * 0.04) + eb.crit;
       this.maxHp = Math.round((100 + (lv('pool') - 1) * 12) + eb.hp);
@@ -131,13 +134,22 @@
     _bindResize() {
       const fit = () => {
         const dpr = Math.min(2, window.devicePixelRatio || 1);
-        const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
-        this.canvas.width = w * dpr; this.canvas.height = h * dpr;
+        // 布局尚未完成时 clientWidth/Height 可能为 0：给一个可用的后备尺寸，
+        // 并在 ResizeObserver / resize 触发后再校正，避免整场战斗画布是 0×0。
+        const w = this.canvas.clientWidth || 900, h = this.canvas.clientHeight || 600;
+        this.canvas.width = Math.max(1, Math.round(w * dpr));
+        this.canvas.height = Math.max(1, Math.round(h * dpr));
         this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         this._buildBg();
       };
       window.addEventListener('resize', fit);
       this._fit = fit;
+      if (typeof ResizeObserver !== 'undefined') {
+        try {
+          this._ro = new ResizeObserver(fit);
+          this._ro.observe(this.canvas);
+        } catch (e) { this._ro = null; }
+      }
       fit();
     }
 
@@ -321,11 +333,16 @@
       if (this.boss) this._bossTick(dt);
       const reached = [];
       const penAttacks = [];
+      const dead = [];
       for (const e of this.enemies) {
         const r2 = e.tick(dt, this.boundary);
+        // 灼烧/持续伤害可能把 hp 打到 <=0，但 tick 不会自己触发击杀：
+        // 必须在这里补一次 _kill，否则“尸体”会继续走并咬玩家。
+        if (e.hp <= 0) { dead.push(e); continue; }
         if (r2 === 'pen_attack') penAttacks.push(e);
         else if (r2 === true) reached.push(e);
       }
+      for (const e of dead) this._kill(e);
       for (const e of reached) this._enemyReached(e);
       for (const e of penAttacks) {
         this.enemies = this.enemies.filter(x => x !== e);
@@ -364,7 +381,7 @@
 
     _spawn(type) {
       const spec = { type };
-      if (type === 'char') type = 'wrong';
+      if (type === 'char') { type = 'wrong'; spec.type = 'wrong'; }
       if (type === 'wrong') spec.target = { type: 'char', ch: this._pickChar() };
       if (type === 'radical') {
         const cats = ['水', '火', '木', '金', '土', '雷', '风', '光', '暗'];
@@ -373,13 +390,15 @@
         spec.el = CAT_TO_EL[cat];
       }
       if (type === 'word') {
-        const w = this.words.words2[Math.floor(this.rnd() * this.words.words2.length)];
-        spec.target = { type: 'word', chars: w.w.split('') };
+        const pool = this.words.words2 || [];
+        const w = pool[Math.floor(this.rnd() * pool.length)];
+        spec.target = w ? { type: 'word', chars: w.w.split('') } : { type: 'char', ch: this._pickChar() };
         spec.el = 'dark';
       }
       if (type === 'idiom') {
-        const w = this.words.idioms[Math.floor(this.rnd() * this.words.idioms.length)];
-        spec.target = { type: 'idiom', chars: w.w.split('') };
+        const pool = this.words.idioms || [];
+        const w = pool[Math.floor(this.rnd() * pool.length)];
+        spec.target = w ? { type: 'idiom', chars: w.w.split('') } : { type: 'char', ch: this._pickChar() };
         spec.el = 'dark';
       }
       if (type === 'mimic') {
@@ -591,6 +610,18 @@
     }
 
     _enemyReached(e) {
+      // Boss 冲过纸界不能直接删除：否则 this.boss 仍在、hp>0，bossDone 永远为 false，
+      // 整场战斗会卡死无法结算。改为重击玩家并把它推回右侧继续战斗。
+      if (e === this.boss) {
+        const heavy = Math.max(15, Math.round(e.r / 4));
+        this._playerTakeRaw(heavy);
+        this.player.combo = 0;
+        e.x = this.canvas.clientWidth + 80;
+        e.y = this.canvas.clientHeight * 0.42;
+        this.fx.addText(this.canvas.clientWidth / 2, 120, e.name + ' 冲破纸界！-' + heavy + ' 砚血', '#c03333', 20);
+        this._shake(6, 4);
+        return;
+      }
       this.enemies = this.enemies.filter(x => x !== e);
       const dmg = Math.max(4, Math.round(e.r / 6) + (this.mode === 'endless' ? this.config.level : 0));
       if (this.player.shield > 0) {
@@ -614,9 +645,10 @@
       const candidates = this._collectCandidates();
       if (!candidates.length) return;
       const effTh = this.inkLock > 0 ? Math.min(0.30, this.threshold + 0.06) : this.threshold;
-      const res = R.match(pts, candidates, effTh);
+      // 只跑一次识别：R.match 内部也会调用 recognize，未命中时再跑一遍是白费算力。
+      const all = R.recognize(pts, candidates);
+      const res = (all.length && all[0].score >= effTh) ? all[0] : null;
       if (!res) {
-        const all = R.recognize(pts, candidates);
         this.player.combo = 0;
         this.stats.wrong++;
         const top = all.length && all[0].score > 0.07 ? all[0].ch : null;
@@ -733,8 +765,10 @@
       }
       const spell = S.EFFECTS[el] || S.EFFECTS.void;
       const spellCtx = { enemy: e, player: this.player, enemies: this.enemies, fx: this.fx, audio: this.audio, dmg };
-      dmg = dmg * (spell.dmg || 1);
+      // 先让字诀有机会修正 ctx.dmg（如「光」对暗属性额外 ×1.5），再乘字诀倍率，
+      // 否则 light.apply 里对 ctx.dmg 的修改会被丢掉。
       spell.apply(spellCtx);
+      dmg = spellCtx.dmg * (spell.dmg || 1);
       e.hp -= dmg;
       this.fx.addFloat(e.x + (Math.random() - 0.5) * 20, e.y - e.r - 10, Math.round(dmg) + (isCrit ? '!' : ''), isCrit ? '#e0b400' : '#2a2018');
       this.fx.ring(e.x, e.y, E.EL_COLOR[el] || '#3a3a3a');
@@ -755,6 +789,9 @@
       } else if (e.target.type === 'word' || e.target.type === 'idiom' || e.target.type === 'poem') {
         e.needIdx = (e.needIdx || 0) + 1;
         if (e.needIdx >= e.target.chars.length) {
+          const full = e.target.chars.join('');
+          if (e.target.type === 'word') this.stats.wordsUsed.push(full);
+          else if (e.target.type === 'idiom') this.stats.idiomsUsed.push(full);
           // 诗魔整句成诗：额外奖励
           if (e.target.type === 'poem') {
             this.stats.score += 60;
@@ -780,6 +817,7 @@
       this.stats.killByType = this.stats.killByType || {};
       const kt = e.boss ? ('boss:' + e.bossId) : e.type;
       this.stats.killByType[kt] = (this.stats.killByType[kt] || 0) + 1;
+      if (e.boss && e.bossId && !this.stats.bosses.includes(e.bossId)) this.stats.bosses.push(e.bossId);
       const comboMult = 1 + this.player.combo * 0.04;
       const qiGain = Math.round(e.qi * comboMult * this.qiMul + (this.player.qiBonus || 0));
       this.player.qi += qiGain;
@@ -975,6 +1013,7 @@
     destroy() {
       if (this.audio) { this.audio.stopAmbience(); this.audio.stopMelody(); }
       if (this._fit) window.removeEventListener('resize', this._fit);
+      if (this._ro) { try { this._ro.disconnect(); } catch (e) {} this._ro = null; }
       if (this.input) this.input.destroy();
       this.state = 'destroyed';
     }

@@ -30,7 +30,8 @@
       this.fx = new g.INK_BATTLE.FX(this.ctx);
       this.bg = null;
       this._resize();
-      window.addEventListener('resize', this._resize.bind(this));
+      this._onResize = this._resize.bind(this);
+      window.addEventListener('resize', this._onResize);
       this._buildBg();
       this._nextTarget();
 
@@ -51,9 +52,10 @@
 
     _resize() {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
-      if (!w || !h) return;
-      this.canvas.width = w * dpr; this.canvas.height = h * dpr;
+      const w = this.canvas.clientWidth || 700;
+      const h = this.canvas.clientHeight || 460;
+      this.canvas.width = Math.max(1, Math.round(w * dpr));
+      this.canvas.height = Math.max(1, Math.round(h * dpr));
       this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       this._buildBg();
     }
@@ -73,11 +75,12 @@
 
     _pickChar() {
       const pool = this.dict.filter(c => c.el !== 'void' && c.ch.length === 1);
-      return pool[Math.floor(Math.random() * pool.length)];
+      return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
     }
 
     _nextTarget() {
       const c = this._pickChar();
+      if (!c) { this.target = null; return; }
       this.target = { ch: c.ch, pinyin: c.pinyin };
       this.targetTime = 3;
       if (this.audio) this.audio.swish(0.3);
@@ -160,6 +163,7 @@
 
     destroy() {
       this._destroyed = true;
+      if (this._onResize) window.removeEventListener('resize', this._onResize);
       if (this.input) this.input.destroy();
       if (this.audio) this.audio.stopMelody();
     }

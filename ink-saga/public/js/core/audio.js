@@ -36,6 +36,12 @@
       gain.gain.exponentialRampToValueAtTime(0.0001, t0 + a + d);
     }
 
+    // 一次性音效的节点在播放结束后断开，避免长时间游戏里 Web Audio 节点越积越多
+    _onEnded(source, ...nodes) {
+      if (!source || typeof source.onended === 'undefined') return;
+      source.onended = () => { for (const n of nodes) { try { n.disconnect(); } catch (e) {} } };
+    }
+
     // 笔划过纸（噪声扫频）
     swish(intensity) {
       if (!this.ready()) return;
@@ -49,6 +55,7 @@
       const gn = ctx.createGain();
       this._env(gn, t0, 0.02, 0.05 + intensity * 0.05, 0.22);
       src.connect(bp); bp.connect(gn); gn.connect(this.master);
+      this._onEnded(src, src, bp, gn);
       src.start(t0); src.stop(t0 + 0.3);
     }
 
@@ -63,12 +70,14 @@
       const gn = ctx.createGain();
       this._env(gn, t0, 0.005, 0.3 + power * 0.2, 0.28);
       src.connect(lp); lp.connect(gn); gn.connect(this.master);
+      this._onEnded(src, src, lp, gn);
       src.start(t0); src.stop(t0 + 0.35);
       // 低音闷响
       const osc = ctx.createOscillator(); osc.type = 'sine';
       osc.frequency.setValueAtTime(120, t0); osc.frequency.exponentialRampToValueAtTime(45, t0 + 0.25);
       const og = ctx.createGain(); this._env(og, t0, 0.01, 0.25, 0.24);
       osc.connect(og); og.connect(this.master);
+      this._onEnded(osc, osc, og);
       osc.start(t0); osc.stop(t0 + 0.3);
     }
 
@@ -86,6 +95,8 @@
       const gn2 = ctx.createGain(); this._env(gn2, t0, 0.004, 0.08, 0.22);
       osc.connect(gn); gn.connect(this.master);
       osc2.connect(gn2); gn2.connect(this.master);
+      this._onEnded(osc, osc, gn);
+      this._onEnded(osc2, osc2, gn2);
       osc.start(t0); osc.stop(t0 + 0.32);
       osc2.start(t0); osc2.stop(t0 + 0.26);
     }
@@ -98,6 +109,7 @@
         const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = f;
         const gn = ctx.createGain(); this._env(gn, t0 + i * 0.05, 0.004, 0.14, 0.35);
         osc.connect(gn); gn.connect(this.master);
+        this._onEnded(osc, osc, gn);
         osc.start(t0 + i * 0.05); osc.stop(t0 + i * 0.05 + 0.4);
       });
     }
@@ -110,6 +122,7 @@
       osc.frequency.setValueAtTime(160, t0); osc.frequency.exponentialRampToValueAtTime(70, t0 + 0.18);
       const gn = ctx.createGain(); this._env(gn, t0, 0.005, 0.12, 0.18);
       osc.connect(gn); gn.connect(this.master);
+      this._onEnded(osc, osc, gn);
       osc.start(t0); osc.stop(t0 + 0.22);
     }
 
@@ -122,6 +135,7 @@
       osc.frequency.exponentialRampToValueAtTime(60, t0 + 0.3);
       const gn = ctx.createGain(); this._env(gn, t0, 0.01, 0.12, 0.3);
       osc.connect(gn); gn.connect(this.master);
+      this._onEnded(osc, osc, gn);
       osc.start(t0); osc.stop(t0 + 0.35);
     }
 
@@ -134,6 +148,7 @@
       lp.frequency.setValueAtTime(900, t0); lp.frequency.exponentialRampToValueAtTime(150, t0 + 0.25);
       const gn = ctx.createGain(); this._env(gn, t0, 0.01, 0.3, 0.28);
       src.connect(lp); lp.connect(gn); gn.connect(this.master);
+      this._onEnded(src, src, lp, gn);
       src.start(t0); src.stop(t0 + 0.32);
     }
 
@@ -145,6 +160,7 @@
         const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = f;
         const gn = ctx.createGain(); this._env(gn, t0 + i * 0.09, 0.008, 0.12, 0.5);
         osc.connect(gn); gn.connect(this.master);
+        this._onEnded(osc, osc, gn);
         osc.start(t0 + i * 0.09); osc.stop(t0 + i * 0.09 + 0.6);
       });
     }
@@ -160,6 +176,7 @@
       lfo.connect(lfoG); lfoG.connect(osc.frequency);
       const gn = ctx.createGain(); this._env(gn, t0, 0.01, 0.12, 0.35);
       osc.connect(gn); gn.connect(this.master);
+      this._onEnded(osc, osc, gn, lfo, lfoG);
       osc.start(t0); osc.stop(t0 + 0.4); lfo.start(t0); lfo.stop(t0 + 0.4);
     }
 
@@ -170,11 +187,12 @@
       const osc = ctx.createOscillator(); osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(90, t0); osc.frequency.exponentialRampToValueAtTime(30, t0 + 0.5);
       const gn = ctx.createGain(); this._env(gn, t0, 0.02, 0.3, 0.55);
-      osc.connect(gn); gn.connect(this.master); osc.start(t0); osc.stop(t0 + 0.6);
+      osc.connect(gn); gn.connect(this.master); this._onEnded(osc, osc, gn); osc.start(t0); osc.stop(t0 + 0.6);
       const src = ctx.createBufferSource(); src.buffer = this._noiseBuffer(0.12);
       const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1200;
       const gn2 = ctx.createGain(); this._env(gn2, t0 + 0.05, 0.002, 0.2, 0.12);
       src.connect(hp); hp.connect(gn2); gn2.connect(this.master);
+      this._onEnded(src, src, hp, gn2);
       src.start(t0 + 0.05); src.stop(t0 + 0.2);
     }
 
@@ -189,6 +207,7 @@
         gn.gain.exponentialRampToValueAtTime(0.1, t0 + 0.02);
         gn.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.5);
         osc.connect(gn); gn.connect(this.master);
+        this._onEnded(osc, osc, gn);
         osc.start(t0); osc.stop(t0 + 3.8);
       });
     }
@@ -263,10 +282,15 @@
           osc2.connect(g2); g2.connect(this.master);
           osc1.start(t0); osc1.stop(t0 + mel.tempo * 1.7);
           osc2.start(t0); osc2.stop(t0 + mel.tempo * 1.5);
+          this._onEnded(osc1, osc1, g1);
+          this._onEnded(osc2, osc2, g2);
           mel.scheduled.push(osc1, osc2, g1, g2);
           mel.nextT += mel.tempo;
         }
-        if (mel.scheduled.length > 120) mel.scheduled.splice(0, 40);
+        if (mel.scheduled.length > 120) {
+          const dropped = mel.scheduled.splice(0, 40);
+          for (const n of dropped) { try { n.stop && n.stop(); } catch (e) {} try { n.disconnect(); } catch (e) {} }
+        }
       };
       mel.timer = setInterval(tick, 250);
       tick();
