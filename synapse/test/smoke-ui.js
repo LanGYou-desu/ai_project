@@ -127,3 +127,35 @@ edt.autoWire();
 const nett = edt.toNetwork(7);
 TT.predictMove(nett, b);
 console.log('OK: 全部渲染路径执行无异常（5 数据集 × 网络图/损失/可视化 + 命中检测 + 掩码/空网络）');
+
+// ---- 决策边界缓存：权重不变时不重复逐格前向 ----
+{
+  const d = DST.moons;
+  const ed = new ED({ inputCount: d.in, outputCount: d.out, outAct: d.outAct });
+  const hidden = d.preset.layers.slice(1, -1);
+  for (let i = 0; i < hidden.length; i++) ed.addHiddenLayer(i + 1, hidden[i], d.preset.hiddenAct);
+  ed.autoWire();
+  const net = ed.toNetwork(7);
+  const ds = d.make(7);
+  let calls = 0;
+  const orig = net.predict.bind(net);
+  net.predict = function (inp) { calls++; return orig(inp); };
+  const range = [-1, 2, -1, 2];
+  RN.drawBoundary(ctx, net, ds, 320, 300, range);
+  const cold = calls;
+  calls = 0;
+  RN.drawBoundary(ctx, net, ds, 320, 300, range);
+  const warm = calls;
+  if (cold !== 56 * 56 || warm !== 0) {
+    console.error('FAIL: 决策边界缓存未生效 cold=' + cold + ' warm=' + warm);
+    process.exit(1);
+  }
+  net.W[0][0][0] += 0.5;
+  calls = 0;
+  RN.drawBoundary(ctx, net, ds, 320, 300, range);
+  if (calls !== 56 * 56) {
+    console.error('FAIL: 权重变化后决策边界未重算 calls=' + calls);
+    process.exit(1);
+  }
+  console.log('OK: 决策边界缓存生效（冷 ' + cold + ' 次逐格前向 → 热 ' + warm + ' 次，权重变化后自动重算）');
+}

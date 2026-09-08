@@ -1,5 +1,5 @@
 'use strict';
-/* SYNAPSE · 井字棋规则与 minimax 教师 */
+/* SYNAPSE · 井字棋规则与 minimax 教师（带置换表缓存） */
 (function (root) {
   'use strict';
   const R = (typeof require !== 'undefined') ? require('./rng.js') : root.Synapse.rng;
@@ -20,7 +20,22 @@
     return m;
   }
   function full(board) { return legalMoves(board).length === 0; }
+
+  /* 置换表：井字棋全部可达局面只有几千个，缓存后 makeDataset 从秒级降到毫秒级。
+     值只取决于 (局面, 行棋方)，因此缓存不影响任何结果。 */
+  const SCORE_CACHE = new Map();
+  const SCORE_CACHE_MAX = 200000;
+
   function minimaxScore(board, player) {
+    const key = board.join('') + player;
+    const hit = SCORE_CACHE.get(key);
+    if (hit !== undefined) return hit;
+    const v = minimaxRaw(board, player);
+    if (SCORE_CACHE.size >= SCORE_CACHE_MAX) SCORE_CACHE.clear();
+    SCORE_CACHE.set(key, v);
+    return v;
+  }
+  function minimaxRaw(board, player) {
     const w = winner(board);
     if (w !== 0) return w === player ? 1 : -1;
     const moves = legalMoves(board);
@@ -34,6 +49,9 @@
     }
     return best;
   }
+  function clearCache() { SCORE_CACHE.clear(); }
+  function cacheSize() { return SCORE_CACHE.size; }
+
   function bestMove(board, player, rng) {
     const moves = legalMoves(board);
     if (moves.length === 0) return -1;
@@ -86,8 +104,10 @@
     return { inputs: inputs, targets: targets };
   }
   function predictMove(net, board) {
-    const p = net.predict(board.slice());
     const moves = legalMoves(board);
+    if (moves.length === 0) return -1;
+    const p = net.predict(board);
+    if (p.length !== 9) throw new Error('井字棋网络的输出维度应为 9，当前为 ' + p.length);
     let best = moves[0];
     for (const m of moves) if (p[m] > p[best]) best = m;
     return best;
@@ -118,7 +138,11 @@
     }
     return { wins: wins, draws: draws, losses: losses };
   }
-  const api = { winner: winner, legalMoves: legalMoves, full: full, minimaxScore: minimaxScore, bestMove: bestMove, makeDataset: makeDataset, predictMove: predictMove, playVsRandom: playVsRandom, LINES: LINES };
+  const api = {
+    winner: winner, legalMoves: legalMoves, full: full, minimaxScore: minimaxScore,
+    bestMove: bestMove, makeDataset: makeDataset, predictMove: predictMove,
+    playVsRandom: playVsRandom, clearCache: clearCache, cacheSize: cacheSize, LINES: LINES
+  };
   root.Synapse = root.Synapse || {};
   root.Synapse.tictactoe = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

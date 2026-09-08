@@ -26,13 +26,18 @@
     for (let i = 1; i < a.length; i++) if (a[i] > a[b]) b = i;
     return b;
   }
+  // 分类标签：单输出视为二分类（阈值 0.5），多输出取 argmax
+  function labelOf(v) {
+    if (v.length === 1) return v[0] >= 0.5 ? 1 : 0;
+    return argmax(v);
+  }
   function accuracy(preds, targets) {
+    if (!preds.length) return 0;
     let ok = 0;
-    for (let i = 0; i < preds.length; i++) if (argmax(preds[i]) === argmax(targets[i])) ok++;
+    for (let i = 0; i < preds.length; i++) if (labelOf(preds[i]) === labelOf(targets[i])) ok++;
     return ok / preds.length;
   }
-  function mean(arr) { return arr.length ? arr.reduce(function (a, b) { return a + b; }, 0) / arr.length : 0; }
-  const api = { lossValue: lossValue, argmax: argmax, accuracy: accuracy, mean: mean };
+  const api = { lossValue: lossValue, argmax: argmax, labelOf: labelOf, accuracy: accuracy };
   root.Synapse = root.Synapse || {};
   root.Synapse.losses = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

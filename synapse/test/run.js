@@ -391,6 +391,194 @@ section('编辑器训练闭环（XOR 自定义稀疏网络）');
   ok(okc === 4, '编辑器构建的掩码网络 XOR 全部学对');
 }
 
+
+/* ---------- 二分类标签与准确率 ---------- */
+section('二分类标签与准确率');
+{
+  eq(L.labelOf([0.2]), 0, 'labelOf 单输出 < 0.5 → 0');
+  eq(L.labelOf([0.5]), 1, 'labelOf 单输出 = 0.5 → 1');
+  eq(L.labelOf([0.8]), 1, 'labelOf 单输出 > 0.5 → 1');
+  eq(L.labelOf([0.1, 0.8, 0.1]), 1, 'labelOf 多输出 argmax');
+  eq(L.labelOf([0.9, 0.1]), 0, 'labelOf 多输出 argmax 2');
+  near(L.accuracy([[0.1], [0.9]], [[0], [1]]), 1, 1e-12, 'accuracy 二分类');
+  near(L.accuracy([[0.1], [0.9]], [[1], [0]]), 0, 1e-12, 'accuracy 二分类全错');
+  eq(L.accuracy([], []), 0, 'accuracy 空输入');
+
+  // 回归：单输出二分类的准确率不能再恒为 1（旧实现 argmax([0]) === argmax([1])）
+  const preset = DS.DATASETS.xor.preset;
+  const net = new NW.Network({ layers: preset.layers, hiddenAct: preset.hiddenAct, outAct: 'sigmoid', seed: 12345 });
+  const tr = new TR.Trainer(net, { lr: preset.lr, momentum: preset.momentum, batchSize: preset.batchSize, epochs: 1, seed: 7, loss: preset.loss, classifier: true });
+  const h = tr.fit(DS.makeXor());
+  ok(h[0].acc < 1, '未训练网络首回合 acc < 1 (=' + h[0].acc + ')');
+  const net2 = new NW.Network({ layers: preset.layers, hiddenAct: preset.hiddenAct, outAct: 'sigmoid', seed: preset.seed });
+  const tr2 = new TR.Trainer(net2, { lr: preset.lr, momentum: preset.momentum, batchSize: preset.batchSize, epochs: preset.epochs, seed: preset.seed, loss: preset.loss, classifier: true });
+  const h2 = tr2.fit(DS.makeXor());
+  near(h2[h2.length - 1].acc, 1, 1e-12, 'XOR 训练后 acc = 1');
+}
+
+/* ---------- 梯度校验补充：mse+softmax / 多标签 / 累加器 ---------- */
+section('梯度校验补充（mse+softmax / 多标签 / 累加器）');
+{
+  let net = new NW.Network({ layers: [2, 3, 2], hiddenAct: 'tanh', outAct: 'softmax', seed: 8 });
+  let r = gradCheck(net, [0.1, 0.9], [0, 1], 'mse');
+  ok(r.allOk, 'softmax + mse 梯度 (worst=' + r.worst.toExponential(2) + ')');
+  net = new NW.Network({ layers: [2, 4, 3], hiddenAct: 'relu', outAct: 'softmax', seed: 12 });
+  r = gradCheck(net, [0.5, -0.2], [1, 0, 0], 'mse');
+  ok(r.allOk, 'softmax + mse 三分类梯度 (worst=' + r.worst.toExponential(2) + ')');
+  net = new NW.Network({ layers: [2, 3, 3], hiddenAct: 'tanh', outAct: 'sigmoid', seed: 13 });
+  r = gradCheck(net, [0.2, 0.7], [1, 0, 1], 'ce');
+  ok(r.allOk, 'sigmoid 多标签 ce 梯度 (worst=' + r.worst.toExponential(2) + ')');
+  net = new NW.Network({ layers: [3, 5, 4, 2], hiddenAct: 'tanh', outAct: 'sigmoid', seed: 15 });
+  r = gradCheck(net, [0.2, -0.4, 0.9], [0.3, 0.8], 'mse');
+  ok(r.allOk, '深网络 mse 梯度 (worst=' + r.worst.toExponential(2) + ')');
+
+  // backward 自带 pred，训练循环不必再 predict 一次
+  net = new NW.Network({ layers: [2, 3, 2], hiddenAct: 'tanh', outAct: 'softmax', seed: 8 });
+  const g = net.backward([0.1, 0.9], [0, 1], 'ce');
+  arrClose(g.pred, net.predict([0.1, 0.9]), 1e-15, 'backward().pred == predict()');
+
+  // 预分配累加器与逐样本梯度求和等价
+  const g1 = net.backward([0.1, 0.9], [0, 1], 'ce');
+  const g2 = net.backward([0.4, 0.2], [1, 0], 'ce');
+  const acc = net.initGrads();
+  net.zeroGrads(acc);
+  net.backward([0.1, 0.9], [0, 1], 'ce', acc);
+  net.backward([0.4, 0.2], [1, 0], 'ce', acc);
+  let maxDiff = 0;
+  for (let l = 0; l < g1.dW.length; l++) {
+    for (let i = 0; i < g1.dW[l].length; i++) for (let j = 0; j < g1.dW[l][i].length; j++) {
+      maxDiff = Math.max(maxDiff, Math.abs(acc.dW[l][i][j] - (g1.dW[l][i][j] + g2.dW[l][i][j])));
+    }
+    for (let i = 0; i < g1.db[l].length; i++) maxDiff = Math.max(maxDiff, Math.abs(acc.db[l][i] - (g1.db[l][i] + g2.db[l][i])));
+  }
+  ok(maxDiff < 1e-15, '梯度累加器 == 逐样本之和 (diff=' + maxDiff + ')');
+  net.zeroGrads(acc);
+  ok(acc.dW[0][0][0] === 0 && acc.db[0][0] === 0, 'zeroGrads 清零');
+
+  // 交叉熵 + 非 sigmoid/softmax 输出：明确报错，而不是静默算错梯度
+  let threw = false;
+  try { new NW.Network({ layers: [2, 2, 1], hiddenAct: 'tanh', outAct: 'tanh', seed: 3 }).backward([0.1, 0.2], [1], 'ce'); }
+  catch (e) { threw = true; }
+  ok(threw, 'ce + tanh 输出抛错');
+}
+
+/* ---------- 数值稳定性与鲁棒性 ---------- */
+section('数值稳定性与鲁棒性');
+{
+  // 极端学习率：梯度爆炸时拒绝更新并停止，权重保持有限（不再写入 NaN）
+  const net = new NW.Network({ layers: [2, 4, 1], hiddenAct: 'tanh', outAct: 'identity', seed: 7 });
+  const tr = new TR.Trainer(net, { lr: 1e300, momentum: 0.9, batchSize: 4, epochs: 50, seed: 7, loss: 'mse', classifier: true });
+  const hist = tr.fit(DS.makeXor());
+  ok(tr.state.diverged, '极端学习率 → 标记 diverged');
+  ok(tr.state.done, '发散后停止训练');
+  let allFinite = true;
+  for (let l = 0; l < net.W.length; l++) for (let i = 0; i < net.W[l].length; i++) for (let j = 0; j < net.W[l][i].length; j++) if (!Number.isFinite(net.W[l][i][j])) allFinite = false;
+  for (let l = 0; l < net.b.length; l++) for (let i = 0; i < net.b[l].length; i++) if (!Number.isFinite(net.b[l][i])) allFinite = false;
+  ok(allFinite, '发散时权重保持有限（未写入 NaN/Inf）');
+  ok(hist.length === 0 || Number.isFinite(hist[hist.length - 1].loss), '历史记录里没有 NaN');
+  // 正常学习率不会误判发散
+  const net2 = new NW.Network({ layers: [2, 4, 1], hiddenAct: 'tanh', outAct: 'sigmoid', seed: 7 });
+  const tr2 = new TR.Trainer(net2, { lr: 0.5, momentum: 0.9, batchSize: 4, epochs: 50, seed: 7, loss: 'ce' });
+  tr2.fit(DS.makeXor());
+  ok(!tr2.state.diverged, '正常学习率不触发发散保护');
+
+  // 空数据集 / 维度不符 / 数量不符
+  const t = new TR.Trainer(new NW.Network({ layers: [2, 1], outAct: 'sigmoid', seed: 1 }));
+  let threw = false;
+  try { t.fit({ inputs: [], targets: [] }); } catch (e) { threw = true; }
+  ok(threw, '空数据集抛错');
+  threw = false;
+  try { new TR.Trainer(new NW.Network({ layers: [3, 1], outAct: 'sigmoid', seed: 1 })).fit(DS.makeXor()); } catch (e) { threw = true; }
+  ok(threw, '数据集输入维度与网络不符抛错');
+  threw = false;
+  try { t.fit({ inputs: [[0, 0]], targets: [] }); } catch (e) { threw = true; }
+  ok(threw, '输入/目标数量不符抛错');
+
+  // prepare 重置动量与梯度缓冲
+  const net3 = new NW.Network({ layers: [2, 3, 1], hiddenAct: 'tanh', outAct: 'sigmoid', seed: 1 });
+  const tr3 = new TR.Trainer(net3, { lr: 0.5, momentum: 0.9, batchSize: 2, epochs: 3, seed: 1, loss: 'mse' });
+  tr3.fit(DS.makeXor());
+  tr3.prepare(DS.makeXor());
+  ok(tr3.vel.vW.every(function (m) { return m.every(function (r) { return r.every(function (x) { return x === 0; }); }); }), 'prepare 重置动量');
+  ok(tr3.state.history.length === 0 && tr3.state.epoch === 0, 'prepare 重置训练状态');
+
+  // 回合数调大后可继续训练（不必重建网络）
+  const net4 = new NW.Network({ layers: [2, 3, 1], hiddenAct: 'tanh', outAct: 'sigmoid', seed: 1 });
+  const tr4 = new TR.Trainer(net4, { lr: 0.5, momentum: 0.9, batchSize: 2, epochs: 2, seed: 1, loss: 'mse' });
+  tr4.fit(DS.makeXor());
+  ok(tr4.state.done, '2 回合后 done');
+  tr4.updateOpts({ epochs: 5 });
+  ok(!tr4.state.done, '调大回合数后 done 清除');
+  ok(!!tr4.runEpoch(), '可继续训练');
+}
+
+/* ---------- 序列化校验 ---------- */
+section('序列化校验');
+{
+  const net = new NW.Network({ layers: [2, 3, 1], hiddenAct: 'tanh', outAct: 'sigmoid', seed: 4 });
+  const clone = NW.Network.fromJSON(net.serialize());
+  arrClose(clone.predict([0.3, 0.6]), net.predict([0.3, 0.6]), 1e-15, 'fromJSON 往返预测一致');
+  const c2 = net.clone();
+  c2.W[0][0][0] += 10;
+  ok(c2.W[0][0][0] !== net.W[0][0][0], 'clone 与原网络不共享权重数组');
+  const bad = [
+    ['层数不足', { kind: 'SynapseNetwork', layers: [2], outAct: 'sigmoid', acts: [], W: [], b: [] }],
+    ['权重行数不符', { kind: 'SynapseNetwork', layers: [2, 3, 1], outAct: 'sigmoid', acts: [['tanh', 'tanh', 'tanh']], W: [[[1, 2]], [[1, 2, 3]]], b: [[0, 0, 0], [0]] }],
+    ['权重列数不符', { kind: 'SynapseNetwork', layers: [2, 3, 1], outAct: 'sigmoid', acts: [['tanh', 'tanh', 'tanh']], W: [[[1, 2, 3], [1, 2], [1, 2]], [[1, 2, 3]]], b: [[0, 0, 0], [0]] }],
+    ['缺激活列表', { kind: 'SynapseNetwork', layers: [2, 3, 1], outAct: 'sigmoid', W: [[[1, 2], [1, 2], [1, 2]], [[1, 2, 3]]], b: [[0, 0, 0], [0]] }],
+    ['权重含 NaN', { kind: 'SynapseNetwork', layers: [2, 1], outAct: 'sigmoid', acts: [], W: [[[NaN, 1]]], b: [[0]] }],
+    ['未知输出激活', { kind: 'SynapseNetwork', layers: [2, 1], outAct: 'foo', acts: [], W: [[[1, 1]]], b: [[0]] }],
+    ['掩码形状不符', { kind: 'SynapseNetwork', layers: [2, 1], outAct: 'sigmoid', acts: [], W: [[[1, 1]]], b: [[0]], mask: [[[true]]] }]
+  ];
+  for (const pair of bad) {
+    let threw = false;
+    try { NW.Network.fromJSON(pair[1]); } catch (e) { threw = true; }
+    ok(threw, 'fromJSON 拒绝：' + pair[0]);
+  }
+}
+
+/* ---------- 井字棋补充 ---------- */
+section('井字棋补充');
+{
+  const net = new NW.Network({ layers: [9, 9], outAct: 'softmax', seed: 1 });
+  eq(TT.predictMove(net, [1, -1, 1, -1, 1, -1, 1, -1, 1]), -1, 'predictMove 满盘返回 -1');
+  eq(TT.bestMove([1, -1, 1, -1, 1, -1, 1, -1, 1], 1), -1, 'bestMove 满盘返回 -1');
+  let threw = false;
+  try { TT.predictMove(new NW.Network({ layers: [9, 1], outAct: 'sigmoid', seed: 1 }), new Array(9).fill(0)); } catch (e) { threw = true; }
+  ok(threw, 'predictMove 输出维度不符抛错');
+
+  // 置换表：命中不改变结果，且不破坏 minimax 的正确性
+  TT.clearCache();
+  const b = [1, 0, 0, 0, -1, 0, 0, 0, 0];
+  const first = TT.minimaxScore(b.slice(), 1);
+  const second = TT.minimaxScore(b.slice(), 1);
+  eq(first, second, 'minimax 缓存命中结果一致');
+  ok(TT.cacheSize() > 0, '置换表已填充');
+  const empty = new Array(9).fill(0);
+  let allDraw = true;
+  for (const m of TT.legalMoves(empty)) {
+    empty[m] = 1;
+    if (TT.minimaxScore(empty.slice(), -1) !== 0) allDraw = false;
+    empty[m] = 0;
+  }
+  ok(allDraw, '空盘首手后 O 视角值均为 0（X 无法强胜）');
+  eq(TT.bestMove([1, 1, 0, 0, -1, 0, 0, 0, -1], 1), 2, '双线杀仍然选 (0,2)');
+}
+
+/* ---------- 挑战达标线（真实二分类准确率） ---------- */
+section('挑战达标线');
+{
+  const GOALS = { xor: 0.95, moons: 0.9, spiral: 0.8 };
+  for (const id of ['xor', 'moons', 'spiral']) {
+    const d = DS.DATASETS[id], p = d.preset, ds = d.make(p.seed);
+    const net = new NW.Network({ layers: p.layers, hiddenAct: p.hiddenAct, outAct: d.outAct, seed: p.seed });
+    const tr = new TR.Trainer(net, { lr: p.lr, momentum: p.momentum, batchSize: p.batchSize, epochs: p.epochs, seed: p.seed, loss: p.loss, classifier: true });
+    const hist = tr.fit(ds);
+    const acc = hist[hist.length - 1].acc;
+    ok(acc >= GOALS[id], id + ' 预设训练后准确率 ≥ 达标线 ' + GOALS[id] + ' (=' + (acc * 100).toFixed(1) + '%)');
+  }
+}
+
 /* ---------- 总结 ---------- */
 console.log('\n========================================');
 console.log('通过 ' + passed + ' 项，失败 ' + failed + ' 项');

@@ -26,9 +26,7 @@
     }
     return arr;
   }
-  function randInt(rng, n) { return Math.floor(rng() * n); }
-  function pick(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
-  const api = { createRng: createRng, randn: randn, shuffle: shuffle, randInt: randInt, pick: pick };
+  const api = { createRng: createRng, randn: randn, shuffle: shuffle };
   root.Synapse = root.Synapse || {};
   root.Synapse.rng = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

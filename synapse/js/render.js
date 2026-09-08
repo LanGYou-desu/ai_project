@@ -9,7 +9,7 @@
   const C = {
     cyan: '#4dd0e1', violet: '#b388ff', amber: '#ffd54f', magenta: '#ff7eb6',
     green: '#69f0ae', red: '#ff6b6b', muted: '#7d8ab8', text: '#dbe4ff',
-    bg: '#0c1122', grid: '#1a2340'
+    bg: '#0c1122', grid: '#1a2340', border: '#3a4a7a'
   };
 
   /* ---------- 布局：按层列给节点赋坐标 ---------- */
@@ -71,7 +71,7 @@
         ctx.fillStyle = fill;
         ctx.fill();
         ctx.lineWidth = isSel || isWire ? 3 : 1.5;
-        ctx.strokeStyle = isSel ? '#ffffff' : (isWire ? C.cyan : C.borderColor || '#3a4a7a');
+        ctx.strokeStyle = isSel ? '#ffffff' : (isWire ? C.cyan : C.border);
         ctx.stroke();
         if (isWire) {
           ctx.strokeStyle = C.cyan; ctx.lineWidth = 2;
@@ -191,7 +191,8 @@
       ctx.font = '10px Consolas, monospace';
       ctx.textAlign = 'right';
       ctx.fillText('acc', W - padR + 8, padT + 10);
-      ctx.fillText((Math.round(history[n - 1].acc * 100)) + '%', W - padR + 8, padT + 24);
+      const lastAcc = history[n - 1].acc;
+      ctx.fillText(lastAcc == null ? '—' : (Math.round(lastAcc * 100)) + '%', W - padR + 8, padT + 24);
     }
     ctx.fillStyle = C.cyan;
     ctx.font = '10px Consolas, monospace';
@@ -207,32 +208,76 @@
   }
 
   /* ---------- 决策边界（2D 数据集） ---------- */
-  function drawBoundary(ctx, net, dataset, W, H, range) {
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = C.bg;
-    ctx.fillRect(0, 0, W, H);
+  /* 逐格前向很贵（56×56 = 3136 次），按「权重签名 + 画布尺寸 + 坐标范围」缓存离屏图层：
+     权重没变（空闲 / 暂停）时只做一次 drawImage。 */
+  const BOUNDARY_GRID = 56;
+  const boundaryCache = { key: null, canvas: null };
+
+  function netSignature(net) {
+    let h = 2166136261;
+    for (let l = 0; l < net.W.length; l++) {
+      const m = net.W[l], b = net.b[l];
+      for (let i = 0; i < m.length; i++) {
+        const row = m[i];
+        for (let j = 0; j < row.length; j++) h = Math.imul(h ^ Math.round(row[j] * 1e6), 16777619);
+        h = Math.imul(h ^ Math.round(b[i] * 1e6), 16777619);
+      }
+    }
+    return (h >>> 0) + '/' + net.layers.join(',') + '/' + net.outAct;
+  }
+  function createSurface(W, H, dpr) {
+    if (typeof document === 'undefined' || !document.createElement) return null;
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(W * dpr));
+    cv.height = Math.max(1, Math.round(H * dpr));
+    const c2 = cv.getContext('2d');
+    if (!c2) return null;
+    if (c2.setTransform) c2.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { canvas: cv, ctx: c2 };
+  }
+  function paintField(g, net, W, H, range) {
     const padL = 46, padR = 14, padT = 12, padB = 28;
     const iw = W - padL - padR, ih = H - padT - padB;
     const x0 = range[0], x1 = range[1], y0 = range[2], y1 = range[3];
-    const grid = 56;
-    for (let gy = 0; gy < grid; gy++) {
-      for (let gx = 0; gx < grid; gx++) {
-        const px = x0 + ((gx + 0.5) / grid) * (x1 - x0);
-        const py = y0 + ((gy + 0.5) / grid) * (y1 - y0);
+    const cw = iw / BOUNDARY_GRID + 0.6, ch = ih / BOUNDARY_GRID + 0.6;
+    for (let gy = 0; gy < BOUNDARY_GRID; gy++) {
+      for (let gx = 0; gx < BOUNDARY_GRID; gx++) {
+        const px = x0 + ((gx + 0.5) / BOUNDARY_GRID) * (x1 - x0);
+        const py = y0 + ((gy + 0.5) / BOUNDARY_GRID) * (y1 - y0);
         const p = net.predict([px, py]);
-        let v;
-        if (p.length === 1) v = p[0];
-        else v = p[L.argmax(p)] * 0.9 + 0.05;
-        const sx = padL + (gx / grid) * iw, sy = padT + (gy / grid) * ih;
-        const cw = iw / grid + 0.6, ch = ih / grid + 0.6;
-        ctx.fillStyle = mixColor(C.cyan, C.magenta, v);
-        ctx.fillRect(sx, sy, cw, ch);
+        let v = p.length === 1 ? p[0] : p[L.argmax(p)] * 0.9 + 0.05;
+        if (!Number.isFinite(v)) v = 0.5;
+        g.fillStyle = mixColor(C.cyan, C.magenta, v);
+        g.fillRect(padL + (gx / BOUNDARY_GRID) * iw, padT + (gy / BOUNDARY_GRID) * ih, cw, ch);
       }
     }
-    // 数据点
+  }
+  function drawBoundary(ctx, net, dataset, W, H, range) {
+    const padL = 46, padR = 14, padT = 12, padB = 28;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    const x0 = range[0], x1 = range[1], y0 = range[2], y1 = range[3];
+    const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+    const key = netSignature(net) + '|' + W + 'x' + H + '@' + dpr + '|' + range.join(',') + '|' + dataset.inputs.length;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, W, H);
+    if (key !== boundaryCache.key) {
+      const surface = createSurface(W, H, dpr);
+      if (surface) {
+        paintField(surface.ctx, net, W, H, range);
+        boundaryCache.key = key;
+        boundaryCache.canvas = surface.canvas;
+      } else {
+        boundaryCache.key = null;
+        boundaryCache.canvas = null;
+        paintField(ctx, net, W, H, range);
+      }
+    }
+    if (boundaryCache.canvas) ctx.drawImage(boundaryCache.canvas, 0, 0, W, H);
+    // 数据点（单输出数据集也要按 0.5 阈值区分类别，不能用 argmax）
     for (let i = 0; i < dataset.inputs.length; i++) {
       const inp = dataset.inputs[i];
-      const cls = L.argmax(dataset.targets[i]);
+      const cls = L.labelOf(dataset.targets[i]);
       const sx = padL + ((inp[0] - x0) / (x1 - x0)) * iw;
       const sy = padT + ((inp[1] - y0) / (y1 - y0)) * ih;
       ctx.beginPath();

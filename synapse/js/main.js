@@ -13,6 +13,8 @@
 
   const $ = function (id) { return document.getElementById(id); };
 
+  const MILESTONES = [0.5, 0.2, 0.1, 0.05, 0.02];
+
   const S = {
     dsId: 'xor',
     editor: null, net: null, trainer: null, dataset: null,
@@ -22,7 +24,7 @@
     challengeRun: null, challengeBest: 0,
     muted: false,
     hp: { lr: 0.2, momentum: 0.9, batch: 32, epochs: 300, seed: 7, loss: 'ce' },
-    milestones: [0.5, 0.2, 0.1, 0.05, 0.02],
+    milestones: MILESTONES.slice(),
     best: loadBest(),
     sizes: { net: { w: 0, h: 0 }, loss: { w: 0, h: 0 }, viz: { w: 0, h: 0 } }
   };
@@ -262,6 +264,7 @@
   /* ================= 网络重建 ================= */
   function rebuildNet() {
     S.running = false;
+    S.milestones = MILESTONES.slice();
     try {
       S.net = S.editor.toNetwork(S.hp.seed);
     } catch (e) {
@@ -292,11 +295,6 @@
     updateButtons();
     audio.pop();
   }
-  function pauseTrain() {
-    S.running = false;
-    updateButtons();
-  }
-
   function onEpoch(e) {
     updateStats();
     if (S.challengeRun && e.acc != null && e.acc > S.challengeBest) S.challengeBest = e.acc;
@@ -310,24 +308,35 @@
     S.running = false;
     updateButtons();
     draw();
+    if (S.trainer.state.diverged) {
+      $('st-loss').textContent = '发散';
+      audio.tone(180, 0.4, 'sawtooth', 0.05);
+      S.challengeRun = null;
+      S.challengeBest = 0;
+      S.epochsPerFrame = 3;
+      alert('训练发散：梯度出现 NaN / Inf，已停止并保留上一回合的权重。请把学习率调小后重试。');
+      return;
+    }
     if (S.challengeRun) {
       const c = S.challengeRun;
       const acc = S.trainer.state.acc;
-      if (acc != null && (S.best[c] || 0) < acc) {
-        S.best[c] = acc;
+      // 用本次训练出现过的最高准确率判定达标（末回合可能刚好抖动）
+      const bestAcc = Math.max(S.challengeBest, acc == null ? 0 : acc);
+      if ((S.best[c] || 0) < bestAcc) {
+        S.best[c] = bestAcc;
         saveBest();
       }
-      const passed = acc != null && acc >= goalOf(c);
+      const passed = bestAcc >= goalOf(c);
       if (passed) {
         audio.success();
         const card = $('best-' + c);
-        if (card) card.textContent = '当前最佳：' + (acc * 100).toFixed(1) + '%  🎉 达标！';
+        if (card) card.textContent = '当前最佳：' + (bestAcc * 100).toFixed(1) + '%  🎉 达标！';
         const tag = card ? card.parentElement.querySelector('.c-tag') : null;
         if (tag) { tag.textContent = '✓ 已通关'; tag.className = 'c-tag passed'; }
       } else {
         audio.tone(220, 0.25, 'sine', 0.05);
         const card = $('best-' + c);
-        if (card) card.textContent = '当前最佳：' + (acc * 100).toFixed(1) + '%  （未达标，去织造台加容量）';
+        if (card) card.textContent = '当前最佳：' + (bestAcc * 100).toFixed(1) + '%  （未达标，去织造台加容量）';
       }
       S.challengeRun = null;
       S.challengeBest = 0;
@@ -356,10 +365,15 @@
   /* ================= 渲染 ================= */
   function fitCanvas(canvas, h, key) {
     const dpr = window.devicePixelRatio || 1;
-    const w = Math.max(120, canvas.clientWidth || canvas.parentElement.clientWidth - 4);
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
+    const parentW = canvas.parentElement ? canvas.parentElement.clientWidth - 4 : 320;
+    const w = Math.max(120, canvas.clientWidth || parentW || 320);
+    const pw = Math.round(w * dpr), ph = Math.round(h * dpr);
     const ctx = canvas.getContext('2d');
+    // 尺寸没变就不要再写 canvas.width/height：那会清空画布并重新分配后备缓冲
+    if (canvas.width !== pw || canvas.height !== ph) {
+      canvas.width = pw;
+      canvas.height = ph;
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     S.sizes[key] = { w: w, h: h };
     return ctx;
@@ -396,7 +410,9 @@
       R.drawTTT(ctx, S.ttt, S.sizes.viz.w, S.sizes.viz.h);
     }
   }
+  let vizRangeCache = null, vizRangeDs = null;
   function rangeOf(ds) {
+    if (vizRangeDs === ds && vizRangeCache) return vizRangeCache;
     let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
     for (const inp of ds.inputs) {
       if (inp[0] < xmin) xmin = inp[0];
@@ -405,7 +421,9 @@
       if (inp[1] > ymax) ymax = inp[1];
     }
     const px = (xmax - xmin) * 0.25 || 0.5, py = (ymax - ymin) * 0.25 || 0.5;
-    return [xmin - px, xmax + px, ymin - py, ymax + py];
+    vizRangeDs = ds;
+    vizRangeCache = [xmin - px, xmax + px, ymin - py, ymax + py];
+    return vizRangeCache;
   }
 
   function updateNetDims() {
@@ -607,7 +625,6 @@
     if (!t.over) {
       t.turn = -t.turn;
       t.msg = '网络思考中…';
-      draw();
       setTimeout(netMove, 280);
     }
     draw();
@@ -635,7 +652,7 @@
       audio.tone(w === t.userSide ? 660 : 330, 0.25, 'sine', 0.06);
       return;
     }
-    if (t.board.indexOf(0) === -1) {
+    if (TT.full(t.board)) {
       t.over = true;
       t.msg = '平局 · 和棋';
     }
@@ -652,7 +669,7 @@
   function challengeRun(id) {
     loadDataset(id);
     S.challengeRun = id;
-    S.challengeBest = S.best[id] || 0;
+    S.challengeBest = 0;
     S.epochsPerFrame = 6;
     startTrain();
     // 切到织造台看现场
@@ -686,10 +703,16 @@
       try {
         const data = JSON.parse(reader.result);
         if (!data || data.kind !== 'SynapseSave') throw new Error('文件格式不对');
+        if (!DST[data.dsId]) throw new Error('存档里的数据集未知：' + data.dsId);
+        const ed = ED.fromJSON(data.editor);
+        const net = NW.fromJSON(data.net);
+        const ds = DST[data.dsId].make(DST[data.dsId].preset.seed);
+        if (ds.inputs[0].length !== net.layers[0]) throw new Error('存档网络输入维度（' + net.layers[0] + '）与数据集（' + ds.inputs[0].length + '）不符');
+        if (net.layers[net.layers.length - 1] !== ds.targets[0].length) throw new Error('存档网络输出维度与数据集不符');
         S.dsId = data.dsId;
-        S.editor = ED.fromJSON(data.editor);
-        S.net = NW.fromJSON(data.net);
-        S.dataset = DST[S.dsId].make(DST[S.dsId].preset.seed);
+        S.editor = ed;
+        S.net = net;
+        S.dataset = ds;
         S.hp = data.hp || S.hp;
         S.trainer = new TR(S.net, {
           lr: S.hp.lr, momentum: S.hp.momentum, batchSize: S.hp.batch, epochs: S.hp.epochs,
