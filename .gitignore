@@ -27,5 +27,13 @@ pnpm-debug.log*
 # Runtime browser/CDP profiles (created by headless browser smoke tests)
 .edge-cdp/
 
+# AI 助手本地配置与工作区（README 的仓库约定里承诺过）
+.claude/
+.superpowers/
+
+# 子代理/临时调试产物
+.repro/
+.tmp-*
+
 # Extracted APK / reverse-engineering working dirs (huge, not part of the repo)
 reverse experiment/
