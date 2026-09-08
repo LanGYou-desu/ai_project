@@ -18,6 +18,37 @@
 
   var $ = function (id) { return document.getElementById(id); };
 
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function findBranch(h, id) {
+    for (var i = 0; i < h.branches.length; i++) if (h.branches[i].id === id) return h.branches[i];
+    return null;
+  }
+
+  // 借词标记：日志首条是借词，也可能是「本族词被借词替换」后追加的条目
+  function loanNoteOf(branch, gloss) {
+    var log = branch && branch.wordLog ? branch.wordLog[gloss] : null;
+    if (!log) return null;
+    for (var i = 0; i < log.length; i++) if (log[i].note) return log[i].note;
+    return null;
+  }
+
+  // 分享链接 / 创作台参数一律先规整，缺字段、类型错误都不会让页面崩溃
+  function normalizeOpts(o) {
+    var src = (o && typeof o === 'object' && !Array.isArray(o)) ? o : {};
+    var num = function (v) { var n = typeof v === 'number' ? v : parseFloat(v); return isFinite(n) ? Math.max(0, Math.min(2, n)) : 1; };
+    return {
+      extraWords: Array.isArray(src.extraWords) ? src.extraWords.slice() : [],
+      ruleScale: num(src.ruleScale),
+      grammarScale: num(src.grammarScale),
+      extraSplits: Array.isArray(src.extraSplits) ? src.extraSplits.slice() : []
+    };
+  }
+
   var PRESETS = [
     { name: '雾语', seed: 'fog-lingua', intro: '海雾里的渔村语言：元音柔和，弱化与插音频繁。' },
     { name: '霜语', seed: 'frost-lingua', intro: '极北部落的语言：词尾清化与脱落盛行，词形利落。' },
@@ -59,6 +90,7 @@
     state.memo = {};
     var h = world.evolve({ name: name, seed: seed, extraWords: state.opts.extraWords, ruleScale: state.opts.ruleScale, grammarScale: state.opts.grammarScale, extraSplits: state.opts.extraSplits });
     state.history = h;
+    state.opts = normalizeOpts(h.sandbox);   // 回显真正生效的参数（非法输入已被裁剪）
     state.selected = pickDefaultBranch(h);
     state.cursor = h.totalEpochs - 1;
     $('epochSlider').max = h.totalEpochs - 1;
@@ -93,11 +125,11 @@
   function renderLegend() {
     var el = $('treeLegend');
     if (!el || !state.history) return;
-    var lanes = treeview.layout(state.history);
+    var colors = treeview.colorIndex(state.history);
     var html = '';
     state.history.branches.forEach(function (b) {
-      var color = treeview.BRANCH_COLORS[lanes[b.id] % treeview.BRANCH_COLORS.length];
-      html += '<span class="legend-chip" data-branch="' + b.id + '"><i style="background:' + color + '"></i>' + b.name + '</span>';
+      var color = treeview.BRANCH_COLORS[colors[b.id] % treeview.BRANCH_COLORS.length];
+      html += '<span class="legend-chip" data-branch="' + b.id + '"><i style="background:' + color + '"></i>' + esc(b.name) + '</span>';
     });
     el.innerHTML = '图例：' + html;
     el.querySelectorAll('.legend-chip').forEach(function (c) {
@@ -112,8 +144,9 @@
     h.splits.forEach(function (sp, i) {
       chips.push({ epoch: sp.epoch, label: (sp.manual ? '手动分裂' : i === 0 ? '洪水分裂' : i === 1 ? '翻山分裂' : '海升分裂'), y: sp.epoch * h.yearsPerEpoch });
     });
-    h.loans.forEach(function (l, i) {
-      chips.push({ epoch: l.epoch, label: l.note.replace('借词', '') + '借词', y: l.epoch * h.yearsPerEpoch });
+    h.loans.forEach(function (l) {
+      var tag = l.note.replace('借词', '').replace(/^·/, '') || '骑兵';
+      chips.push({ epoch: l.epoch, label: tag + '借词', y: l.epoch * h.yearsPerEpoch });
     });
     if (h.writing) chips.push({ epoch: h.writing.epoch, label: '文字诞生', y: h.writing.epoch * h.yearsPerEpoch });
     var html = '';
@@ -137,8 +170,7 @@
     var h = state.history;
     var w = wordsAtCached(state.selected, state.cursor);
     if (!w) { el.innerHTML = emptyBranch(); return; }
-    var branch = null;
-    h.branches.forEach(function (b) { if (b.id === state.selected) branch = b; });
+    var branch = findBranch(h, state.selected);
     var glosses = Object.keys(w);
     var q = state.search.trim();
     if (q) glosses = glosses.filter(function (g) { return g.indexOf(q) >= 0 || w[g].word.indexOf(q) >= 0; });
@@ -152,7 +184,7 @@
     var feats = 0;
     Object.keys(g).forEach(function (k) { var v = g[k]; if (v === true || v === false) { if (v) feats++; } else if (v && v !== 'SVO' && v !== '一至三') feats++; });
     var loansOfBranch = 0;
-    for (var lg in branch.wordLog) if (branch.wordLog[lg][0].note) loansOfBranch++;
+    for (var lg in branch.wordLog) if (loanNoteOf(branch, lg)) loansOfBranch++;
     var html = '<div class="phoneme">🗺️ <b>' + branch.name + '</b> · 📖 ' + Object.keys(w).length + ' 词 · 🎼 ' + (ph.consonants.length + ph.vowels.length) + ' 音位 · 🐎 ' + loansOfBranch + ' 借词 · 📚 ' + feats + ' 语法特征' + (branch.writing != null ? ' · 🖋️ 有文字' : '') + '</div>';
     html += '<div class="phoneme">🎼 音系档案：<b>' + ph.consonants.length + '</b> 辅音 <span class="cat">[' + ph.consonants.join(' ') + ']</span> · <b>' + ph.vowels.length + '</b> 元音 <span class="cat">[' + ph.vowels.join(' ') + ']</span></div>';
     var catChips = '<span class="cat-chip" data-cat="all" style="background:' + (state.catFilter === 'all' ? '#a03a2a' : '#b7a583') + '">全部 ' + Object.keys(w).length + '</span>';
@@ -163,25 +195,23 @@
       catChips += '<span class="cat-chip" data-cat="' + c + '" style="background:' + (on ? CAT_COLOR[c] : '#b7a583') + '">' + lex.CATS[c] + ' ' + n + '</span>';
     });
     html += '<div class="cat-filters">' + catChips + '</div>';
-    html += '<div class="searchbar"><input id="wordSearch" type="text" placeholder="🔍 搜索词义或词形…" value="' + state.search + '" aria-label="搜索词表"></div>';
+    html += '<div class="searchbar"><input id="wordSearch" type="text" placeholder="🔍 搜索词义或词形…" value="' + esc(state.search) + '" aria-label="搜索词表"></div>';
     html += '<div class="cat">共 ' + glosses.length + ' 个词 <button class="say-btn" id="btnRandom">🎲 随机邂逅一词</button></div>';
     html += '<canvas id="phCurve" width="0" height="0" class="ph-curve" role="img" aria-label="音位数量随时间演化曲线"></canvas>';
     html += '<table><thead><tr><th>词义</th><th>类别</th><th>原始词形</th><th>公元' + (state.cursor * h.yearsPerEpoch) + '年</th><th></th></tr></thead><tbody>';
     glosses.forEach(function (g) {
       var proto = lex.BY_GLOSS[g] ? lex.BY_GLOSS[g].word : '—';
-      var note = branch.wordLog[g] && branch.wordLog[g][0].note;
+      var note = loanNoteOf(branch, g);
       var loanBadge = '';
-      if (note) loanBadge = ' <span class="badge loan">' + note.replace('借词', '借') + '</span>';
-      var extra = null;
-      state.opts.extraWords.forEach(function (x) { if (x.gloss === g) extra = x; });
-      var cat = extra ? extra.cat : w[g].cat;
+      if (note) loanBadge = ' <span class="badge loan">' + esc(note.replace('借词', '借')) + '</span>';
+      var cat = w[g].cat || 'object';
       var catColor = CAT_COLOR[cat] || '#999';
-      html += '<tr class="wordrow" data-gloss="' + g + '">' +
-        '<td>' + g + loanBadge + '</td>' +
+      html += '<tr class="wordrow" data-gloss="' + esc(g) + '">' +
+        '<td>' + esc(g) + loanBadge + '</td>' +
         '<td><span class="cat-chip" style="background:' + catColor + '">' + (lex.CATS[cat] || '其他') + '</span></td>' +
-        '<td class="proto">' + proto + '</td>' +
-        '<td class="word">' + w[g].word + '</td>' +
-        '<td><button class="say-btn" data-word="' + w[g].word + '" title="试听发音">🔊</button></td></tr>';
+        '<td class="proto">' + esc(proto) + '</td>' +
+        '<td class="word">' + esc(w[g].word) + '</td>' +
+        '<td><button class="say-btn" data-word="' + esc(w[g].word) + '" title="试听发音">🔊</button></td></tr>';
     });
     if (!glosses.length) html += '<tr><td colspan="5" class="cat">😶 没有匹配的词——换个关键词或清空类别筛选试试。</td></tr>';
     html += '</tbody></table>';
@@ -266,7 +296,8 @@
     soundsMod.RULES.forEach(function (r) { agg[r.id] = { rule: r, total: 0, branches: {} }; });
     h.branches.forEach(function (b) {
       for (var rid in b.soundCounts) {
-        if (agg[rid]) { agg[rid].total += b.soundCounts[rid]; agg[rid].branches[b.name] = b.soundCounts[rid]; }
+        // 以分支 id 聚合（名字可能因词形趋同而重复）
+        if (agg[rid]) { agg[rid].total += b.soundCounts[rid]; agg[rid].branches[b.id] = { name: b.name, n: b.soundCounts[rid] }; }
       }
     });
     var list = Object.keys(agg).map(function (id) { return agg[id]; });
@@ -275,8 +306,7 @@
     var html = '<p class="cat" style="margin-bottom:8px">🏛️ 音变图鉴 · 已发现 <b style="color:#a03a2a">' + discovered + '</b> / ' + list.length + ' 条音变（按各分支使用统计）</p>';
     list.forEach(function (x) {
       var got = x.total > 0;
-      var branchNames = Object.keys(x.branches);
-      var branchesHtml = branchNames.map(function (n) { return n + '×' + x.branches[n]; }).join('、');
+      var branchesHtml = Object.keys(x.branches).map(function (id) { return esc(x.branches[id].name) + '×' + x.branches[id].n; }).join('、');
       html += '<div class="grammar-card rule-card" data-rule="' + x.rule.id + '" style="cursor:pointer;' + (got ? '' : 'opacity:.55') + '"><h4>' + (got ? '📖' : '🔒') + ' ' + x.rule.name + (got ? ' · 共 ' + x.total + ' 次' : ' · 待发现') + '</h4>' +
         '<p>' + x.rule.desc + '</p>' +
         (got ? '<div class="real">🔄 涉及分支：' + branchesHtml + '</div>' : '') +
@@ -296,10 +326,9 @@
   // 语言名片
   function languageCard() {
     var h = state.history;
-    var branch = null;
-    h.branches.forEach(function (b) { if (b.id === state.selected) branch = b; });
-    var g = world.grammarAt(h, state.selected, 19);
-    var w = wordsAtCached(state.selected, 19);
+    var branch = findBranch(h, state.selected);
+    var g = world.grammarAt(h, state.selected, state.cursor);
+    var w = wordsAtCached(state.selected, state.cursor);
     var ph = world.phonemeInventory(w);
     var feats = [];
     feats.push('语序 ' + g.wordOrder);
@@ -321,9 +350,8 @@
   }
 
   function emptyBranch() {
-    var b = null;
-    state.history.branches.forEach(function (x) { if (x.id === state.selected) b = x; });
-    return '<div class="empty"><div class="empty-ic">🕰️</div><p>「' + (b ? b.name : '') + '」在公元 ' + (state.cursor * state.history.yearsPerEpoch) + ' 年尚未诞生（诞生于公元 ' + (b ? b.bornEpoch * state.history.yearsPerEpoch : '—') + ' 年）。</p>' +
+    var b = findBranch(state.history, state.selected);
+    return '<div class="empty"><div class="empty-ic">🕰️</div><p>「' + esc(b ? b.name : '') + '」在公元 ' + (state.cursor * state.history.yearsPerEpoch) + ' 年尚未诞生（诞生于公元 ' + (b ? b.bornEpoch * state.history.yearsPerEpoch : '—') + ' 年）。</p>' +
       '<button data-jump="' + (b ? b.bornEpoch : 0) + '" class="empty-btn">⏪ 跳到它的诞生年代</button></div>';
   }
 
@@ -354,8 +382,7 @@
   function renderGrammar() {
     var el = $('tab-grammar');
     var g = world.grammarAt(state.history, state.selected, state.cursor);
-    var branch = null;
-    state.history.branches.forEach(function (b) { if (b.id === state.selected) branch = b; });
+    var branch = findBranch(state.history, state.selected);
     var html = '';
     G_LABEL.forEach(function (row) {
       html += '<div class="grammar-card"><h4>' + row[1] + '：' + row[2](g[row[0]]) + '</h4>';
@@ -382,11 +409,10 @@
   function renderEvents() {
     var el = $('tab-events');
     var h = state.history;
-    var branch = null;
-    h.branches.forEach(function (b) { if (b.id === state.selected) branch = b; });
+    var branch = findBranch(h, state.selected);
     var list = world.branchTimeline(h, state.selected);
     var soundsMod = GW.sounds;
-    var html = '<h4 style="margin-bottom:8px">「' + branch.name + '」的编年史</h4>';
+    var html = '<h4 style="margin-bottom:8px">「' + esc(branch.name) + '」的编年史</h4>';
     if (!list.length) html += '<p class="cat">（尚无记录）</p>';
     list.forEach(function (e) {
       if (e.epoch > state.cursor) return;
@@ -399,7 +425,7 @@
         if (reals.length) realHtml = '<div class="real">📖 ' + reals.join('<br>') + '</div>';
       }
       html += '<div class="event-item ' + e.type + '"><span class="year">公元' + (e.epoch * h.yearsPerEpoch) + '年</span>' +
-        '<div class="en">' + e.name + '</div><div class="de">' + (e.detail || e.flavor) + '</div>' + realHtml + '</div>';
+        '<div class="en">' + esc(e.name) + '</div><div class="de">' + esc(e.detail || e.flavor) + '</div>' + realHtml + '</div>';
     });
     el.innerHTML = html;
   }
@@ -414,7 +440,7 @@
     if (glosses.indexOf(pick) < 0) pick = glosses[0];
     el.setAttribute('data-pick', pick);
     var opts = glosses.map(function (g) {
-      return '<option value="' + g + '"' + (g === pick ? ' selected' : '') + '>' + g + '（' + w[g].word + '）</option>';
+      return '<option value="' + esc(g) + '"' + (g === pick ? ' selected' : '') + '>' + esc(g) + '（' + esc(w[g].word) + '）</option>';
     }).join('');
     var cat = el.getAttribute('data-cat') || 'nature';
     var html = '<div class="writing-pick"><select id="writingSel">' + opts + '</select></div>' +
@@ -423,7 +449,7 @@
       '<div class="writing-stage"><canvas id="ws-sim" width="120" height="120"></canvas><div class="cap">简化阶段 · 笔画化</div></div>' +
       '<div class="writing-stage"><canvas id="ws-script" width="120" height="120"></canvas><div class="cap">文字阶段 · 字母化</div></div>' +
       '</div>' +
-      '<p class="cat" style="margin-top:8px">' + (h.writing ? '公元' + (h.writing.epoch * h.yearsPerEpoch) + '年，' + h.writing.flavor : '') + '</p>' +
+      '<p class="cat" style="margin-top:8px">' + (h.writing ? '公元' + (h.writing.epoch * h.yearsPerEpoch) + '年，' + esc(h.writing.flavor) : '') + '</p>' +
       '<h4 style="margin:14px 0 6px;color:#8b5a2b">🦴 甲骨展柜 · 整类字形</h4>' +
       '<div class="writing-pick"><select id="catSel">' +
       Object.keys(lex.CATS).map(function (c) { return '<option value="' + c + '">' + lex.CATS[c] + '</option>'; }).join('') +
@@ -444,20 +470,35 @@
     renderGlyphGrid(el, cat);
   }
 
+  // 甲骨展柜的字形只由词义决定：栅格化一次后复用，避免每次拖动时间轴都重画 24 个 canvas
+  var picTiles = {};
+  function picTile(gloss) {
+    var hit = picTiles[gloss];
+    if (hit) return hit;
+    var cv = document.createElement('canvas');
+    cv.width = 128; cv.height = 128;   // 2× 超采样后缩放，边缘更干净
+    var ctx = cv.getContext('2d');
+    ctx.scale(2, 2);
+    glyphs.drawStage(ctx, gloss, '', 'picture', 32, 32, 52);
+    if (Object.keys(picTiles).length >= 512) picTiles = {};
+    picTiles[gloss] = cv;
+    return cv;
+  }
+
   function renderGlyphGrid(el, cat) {
     var grid = $('glyphGrid');
     if (!grid) return;
     var w = wordsAtCached(state.selected, state.cursor);
-    var words = Object.keys(w).filter(function (g) { return (lex.BY_GLOSS[g] ? lex.BY_GLOSS[g].cat : w[g].cat) === cat; });
+    var words = Object.keys(w).filter(function (g) { return w[g].cat === cat; });
     if (!words.length) { grid.innerHTML = '<span class="cat">该类别暂无词汇。</span>'; return; }
     var html = '';
     words.slice(0, 24).forEach(function (g) {
-      html += '<div class="glyph-cell"><canvas data-g="' + g + '" width="64" height="64"></canvas><div class="gl">' + g + '</div></div>';
+      html += '<div class="glyph-cell"><canvas data-g="' + esc(g) + '" width="64" height="64"></canvas><div class="gl">' + esc(g) + '</div></div>';
     });
     grid.innerHTML = html;
     grid.querySelectorAll('canvas').forEach(function (cv) {
       var ctx = cv.getContext('2d');
-      glyphs.drawStage(ctx, cv.getAttribute('data-g'), w[cv.getAttribute('data-g')].word, 'picture', 32, 32, 52);
+      ctx.drawImage(picTile(cv.getAttribute('data-g')), 0, 0, 64, 64);
     });
   }
 
@@ -469,20 +510,21 @@
       var words = [];
       var note = null;
       for (var g in b.wordLog) {
-        if (b.wordLog[g][0].note && b.wordLog[g][0].note.indexOf('借词') >= 0) {
+        var n = loanNoteOf(b, g);
+        if (n && n.indexOf('借词') >= 0) {
           words.push(g + '（' + b.wordLog[g][b.wordLog[g].length - 1].form + '）');
-          note = b.wordLog[g][0].note;
+          note = n;
         }
       }
       if (words.length) rows.push({ name: b.name, words: words, note: note });
     });
     var html = '';
     h.loans.forEach(function (l) {
-      html += '<div class="grammar-card"><h4>' + l.note + ' · 公元' + (l.epoch * h.yearsPerEpoch) + '年</h4><p class="cat">' + l.flavor + '</p><p>' + l.words.join('、') + '</p></div>';
+      html += '<div class="grammar-card"><h4>' + esc(l.note) + ' · 公元' + (l.epoch * h.yearsPerEpoch) + '年</h4><p class="cat">' + esc(l.flavor) + '</p><p>' + esc(l.words.join('、')) + '</p></div>';
     });
     if (!rows.length) { html += '<div class="empty"><div class="empty-ic">🐎</div><p>这次演化中没有发生借词事件——试试别的种子？</p></div>'; }
     rows.forEach(function (r) {
-      html += '<div class="grammar-card"><h4>' + r.name + '</h4><p>' + (r.note || '借词') + '：' + r.words.join('、') + '</p></div>';
+      html += '<div class="grammar-card"><h4>' + esc(r.name) + '</h4><p>' + esc(r.note || '借词') + '：' + esc(r.words.join('、')) + '</p></div>';
     });
     el.innerHTML = html;
   }
@@ -512,15 +554,14 @@
   // ---------- 创作台（D3） ----------
   function renderSandbox() {
     var el = $('tab-sandbox');
-    var b = null;
-    state.history.branches.forEach(function (x) { if (x.id === state.selected) b = x; });
+    var b = findBranch(state.history, state.selected);
     var html = '<p class="cat" style="margin-bottom:8px">在这里把"参观"变成"创作"：一切修改都会用同一颗种子重新演化，结果可复现。</p>' +
       '<div class="grammar-card"><h4>✍️ 自定义词根</h4><p class="cat">每行一条：<code>词义:词形</code> 或 <code>词义:词形:类别</code>，如 <code>龙:draka:animal</code></p>' +
-      '<textarea id="sbWords" rows="4" placeholder="龙:draka:animal&#10;冰:gelwa:nature">' + (state.opts.extraWords.map(function (w) { return w.gloss + ':' + w.word + (w.cat ? ':' + w.cat : ''); }).join('\n')) + '</textarea></div>' +
+      '<textarea id="sbWords" rows="4" placeholder="龙:draka:animal&#10;冰:gelwa:nature">' + esc(state.opts.extraWords.map(function (w) { return w.gloss + ':' + w.word + (w.cat ? ':' + w.cat : ''); }).join('\n')) + '</textarea></div>' +
       '<div class="grammar-card"><h4>⚙️ 演化频率</h4>' +
       '<div class="sb-row"><span>音变频率</span><input type="range" id="sbRule" min="50" max="200" value="' + Math.round(state.opts.ruleScale * 100) + '"><b id="sbRuleV">' + Math.round(state.opts.ruleScale * 100) + '%</b></div>' +
       '<div class="sb-row"><span>语法频率</span><input type="range" id="sbGram" min="50" max="200" value="' + Math.round(state.opts.grammarScale * 100) + '"><b id="sbGramV">' + Math.round(state.opts.grammarScale * 100) + '%</b></div></div>' +
-      '<div class="grammar-card"><h4>🗡️ 手动分裂</h4><p class="cat">在公元 ' + (state.cursor * state.history.yearsPerEpoch) + ' 年分裂「' + (b ? b.name : '') + '」。已分裂 ' + state.opts.extraSplits.length + ' 次。</p>' +
+      '<div class="grammar-card"><h4>🗡️ 手动分裂</h4><p class="cat">在公元 ' + (state.cursor * state.history.yearsPerEpoch) + ' 年分裂「' + esc(b ? b.name : '') + '」。已分裂 ' + state.opts.extraSplits.length + ' 次。</p>' +
       '<button id="sbSplit" class="empty-btn">＋ 在这里分裂</button></div>' +
       '<button id="sbApply" class="btn sb-apply">🔁 应用创作台并重新演化</button>' +
       '<div id="sbHint" class="cat" style="margin-top:6px"></div>';
@@ -547,7 +588,6 @@
       state.opts.extraWords = words;
       state.opts.ruleScale = (+$('sbRule').value) / 100;
       state.opts.grammarScale = (+$('sbGram').value) / 100;
-      if (state.opts.extraWords.length) state.opts.extraWords.forEach(function () { }); // ensure array
       evolveLang(state.history.name, state.history.seed);
       $('sbHint').textContent = state.opts.extraWords.length + ' 个自定义词根 · 音变频率 ' + Math.round(state.opts.ruleScale * 100) + '% · 语法频率 ' + Math.round(state.opts.grammarScale * 100) + '%';
       toast('创作台已应用');
@@ -565,22 +605,20 @@
     if (glosses.indexOf(pick) < 0) pick = glosses[0];
     el.setAttribute('data-pick', pick);
     var opts = glosses.map(function (g) {
-      return '<option value="' + g + '"' + (g === pick ? ' selected' : '') + '>' + g + '</option>';
+      return '<option value="' + esc(g) + '"' + (g === pick ? ' selected' : '') + '>' + esc(g) + '</option>';
     }).join('');
     var cog = world.cognates(h, pick, state.cursor);
     var html = '<div class="writing-pick"><select id="cogSel">' + opts + '</select>' +
-      '　<span class="cat">原始词形：<b>' + (cog.proto || '—') + '</b> · 点击行可跳到对应分支</span></div>';
+      '　<span class="cat">原始词形：<b>' + esc(cog.proto || '—') + '</b> · 点击行可跳到对应分支</span></div>';
     html += '<table><thead><tr><th>分支</th><th>词形</th><th>分化自</th></tr></thead><tbody>';
     cog.rows.forEach(function (r) {
-      var branch = null;
-      h.branches.forEach(function (b) { if (b.id === r.branchId) branch = b; });
+      var branch = findBranch(h, r.branchId);
       var note = '';
       if (branch && branch.parentId) {
-        var p = null;
-        h.branches.forEach(function (b) { if (b.id === branch.parentId) p = b; });
-        note = '「' + (p ? p.name : '') + '」→ ' + (branch.bornEpoch * h.yearsPerEpoch) + '年';
+        var p = findBranch(h, branch.parentId);
+        note = '「' + esc(p ? p.name : '') + '」→ ' + (branch.bornEpoch * h.yearsPerEpoch) + '年';
       } else note = '原语';
-      html += '<tr class="wordrow" data-branch="' + r.branchId + '"><td>' + r.branchName + '</td><td class="word">' + r.word + '</td><td class="cat">' + note + '</td></tr>';
+      html += '<tr class="wordrow" data-branch="' + r.branchId + '"><td>' + esc(r.branchName) + '</td><td class="word">' + esc(r.word) + '</td><td class="cat">' + note + '</td></tr>';
     });
     html += '</tbody></table>';
     el.innerHTML = html;
@@ -593,25 +631,28 @@
     var ba = el.getAttribute('data-ba') || state.selected;
     var bb = el.getAttribute('data-bb') || 'root';
     var branchOpts = h.branches.map(function (b) {
-      return '<option value="' + b.id + '"' + (b.id === ba ? ' selected' : '') + '>' + b.name + '</option>';
+      return '<option value="' + b.id + '"' + (b.id === ba ? ' selected' : '') + '>' + esc(b.name) + '</option>';
     }).join('');
     var branchOpts2 = h.branches.map(function (b) {
-      return '<option value="' + b.id + '"' + (b.id === bb ? ' selected' : '') + '>' + b.name + '</option>';
+      return '<option value="' + b.id + '"' + (b.id === bb ? ' selected' : '') + '>' + esc(b.name) + '</option>';
     }).join('');
     var cmp = '<h4 style="margin:16px 0 6px;color:#8b5a2b">⚖️ 方言对比 · ' + (state.cursor * h.yearsPerEpoch) + ' 年</h4>' +
       '<div class="writing-pick"><select id="cmpA">' + branchOpts + '</select> ⇄ <select id="cmpB">' + branchOpts2 + '</select></div>';
     var wa = wordsAtCached(ba, state.cursor), wb = wordsAtCached(bb, state.cursor);
     if (wa && wb) {
+      // 两个分支的词表可能不同（借词只进入某些分支），对比时取并集
       var keys = Object.keys(wa);
+      Object.keys(wb).forEach(function (g) { if (keys.indexOf(g) < 0) keys.push(g); });
       var diff = 0;
       var rows = keys.map(function (g) {
         var a = wa[g] ? wa[g].word : '—', b2 = wb[g] ? wb[g].word : '—';
         var isDiff = a !== b2;
         if (isDiff) diff++;
-        return '<tr' + (isDiff ? ' class="diff"' : '') + '><td>' + g + '</td><td class="word">' + a + '</td><td class="word">' + b2 + '</td></tr>';
+        return '<tr' + (isDiff ? ' class="diff"' : '') + '><td>' + esc(g) + '</td><td class="word">' + esc(a) + '</td><td class="word">' + esc(b2) + '</td></tr>';
       }).join('');
+      var nameA = findBranch(h, ba), nameB = findBranch(h, bb);
       cmp += '<div class="cat">同源词差异：<b style="color:#a03a2a">' + diff + '</b> / ' + keys.length + ' 词</div>';
-      cmp += '<table><thead><tr><th>词义</th><th>' + (h.branches.find(function (x) { return x.id === ba; }) || { name: '' }).name + '</th><th>' + (h.branches.find(function (x) { return x.id === bb; }) || { name: '' }).name + '</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      cmp += '<table><thead><tr><th>词义</th><th>' + esc(nameA ? nameA.name : '') + '</th><th>' + esc(nameB ? nameB.name : '') + '</th></tr></thead><tbody>' + rows + '</tbody></table>';
     } else {
       cmp += '<p class="cat">所选分支在公元' + (state.cursor * h.yearsPerEpoch) + '年尚未诞生。</p>';
     }
@@ -639,28 +680,31 @@
     if (!w || !w[gloss]) return;
     var entry = w[gloss];
     var proto = lex.BY_GLOSS[gloss] ? lex.BY_GLOSS[gloss].word : '—';
-    var chain = world.traceEtymology(h, state.selected, gloss);
+    var chain = world.traceEtymology(h, state.selected, gloss, state.cursor);
     var cog = world.cognates(h, gloss, state.cursor);
-    var extra = null;
-    state.opts.extraWords.forEach(function (x) { if (x.gloss === gloss) extra = x; });
-    var cat = extra ? extra.cat : entry.cat;
-    var branch = null;
-    h.branches.forEach(function (b) { if (b.id === state.selected) branch = b; });
+    var cat = entry.cat || 'object';
+    var branch = findBranch(h, state.selected);
+    var changes = chain.filter(function (c) { return c.rules.length > 0; }).length;
+    state.etymCount++;                       // 「语言学者」成就依赖这个计数
+    checkAch();
     var html = '<span class="close" data-close="1" role="button" aria-label="关闭">✕</span>' +
-      '<h2 style="color:#a03a2a;margin-bottom:6px">' + gloss + ' <span class="cat-chip" style="background:' + (CAT_COLOR[cat] || '#999') + '">' + (lex.CATS[cat] || '其他') + '</span></h2>' +
-      '<p class="cat">「' + branch.name + '」· 公元 ' + (state.cursor * h.yearsPerEpoch) + ' 年</p>' +
-      '<p>原始词形：<b>' + proto + '</b> → 当前词形：<b style="color:#a03a2a">' + entry.word + '</b> <button class="say-btn" data-word="' + entry.word + '">🔊 试听</button></p>' +
-      '<p class="cat">同源词：' + cog.rows.length + ' 个分支仍在说这个词' + (chain.length > 1 ? ' · 经历 ' + (chain.length - 1) + ' 次音变' : '') + '</p>' +
+      '<h2 style="color:#a03a2a;margin-bottom:6px">' + esc(gloss) + ' <span class="cat-chip" style="background:' + (CAT_COLOR[cat] || '#999') + '">' + (lex.CATS[cat] || '其他') + '</span></h2>' +
+      '<p class="cat">「' + esc(branch ? branch.name : '') + '」· 公元 ' + (state.cursor * h.yearsPerEpoch) + ' 年</p>' +
+      '<p>原始词形：<b>' + esc(proto) + '</b> → 当前词形：<b style="color:#a03a2a">' + esc(entry.word) + '</b> <button class="say-btn" data-word="' + esc(entry.word) + '">🔊 试听</button></p>' +
+      '<p class="cat">同源词：' + cog.rows.length + ' 个分支仍在说这个词' + (changes ? ' · 经历 ' + changes + ' 次音变' : '') + '</p>' +
       '<div class="stage-row">' +
-      '<div class="writing-stage"><canvas data-g="' + gloss + '" data-stage="picture" width="84" height="84"></canvas><div class="cap">图画</div></div>' +
-      '<div class="writing-stage"><canvas data-g="' + gloss + '" data-stage="simple" width="84" height="84"></canvas><div class="cap">简化</div></div>' +
-      '<div class="writing-stage"><canvas data-g="' + gloss + '" data-stage="script" width="84" height="84"></canvas><div class="cap">文字</div></div>' +
+      '<div class="writing-stage"><canvas data-g="' + esc(gloss) + '" data-stage="picture" width="84" height="84"></canvas><div class="cap">图画</div></div>' +
+      '<div class="writing-stage"><canvas data-g="' + esc(gloss) + '" data-stage="simple" width="84" height="84"></canvas><div class="cap">简化</div></div>' +
+      '<div class="writing-stage"><canvas data-g="' + esc(gloss) + '" data-stage="script" width="84" height="84"></canvas><div class="cap">文字</div></div>' +
       '</div>' +
       '<h4 style="margin:10px 0 6px;color:#8b5a2b">词源追踪</h4>';
     var steps = [];
     chain.forEach(function (c) {
-      var rules = c.rules.length ? '<span class="rules">' + c.rules.join('·') + '</span>' : '';
-      steps.push('<div class="etym-step"><span class="yr">公元' + c.year + '年' + (c.note ? '·' + c.note : '') + '</span><span class="form">' + c.form + '</span>' + rules + '</div>');
+      var rules = c.rules.length ? '<span class="rules">' + esc(c.rules.join('·')) + '</span>' : '';
+      var label = (c.initial && c.epoch === 0) ? '原始词形' : '公元' + c.year + '年';
+      if (c.note) label += '·' + esc(c.note);
+      if (c.replaced) label += '（替换 ' + esc(c.replaced) + '）';
+      steps.push('<div class="etym-step"><span class="yr">' + label + '</span><span class="form">' + esc(c.form) + '</span>' + rules + '</div>');
     });
     html += steps.join('<div class="etym-arrow">↓</div>');
     showPanel(html);
@@ -679,32 +723,6 @@
       '<div class="real" style="margin-top:8px">📖 ' + rule.real + '</div>' +
       '<p class="cat" style="margin-top:8px">时代窗口：公元 ' + (rule.epochLo * h.yearsPerEpoch) + '~' + (rule.epochHi * h.yearsPerEpoch) + ' 年 · 每词触发概率 ~' + Math.round(rule.prob * 100) + '%</p>';
     showPanel(html);
-  }
-
-  // ---------- 词源追踪 ----------
-  function showEtymology(gloss) {
-    var h = state.history;
-    var chain = world.traceEtymology(h, state.selected, gloss);
-    if (!chain.length) return;
-    state.etymCount++;
-    checkAch();
-    var branch = null;
-    h.branches.forEach(function (b) { if (b.id === state.selected) branch = b; });
-    var html = '<span class="close" data-close="1" role="button" aria-label="关闭">✕</span>';
-    html += '<b>词源追踪 · ' + gloss + '</b>　「' + branch.name + '」<br><br>';
-    var steps = [];
-    chain.forEach(function (c) {
-      var rules = c.rules.length ? '<span class="rules">' + c.rules.join('·') + '</span>' : '';
-      steps.push('<div class="etym-step"><span class="yr">公元' + c.year + '年' + (c.note ? '·' + c.note : '') + '</span><span class="form">' + c.form + '</span>' + rules + '<button class="say-btn" data-word="' + c.form + '">🔊</button></div>');
-    });
-    html += steps.join('<div class="etym-arrow">↓</div>');
-    var e = $('etymology');
-    e.innerHTML = html;
-    e.classList.remove('hidden');
-    e.querySelector('[data-close]').addEventListener('click', function () { e.classList.add('hidden'); });
-    e.querySelectorAll('.say-btn').forEach(function (b) {
-      b.addEventListener('click', function (ev) { ev.stopPropagation(); tts.speak(b.getAttribute('data-word')); });
-    });
   }
 
   // ---------- 时间轴 ----------
@@ -728,7 +746,7 @@
     if (state.cursor >= state.history.totalEpochs - 1) setCursor(0);
     state.timer = setInterval(function () {
       if (state.cursor >= state.history.totalEpochs - 1) { togglePlay(); return; }
-      setCursor(state.cursor + (REDUCED ? 1 : 1));
+      setCursor(state.cursor + 1);
     }, Math.round(220 / state.speed));
   }
 
@@ -741,7 +759,7 @@
   function achMet(id) {
     var h = state.history;
     if (id === 'first') return true;
-    if (id === 'split') return state.cursor >= 6;
+    if (id === 'split') return h.splits.length > 0 && state.cursor >= h.splits[0].epoch;
     if (id === 'loan') return h.loans.length > 0 && state.cursor >= h.loans[0].epoch;
     if (id === 'writing') return state.cursor >= (h.writing ? h.writing.epoch : 99);
     if (id === 'branches') return Object.keys(state.visited).length >= h.branches.length;
@@ -964,7 +982,7 @@
     var h = state.history;
     var data = {
       name: h.name, seed: h.seed, totalYears: h.totalEpochs * h.yearsPerEpoch,
-      sandbox: { extraWords: state.opts.extraWords, ruleScale: state.opts.ruleScale, grammarScale: state.opts.grammarScale, extraSplits: state.opts.extraSplits },
+      sandbox: h.sandbox,
       branches: h.branches.map(function (b) {
         return {
           id: b.id, name: b.name, parentId: b.parentId, bornYear: b.bornEpoch * h.yearsPerEpoch,
@@ -988,21 +1006,21 @@
     var branchSections = h.branches.map(function (b) {
       var w = world.wordsAt(h, b.id, year);
       var rows = Object.keys(w).sort().map(function (g) {
-        return '<tr><td>' + g + '</td><td>' + w[g].word + '</td></tr>';
+        return '<tr><td>' + esc(g) + '</td><td>' + esc(w[g].word) + '</td></tr>';
       }).join('');
       var g = world.grammarAt(h, b.id, year);
-      return '<h3>' + b.name + '（公元' + (b.bornEpoch * h.yearsPerEpoch) + '年诞生）</h3>' +
-        '<p>语法：' + JSON.stringify(g) + '</p><table><tr><th>词义</th><th>词形</th></tr>' + rows + '</table>';
+      return '<h3>' + esc(b.name) + '（公元' + (b.bornEpoch * h.yearsPerEpoch) + '年诞生）</h3>' +
+        '<p>语法：' + esc(JSON.stringify(g)) + '</p><table><tr><th>词义</th><th>词形</th></tr>' + rows + '</table>';
     }).join('');
     var chrono = h.events.slice().sort(function (a, b) { return a.epoch - b.epoch; }).slice(0, 40).map(function (e) {
-      return '<li>公元' + (e.epoch * h.yearsPerEpoch) + '年 · ' + e.name + ' — ' + (e.detail || '') + '</li>';
+      return '<li>公元' + (e.epoch * h.yearsPerEpoch) + '年 · ' + esc(e.name) + ' — ' + esc(e.detail || '') + '</li>';
     }).join('');
     var loans = h.loans.map(function (l) {
-      return '<li>公元' + (l.epoch * h.yearsPerEpoch) + '年 · ' + l.note + '：' + l.words.join('、') + '</li>';
+      return '<li>公元' + (l.epoch * h.yearsPerEpoch) + '年 · ' + esc(l.note) + '：' + esc(l.words.join('、')) + '</li>';
     }).join('');
-    var html = '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>' + h.name + ' · 语言维基</title>' +
+    var html = '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>' + esc(h.name) + ' · 语言维基</title>' +
       '<style>body{font-family:serif;max-width:820px;margin:0 auto;padding:24px;color:#3a2c1a;background:#f3ead8}table{border-collapse:collapse;width:100%}td,th{border:1px solid #c9b78a;padding:4px 8px}img{max-width:100%}h1{color:#a03a2a}</style></head><body>' +
-      '<h1>' + h.name + '</h1><p>种子：<code>' + h.seed + '</code> · 一千年 · ' + h.branches.length + ' 个分支</p>' +
+      '<h1>' + esc(h.name) + '</h1><p>种子：<code>' + esc(h.seed) + '</code> · 一千年 · ' + h.branches.length + ' 个分支</p>' +
       (img ? '<img alt="语系树" src="' + img + '">' : '') +
       '<h2>编年史</h2><ul>' + chrono + '</ul>' +
       '<h2>借词史</h2><ul>' + (loans || '<li>无</li>') + '</ul>' +
@@ -1089,17 +1107,21 @@
     renderPresets();
     var p = urlParams();
     if (p.w) {
-      try { state.opts = JSON.parse(p.w); } catch (e) {}
+      // 分享链接里的参数可能被改坏：解析失败或类型不对都不能让页面崩掉
+      var parsed = null;
+      try { parsed = JSON.parse(p.w); } catch (e) { parsed = null; }
+      state.opts = normalizeOpts(parsed);
     }
     var saved = (!p.lang && !p.seed) ? loadPos() : null;
     var name = p.lang || (saved ? saved.name : PRESETS[0].name);
     var seed = p.seed || (saved ? saved.seed : PRESETS[0].seed);
     evolveLang(name, seed);
     if (saved) {
-      if (saved.cursor != null) state.cursor = Math.max(0, Math.min(19, saved.cursor));
+      if (saved.cursor != null) state.cursor = Math.max(0, Math.min(state.history.totalEpochs - 1, saved.cursor));
       if (saved.branch && state.history.branches.some(function (b) { return b.id === saved.branch; })) state.selected = saved.branch;
       state.visited[state.selected] = true;
       $('epochSlider').value = state.cursor;
+      $('epochLabel').textContent = '公元 ' + (state.cursor * state.history.yearsPerEpoch) + ' 年';
       renderAll();
     }
     renderGallery();

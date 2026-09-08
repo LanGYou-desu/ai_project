@@ -43,3 +43,13 @@ test('音变后的词仍是合法字母串', () => {
     });
   });
 });
+test('pickRules 抽取结果可复现且不污染规则池', () => {
+  const before = sounds.RULES.map(r => r.id + ':' + r.weight).join(',');
+  for (let i = 0; i < 50; i++) {
+    const a = sounds.pickRules(rng.makeRng('pool'), 3, i % 20).map(r => r.id);
+    const b = sounds.pickRules(rng.makeRng('pool'), 3, i % 20).map(r => r.id);
+    assert.deepStrictEqual(a, b, '同一纪元同一种子应抽到同一批规则');
+    a.forEach(id => assert.ok(sounds.BY_ID[id], '抽到的规则必须存在: ' + id));
+  }
+  assert.strictEqual(sounds.RULES.map(r => r.id + ':' + r.weight).join(','), before, '规则池不应被抽取过程修改');
+});

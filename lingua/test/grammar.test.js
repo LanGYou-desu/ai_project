@@ -42,3 +42,11 @@ test('freshGrammar 每次都是干净副本', () => {
   g1.wordOrder = 'VSO';
   assert.strictEqual(g2.wordOrder, 'SVO');
 });
+test('语序事件的描述反映变更前的语序', () => {
+  const g = grammar.freshGrammar();
+  const sov = grammar.EVENTS.find(e => e.id === 'wo_sov');
+  const vso = grammar.EVENTS.find(e => e.id === 'wo_vso');
+  assert.match(sov.apply(g), /SVO 变成 SOV/);
+  assert.match(vso.apply(g), /SOV 变成 VSO/, '第二次变更不应再声称从 SVO 变来');
+  assert.strictEqual(g.wordOrder, 'VSO');
+});

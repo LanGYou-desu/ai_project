@@ -9,11 +9,12 @@
     { epoch: 12, flavor: '翻山的那一支越走越远，和留在原地的亲戚渐渐断了来往。' },
     { epoch: 16, flavor: '海面继续上升，靠海的部族再次分裂：一支造船远航，一支退回山里。' }
   ];
+  // 借词波次：落点分支由种子随机决定（不再使用固定 branchIndex）
   var LOANS = [
-    { epoch: 8,  branchIndex: [0, 1], words: [{ gloss: '马', word: 'kanpa', cat: 'object' }, { gloss: '剑', word: 'sawru', cat: 'object' }, { gloss: '商人', word: 'bazar', cat: 'people' }, { gloss: '盐', word: 'nemti', cat: 'object' }], flavor: '北方的骑兵带来了铁器和陌生的词。', note: '借词' },
-    { epoch: 14, branchIndex: [1, 0], words: [{ gloss: '茶', word: 'chaya', cat: 'object' }, { gloss: '帆', word: 'salwa', cat: 'object' }, { gloss: '珍珠', word: 'muti', cat: 'object' }, { gloss: '香料', word: 'spisa', cat: 'object' }], flavor: '南来的海商逆河而上，带来了茶、香料和远方的词。', note: '借词·海商' },
-    { epoch: 11, branchIndex: [0, 0], words: [{ gloss: '书', word: 'buka', cat: 'object' }, { gloss: '纸', word: 'pira', cat: 'object' }, { gloss: '法', word: 'toba', cat: 'abstract' }, { gloss: '信', word: 'sura', cat: 'abstract' }], flavor: '远来的传教士带来了书写——还有几个陌生的词。', note: '借词·传教士' },
-    { epoch: 15, branchIndex: [1, 1], words: [{ gloss: '税', word: 'taksa', cat: 'abstract' }, { gloss: '令', word: 'gata', cat: 'abstract' }, { gloss: '城', word: 'barga', cat: 'object' }, { gloss: '兵', word: 'solda', cat: 'people' }], flavor: '新兴的官府开始征税点兵，也带来了官话里的词。', note: '借词·官府' }
+    { epoch: 8,  words: [{ gloss: '马', word: 'kanpa', cat: 'object' }, { gloss: '剑', word: 'sawru', cat: 'object' }, { gloss: '商人', word: 'bazar', cat: 'people' }, { gloss: '盐', word: 'nemti', cat: 'object' }], flavor: '北方的骑兵带来了铁器和陌生的词。', note: '借词' },
+    { epoch: 14, words: [{ gloss: '茶', word: 'chaya', cat: 'object' }, { gloss: '帆', word: 'salwa', cat: 'object' }, { gloss: '珍珠', word: 'muti', cat: 'object' }, { gloss: '香料', word: 'spisa', cat: 'object' }], flavor: '南来的海商逆河而上，带来了茶、香料和远方的词。', note: '借词·海商' },
+    { epoch: 11, words: [{ gloss: '书', word: 'buka', cat: 'object' }, { gloss: '纸', word: 'pira', cat: 'object' }, { gloss: '法', word: 'toba', cat: 'abstract' }, { gloss: '信', word: 'sura', cat: 'abstract' }], flavor: '远来的传教士带来了书写——还有几个陌生的词。', note: '借词·传教士' },
+    { epoch: 15, words: [{ gloss: '税', word: 'taksa', cat: 'abstract' }, { gloss: '令', word: 'gata', cat: 'abstract' }, { gloss: '城', word: 'barga', cat: 'object' }, { gloss: '兵', word: 'solda', cat: 'people' }], flavor: '新兴的官府开始征税点兵，也带来了官话里的词。', note: '借词·官府' }
   ];
   var WRITING_EPOCH = 10;
   var WRITING_FLAVOR = '巫师开始在龟甲上刻记号——文字诞生了。';

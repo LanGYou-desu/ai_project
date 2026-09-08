@@ -32,10 +32,10 @@
   var EVENTS = [
     { id: 'wo_sov', name: '语序变为 SOV', weight: 3,
       flavor: '猎手们习惯把猎物放在动词前——重要的东西要先开口。',
-      apply: function (g) { g.wordOrder = 'SOV'; return '语序从 SVO 变成 SOV：宾语被提前了。'; } },
+      apply: function (g) { var from = g.wordOrder; g.wordOrder = 'SOV'; return '语序从 ' + from + ' 变成 SOV：宾语被提前了。'; } },
     { id: 'wo_vso', name: '语序变为 VSO', weight: 2,
       flavor: '祭祀时巫师总是先喊出动作，再喊出对象。',
-      apply: function (g) { g.wordOrder = 'VSO'; return '语序从 SVO 变成 VSO：动词跑到了最前面。'; } },
+      apply: function (g) { var from = g.wordOrder; g.wordOrder = 'VSO'; return '语序从 ' + from + ' 变成 VSO：动词跑到了最前面。'; } },
     { id: 'plural_k', name: '复数标记 -k', weight: 3,
       flavor: '说起一群狼时，人们会在词尾加一个 k。',
       apply: function (g) { g.plural = '-k'; return '名词复数标记出现：词尾的 -k。'; } },

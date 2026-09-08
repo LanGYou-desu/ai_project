@@ -177,12 +177,6 @@ footer {
   border: 1px solid var(--accent); border-radius: 20px; cursor: pointer; transition: all .15s;
 }
 .g-item:hover { background: var(--accent); color: #fff; }
-.etymology {
-  margin-top: 8px; padding: 12px 14px; border: 1px dashed var(--accent);
-  border-radius: 8px; background: rgba(255,255,255,.5); font-size: 13px;
-}
-.etymology b { color: var(--red); }
-.etymology .close { float: right; cursor: pointer; color: var(--ink2); }
 .etym-step { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 0; }
 .etym-step .yr { font-size: 11px; color: var(--red); background: rgba(160,58,42,.08); border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
 .etym-step .form { font-weight: 900; font-size: 15px; letter-spacing: 1px; }

@@ -7,14 +7,15 @@
 
   var BRANCH_COLORS = ['#8b5a2b', '#4a6741', '#7a4a8b', '#a0552f', '#3f6f8f', '#8a6d3b', '#5b4a6a', '#2f6f55'];
 
-  // lanes: 为分支分配纵向轨道（根在中间，子代向两侧展开）
-  function layout(history) {
+  // 原始轨道号：根在 0，子代向两侧展开（整数）
+  function rawLanes(history) {
     var byId = {};
     history.branches.forEach(function (b) { byId[b.id] = b; });
     var lanes = {};
     var used = {};
-    function assign(id, pref) {
+    function assign(id) {
       var b = byId[id];
+      if (!b) return 0;
       if (lanes[id] != null) return lanes[id];
       if (!b.parentId) { lanes[id] = 0; used[0] = true; return 0; }
       var parentLane = assign(b.parentId);
@@ -26,13 +27,30 @@
       return lane;
     }
     history.branches.forEach(function (b) { assign(b.id); });
-    // normalize lanes to 0..n-1
-    var vals = Object.keys(lanes).map(function (k) { return lanes[k]; });
+    return lanes;
+  }
+
+  // 轨道布局：y 用 0..1 的归一化值画线，color 用 0..n-1 的整数下标取色
+  // （旧实现把归一化后的浮点值直接当数组下标，取到 undefined → 所有分支同色、图例无色）
+  var LANE_CACHE = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function computeLanes(history) {
+    if (LANE_CACHE) { var hit = LANE_CACHE.get(history); if (hit) return hit; }
+    var raw = rawLanes(history);
+    var vals = history.branches.map(function (b) { return raw[b.id]; });
     var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
-    var out = {};
-    history.branches.forEach(function (b) { out[b.id] = (lanes[b.id] - min) / Math.max(max - min, 1); });
+    var uniq = vals.slice().sort(function (a, b) { return a - b; }).filter(function (v, i, arr) { return i === 0 || v !== arr[i - 1]; });
+    var y = {}, color = {};
+    history.branches.forEach(function (b) {
+      y[b.id] = (raw[b.id] - min) / Math.max(max - min, 1);
+      color[b.id] = uniq.indexOf(raw[b.id]) % BRANCH_COLORS.length;
+    });
+    var out = { y: y, color: color, raw: raw };
+    if (LANE_CACHE) LANE_CACHE.set(history, out);
     return out;
   }
+
+  function layout(history) { return computeLanes(history).y; }
+  function colorIndex(history) { return computeLanes(history).color; }
 
   function render(canvas, history, state) {
     var ctx = canvas.getContext('2d');
@@ -40,10 +58,10 @@
     var padL = 90, padR = 20, padT = 24, padB = 30;
     var x0 = padL, x1 = W - padR;
     var t0 = 0, t1 = history.totalEpochs;
-    var lanes = layout(history);
+    var L = computeLanes(history);
+    var lanes = L.y, colors = L.color;
     var byId = {};
     history.branches.forEach(function (b) { byId[b.id] = b; });
-    var laneYs = {};
     var laneSet = {};
     history.branches.forEach(function (b) { laneSet[lanes[b.id]] = true; });
     var nLanes = Object.keys(laneSet).length;
@@ -89,8 +107,7 @@
     // 事件刻度（分裂/借词/文字）
     var marks = [];
     history.splits.forEach(function (sp) { marks.push({ epoch: sp.epoch, label: '分裂', color: 'rgba(160,58,42,0.5)' }); });
-    if (history.loan) marks.push({ epoch: history.loan.epoch, label: '借词', color: 'rgba(47,111,143,0.5)' });
-    if (history.loan2) marks.push({ epoch: history.loan2.epoch, label: '借词', color: 'rgba(47,111,143,0.5)' });
+    history.loans.forEach(function (l) { marks.push({ epoch: l.epoch, label: '借词', color: 'rgba(47,111,143,0.5)' }); });
     if (history.writing) marks.push({ epoch: history.writing.epoch, label: '文字', color: 'rgba(122,74,139,0.5)' });
     marks.forEach(function (m) {
       var mx = X(m.epoch);
@@ -111,7 +128,7 @@
       var y = Y(lane);
       var bx0 = X(Math.max(b.bornEpoch, 0));
       var bx1 = X(history.totalEpochs);
-      var color = BRANCH_COLORS[lane % BRANCH_COLORS.length];
+      var color = BRANCH_COLORS[colors[b.id] % BRANCH_COLORS.length];
       var isSel = state.selected === b.id;
       var isHov = state.hovered === b.id;
       ctx.strokeStyle = color;
@@ -171,5 +188,5 @@
     return out;
   }
 
-  return { layout: layout, render: render, hitTest: hitTest, BRANCH_COLORS: BRANCH_COLORS };
+  return { layout: layout, colorIndex: colorIndex, render: render, hitTest: hitTest, BRANCH_COLORS: BRANCH_COLORS };
 });

@@ -205,28 +205,42 @@
   var BY_ID = {};
   RULES.forEach(function (r) { BY_ID[r.id] = r; });
 
-  function pickRules(rng, n, epoch) {
+  // 每个纪元的可用规则池只与纪元有关，缓存一次即可（避免每次抽取都重新过滤 24 条规则）
+  var POOLS = {};
+  function poolAt(epoch) {
+    var key = String(epoch);
+    var hit = POOLS[key];
+    if (hit) return hit;
     var pool = RULES.filter(function (r) { return r.epochLo <= epoch && epoch <= r.epochHi; });
+    var total = 0;
+    pool.forEach(function (r) { total += r.weight; });
+    hit = { pool: pool, total: total };
+    POOLS[key] = hit;
+    return hit;
+  }
+
+  function pickRules(rng, n, epoch) {
+    var cached = poolAt(epoch);
     var picked = [];
-    var available = pool.slice();
+    var available = cached.pool.slice();
+    var total = cached.total;
     for (var i = 0; i < n && available.length > 0; i++) {
-      var total = 0;
-      available.forEach(function (r) { total += r.weight; });
       var roll = rng.next() * total;
       var idx = 0;
       for (var j = 0; j < available.length; j++) {
         roll -= available[j].weight;
         if (roll <= 0) { idx = j; break; }
       }
-      picked.push(available[idx]);
+      var rule = available[idx];
+      picked.push(rule);
       available.splice(idx, 1);
+      total -= rule.weight;
     }
     return picked;
   }
 
   function applyRule(word, rule, rng) {
-    var out = rule.fn(word, rng);
-    return out === word ? word : out;
+    return rule.fn(word, rng);
   }
 
   return { RULES: RULES, BY_ID: BY_ID, pickRules: pickRules, applyRule: applyRule, isVowel: isVowel };
