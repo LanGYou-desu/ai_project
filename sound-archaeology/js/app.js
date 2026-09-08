@@ -11,33 +11,68 @@
   let lab = null;
   let views = null;
   let voices = null;         // { case1: Float32Array, ... }
+  let voiceSr = 22050;       // 上面这些素材的真实采样率（解码后才知道）
   let currentCaseId = null;
   let hintCount = 0;
+  const clipCache = new Map(); // caseId → AudioBuffer（合成一次即可反复切回）
 
   const PROG_KEY = 'af_progress_v1';
   const NOTES_KEY = 'af_notes';
+  const VOICE_SR = 22050;    // 内嵌语音素材的原生采样率
 
   function loadProgress() {
-    try { return JSON.parse(localStorage.getItem(PROG_KEY)) || { solved: [] }; }
-    catch (e) { return { solved: [] }; }
+    try {
+      const p = JSON.parse(localStorage.getItem(PROG_KEY));
+      if (p && Array.isArray(p.solved)) return p; // 数据损坏/旧版本 → 退回默认
+    } catch (e) { /* 隐私模式下 localStorage 可能抛异常 */ }
+    return { solved: [] };
   }
-  function saveProgress(p) { localStorage.setItem(PROG_KEY, JSON.stringify(p)); }
+  function saveProgress(p) {
+    try { localStorage.setItem(PROG_KEY, JSON.stringify(p)); } catch (e) { /* 忽略 */ }
+  }
+  function loadNote() {
+    try { return localStorage.getItem(NOTES_KEY) || ''; } catch (e) { return ''; }
+  }
+  function saveNote(v) {
+    try { localStorage.setItem(NOTES_KEY, v); } catch (e) { /* 忽略 */ }
+  }
   const progress = loadProgress();
 
   // ---------- 工具函数 ----------
 
-  function decodeB64(b64) {
+  function b64ToArrayBuffer(b64) {
     const bin = atob(b64);
     const ab = new ArrayBuffer(bin.length);
     const u8 = new Uint8Array(ab);
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    return ctx.decodeAudioData(ab);
+    return ab;
+  }
+
+  // 解码内嵌语音素材。
+  // 关键：decodeAudioData() 会把数据重采样到目标上下文的采样率，所以
+  //   1) 优先用一个 22050Hz 的 OfflineAudioContext 解码，素材保持原生采样率；
+  //   2) 退回主上下文解码时，把 buf.sampleRate 一起返回，交给 cases.js 换算。
+  // 否则在 48kHz 设备上，语音会被当成 22050Hz 播放 → 拉长/降调 2.18 倍。
+  async function decodeVoice(b64, targetSr) {
+    const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (OfflineCtx) {
+      try {
+        const off = new OfflineCtx(1, 1, targetSr);
+        const buf = await off.decodeAudioData(b64ToArrayBuffer(b64));
+        return { data: buf.getChannelData(0), sr: buf.sampleRate };
+      } catch (e) { /* 退回主上下文 */ }
+    }
+    const buf = await ctx.decodeAudioData(b64ToArrayBuffer(b64));
+    return { data: buf.getChannelData(0), sr: buf.sampleRate };
   }
 
   function buildCaseClip(c) {
-    const data = buildCaseAudio(c, voices);
+    const cached = clipCache.get(c.id);
+    if (cached) return cached;
+    const data = buildCaseAudio(c, voices, voiceSr);
     const buf = ctx.createBuffer(1, data.length, c.sr);
     buf.copyToChannel(data, 0);
+    clipCache.set(c.id, buf);
     return buf;
   }
 
@@ -87,55 +122,67 @@
 
   $('boot-btn').addEventListener('click', async () => {
     try {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-    lab = new AudioLab(ctx);
-    lab.onEnded = () => { $('btn-play').textContent = '▶'; updateTimeLabel(); };
+      const AudioCtxCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtxCtor) {
+        throw new Error('此浏览器不支持 Web Audio API，请改用 Chrome / Edge。');
+      }
+      ctx = new AudioCtxCtor();
+      // 自动播放策略：上下文可能以 suspended 状态启动（无用户手势/被策略挂起）
+      if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+        try { await ctx.resume(); } catch (e) { /* 首次点击播放时浏览器会再给一次机会 */ }
+      }
+      lab = new AudioLab(ctx);
+      lab.onEnded = () => { $('btn-play').textContent = '▶'; updateTimeLabel(); };
 
-    views = new LabViews($('wave'), $('spec'), lab.master, ctx);
-    views.setFracFn(() => lab.getFrac());
-    views.onTick = () => updateTimeLabel();
+      views = new LabViews($('wave'), $('spec'), lab.master, ctx);
+      views.setFracFn(() => lab.getFrac());
+      views.onTick = () => updateTimeLabel();
 
-    // 解码内嵌语音素材
-    voices = {};
-    for (const k of Object.keys(VOICE_ASSETS)) {
-      const buf = await decodeB64(VOICE_ASSETS[k]);
-      voices[k] = buf.getChannelData(0);
+      // 解码内嵌语音素材（保持 22050Hz 原生采样率，见 decodeVoice 注释）
+      voices = {};
+      for (const k of Object.keys(VOICE_ASSETS)) {
+        const v = await decodeVoice(VOICE_ASSETS[k], VOICE_SR);
+        voices[k] = v.data;
+        voiceSr = v.sr;
+      }
+
+      $('boot').classList.add('hidden');
+      $('app').classList.remove('hidden');
+      views.wave._resize();
+      views.spec._resize();
+      views.start();
+      wireInstruments();
+      renderCaseList();
+      openCase(lastActiveId());
+
+      // 自检：真实播放并采样抓取的音频流，验证音频确实在流动
+      if (SELFTEST) {
+        window.__lab = lab; // 调试钩子
+        window.__views = views; // 调试钩子
+        selftestReport('ctx=' + ctx.state + ' sr=' + ctx.sampleRate +
+          ' voices=' + Object.keys(voices).length + ' voiceSr=' + voiceSr +
+          ' scope=' + views.scopeAvailable + ' clip=' + lab.duration.toFixed(2) + 's');
+        setTimeout(() => {
+          try {
+            lab.play();
+            setTimeout(() => {
+              selftestReport('RESULT ctx=' + ctx.state + ' sr=' + ctx.sampleRate +
+                ' voices=' + Object.keys(voices).length + ' voiceSr=' + voiceSr +
+                ' scope=' + views.scopeAvailable +
+                ' clip=' + lab.duration.toFixed(2) + 's' +
+                ' playing=' + lab.playing + ' streamRMS=' + views.tapRms().toFixed(3) +
+                ' filter=' + lab.filter.type + ' vol=' + lab.master.gain.value.toFixed(2));
+            }, 1200);
+          } catch (err) {
+            selftestReport('PLAY-FAIL: ' + (err && err.message || err));
+          }
+        }, 400);
+      }
+    } catch (err) {
+      const msg = '启动失败: ' + (err && err.message ? err.message : err);
+      if (SELFTEST) selftestReport('BOOT-FAIL: ' + msg);
+      else alert(msg);
     }
-
-    $('boot').classList.add('hidden');
-    $('app').classList.remove('hidden');
-    views.wave._resize();
-    views.spec._resize();
-    views.start();
-    wireInstruments();
-    renderCaseList();
-    openCase(lastActiveId());
-
-    // 自检：真实播放并采样抓取的音频流，验证音频确实在流动
-    if (SELFTEST) {
-      window.__lab = lab; // 调试钩子
-      window.__views = views; // 调试钩子
-      selftestReport('ctx=' + ctx.state + ' sr=' + ctx.sampleRate +
-        ' voices=' + Object.keys(voices).length + ' clip=' + lab.duration.toFixed(2) + 's');
-      setTimeout(() => {
-        try {
-          lab.play();
-          setTimeout(() => {
-            selftestReport('RESULT ctx=' + ctx.state + ' sr=' + ctx.sampleRate +
-              ' voices=' + Object.keys(voices).length + ' clip=' + lab.duration.toFixed(2) + 's' +
-              ' playing=' + lab.playing + ' streamRMS=' + views.tapRms().toFixed(3) +
-              ' filter=' + lab.filter.type + ' vol=' + lab.master.gain.value.toFixed(2));
-          }, 1200);
-        } catch (err) {
-          selftestReport('PLAY-FAIL: ' + (err && err.message || err));
-        }
-      }, 400);
-    }
-  } catch (err) {
-    const msg = '启动失败: ' + (err && err.message ? err.message : err);
-    if (SELFTEST) selftestReport('BOOT-FAIL: ' + msg);
-    else alert(msg);
-  }
   });
 
   window.addEventListener('resize', () => {
@@ -407,11 +454,11 @@
     });
 
     // 调查笔记
-    $('note-box').value = localStorage.getItem(NOTES_KEY) || '';
+    $('note-box').value = loadNote();
     let noteTimer = null;
     $('note-box').addEventListener('input', () => {
       clearTimeout(noteTimer);
-      noteTimer = setTimeout(() => localStorage.setItem(NOTES_KEY, $('note-box').value), 400);
+      noteTimer = setTimeout(() => saveNote($('note-box').value), 400);
     });
 
     // 摩斯辅助器

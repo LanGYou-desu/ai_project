@@ -135,7 +135,7 @@ const CASES = {
     ],
     hints: [
       '人耳上限约 20kHz——这段信号在 17kHz 附近，频谱图里能看到它。',
-      '把播放速度调到 0.25 倍：17kHz 会降到 4.3kHz，变成人耳能听到的声音。',
+      '把播放速度调到 0.25 倍：17.5kHz 会降到 4.4kHz，变成人耳能听到的声音。',
       '慢下来之后，它是某种国际通用的求救信号。',
     ],
     note: '人耳上限约 20kHz，这段信号在 17.5kHz——「听不见」不代表「不存在」。频谱图让超声变得可见；或者把速度降到 0.25 倍，17.5kHz 就落到 4.3kHz 的可听范围。人类的耳朵，只是需要换个速度。',
@@ -177,28 +177,47 @@ const CASES = {
 
 const CASE_ORDER = ['case1', 'case2', 'case3', 'case4', 'case5', 'case6'];
 
+// 内嵌语音素材的原生采样率（tools/generate-voice.ps1 输出 22050Hz）
+const VOICE_SR = 22050;
+
 // 答案归一化：小写、去掉所有非字母数字/汉字字符
 function normalizeAnswer(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '');
 }
 
+// 语音素材统一归一到 VOICE_SR。
+// 为什么必须做：浏览器的 decodeAudioData() 会把数据重采样到 AudioContext 的
+// 采样率（Windows 上常见 48000Hz），解码结果并不是 22050Hz。若直接按 22050Hz
+// 使用，语音会被拉长/降调 48000/22050 = 2.18 倍（4.0s 台词变成 8.8s），
+// 案件线索完全失真。这里按素材真实采样率换算，降采样前先抗混叠低通。
+function prepareVoice(data, srcSr) {
+  if (!data || !data.length) return new Float32Array(0);
+  const sr = srcSr || VOICE_SR;
+  if (sr === VOICE_SR) return data;
+  const src = sr > VOICE_SR ? Synth.biquadLowpass(data, VOICE_SR * 0.45, sr) : data;
+  return Synth.resample(src, sr, VOICE_SR);
+}
+
 // 合成案件音频（浏览器/Node 通用）
+// voices:  { case1, case2, case6 } → Float32Array
+// voiceSr: 这些素材的采样率（默认 22050；浏览器解码后可能是 44100/48000）
 function buildCaseAudio(c) {
   const voices = arguments[1] || {};
+  const voiceSr = arguments[2] || VOICE_SR;
   const sr = c.sr;
   switch (c.id) {
-    case 'case1': return buildCase1(voices, sr);
-    case 'case2': return buildCase2(voices, sr);
+    case 'case1': return buildCase1(voices, sr, voiceSr);
+    case 'case2': return buildCase2(voices, sr, voiceSr);
     case 'case3': return buildCase3(voices, sr);
     case 'case4': return buildCase4(voices, sr);
     case 'case5': return buildCase5(voices, sr);
-    case 'case6': return buildCase6(voices, sr);
+    case 'case6': return buildCase6(voices, sr, voiceSr);
   }
   return new Float32Array(0);
 }
 
 // ---------- CASE-01 雨夜留言 ----------
-function buildCase1(voices, sr) {
+function buildCase1(voices, sr, voiceSr) {
   const dur = CASES.case1.duration;
   const len = dur * sr;
   const out = new Float32Array(len);
@@ -218,10 +237,10 @@ function buildCase1(voices, sr) {
 
   // 语音（被雨声淹没的关键线索），两遍
   // 语音源 22050Hz → 低通防混叠 → 降采样到 8kHz 电话音质
-  // 增益校准: 语音 RMS 0.064 → 2.5x；滤波前 SNR ≈ -4dB（能听见但糊），
-  // 引擎低通@1k 后雨声泄漏仅 14% → SNR ≈ +7dB（清楚）
-  let voice = Synth.biquadLowpass(voices.case1, 3400, 22050);
-  voice = Synth.resample(voice, 22050, sr);
+  // 增益校准（2.5–6.5s 窗口实测 RMS）：语音 RMS 0.064 → 2.5x = 0.16；
+  // 滤波前 SNR ≈ -2.9dB（能听见但糊），引擎低通@1k 后雨声残留 16% → SNR ≈ +10.6dB（清楚）
+  let voice = Synth.biquadLowpass(prepareVoice(voices.case1, voiceSr), 3400, VOICE_SR);
+  voice = Synth.resample(voice, VOICE_SR, sr);
   Synth.mix(out, voice, Math.floor(2.5 * sr), 2.5);
   Synth.mix(out, voice, Math.floor(9.3 * sr), 2.5);
 
@@ -235,7 +254,7 @@ function buildCase1(voices, sr) {
 }
 
 // ---------- CASE-02 倒放的摇篮曲 ----------
-function buildCase2(voices, sr) {
+function buildCase2(voices, sr, voiceSr) {
   const dur = CASES.case2.duration;
   const len = dur * sr;
   const out = new Float32Array(len);
@@ -252,15 +271,16 @@ function buildCase2(voices, sr) {
   Synth.mix(out, melody, 0, 0.4);
 
   // 关键：倒放的人声（正向听是乱码，倒放听才是内容）
-  // 语音源已是 22050Hz；增益校准: 语音 RMS 0.067 → 3.2x = 0.21 vs 旋律+底噪 ≈ 0.085
-  const voiceRev = Synth.reverse(Synth.resample(voices.case2, 22050, sr));
+  // 增益校准: 语音 RMS 0.067 → 3.2x = 0.21 vs 旋律+底噪 ≈ 0.085
+  const voiceRev = Synth.reverse(Synth.resample(prepareVoice(voices.case2, voiceSr), VOICE_SR, sr));
   Synth.mix(out, voiceRev, Math.floor(2.5 * sr), 3.2);
 
-  // 黑胶底噪 + 噼啪
+  // 黑胶底噪 + 噼啪（用确定性 RNG，保证同一案件每次合成完全一致）
   Synth.mix(out, Synth.biquadLowpass(Synth.noise(len, 33), 5000, sr), 0, 0.08);
+  const rand = Synth.rng(0x5eed02);
   for (let i = 0; i < len; i += 700) {
-    if (Math.random() < 0.35) {
-      const click = Synth.sine(2500 + Math.random() * 4500, 400, sr, 0.0005, 0.0015);
+    if (rand() < 0.35) {
+      const click = Synth.sine(2500 + rand() * 4500, 400, sr, 0.0005, 0.0015);
       Synth.mix(out, click, i, 0.12);
     }
   }
@@ -328,7 +348,7 @@ function buildCase5(voices, sr) {
 }
 
 // ---------- CASE-06 幽灵频率·终局 ----------
-function buildCase6(voices, sr) {
+function buildCase6(voices, sr, voiceSr) {
   const dur = CASES.case6.duration;
   const len = dur * sr;
   const out = new Float32Array(len);
@@ -342,8 +362,8 @@ function buildCase6(voices, sr) {
   Synth.mix(out, swell, 0, 0.32);
 
   // 倒放的信标留言
-  // 语音源已是 22050Hz；增益校准: 语音 RMS 0.05 → 4.2x = 0.21 vs 海声 ≈ 0.08
-  const voiceRev = Synth.reverse(Synth.resample(voices.case6, 22050, sr));
+  // 增益校准: 语音 RMS 0.05 → 4.2x = 0.21 vs 海声 ≈ 0.08
+  const voiceRev = Synth.reverse(Synth.resample(prepareVoice(voices.case6, voiceSr), VOICE_SR, sr));
   Synth.mix(out, voiceRev, Math.floor(2.5 * sr), 4.2);
 
   // 频谱文字 ECHO（两组）
@@ -362,5 +382,5 @@ function buildCase6(voices, sr) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { CASES, CASE_ORDER, normalizeAnswer, buildCaseAudio };
+  module.exports = { CASES, CASE_ORDER, normalizeAnswer, buildCaseAudio, prepareVoice, VOICE_SR };
 }

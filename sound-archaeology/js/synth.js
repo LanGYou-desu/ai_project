@@ -1,8 +1,8 @@
 'use strict';
 // ============================================================
 // 声音考古学 · 合成工具库
-// 纯函数音频 DSP：噪声 / 正弦 / 混音 / 重采样 / 倒放 /
-// 简易滤波 / 回声 / 位图字体频谱图 / 摩斯信号
+// 纯函数音频 DSP：确定性随机 / 噪声 / 正弦 / 混音 / 重采样 / 倒放 /
+// biquad 滤波 / 回声 / 幅度调制 / 位图字体频谱图 / 摩斯信号
 // 不依赖任何浏览器 API，可在 Node 中单测。
 // ============================================================
 
@@ -16,34 +16,38 @@ const Synth = (() => {
 
   // ---------- 基础 ----------
 
+  // 确定性伪随机数发生器（LCG），返回 [0, 1) 的取数函数。
+  // 所有"随机"素材（噪声、黑胶噼啪）都从这里取数，保证同一 seed 每次合成一致。
+  function rng(seed) {
+    let s = (seed === undefined ? 123456789 : seed) >>> 0;
+    return function () {
+      s = (Math.imul(s, 1103515245) + 12345) & 0x7fffffff;
+      return s / 0x80000000; // s ∈ [0, 2^31-1] → [0, 1)
+    };
+  }
+
   // 确定性白噪声（LCG，可复现），输出严格落在 [-1, 1)
   function noise(len, seed) {
     const b = new Float32Array(len);
-    let s = seed === undefined ? 123456789 : seed;
-    for (let i = 0; i < len; i++) {
-      s = (Math.imul(s, 1103515245) + 12345) & 0x7fffffff;
-      b[i] = (s / 0x7fffffff) * 2 - 1; // s ∈ [0, 2^31-1] → [-1, 1]
-    }
+    const rand = rng(seed);
+    for (let i = 0; i < len; i++) b[i] = rand() * 2 - 1;
     return b;
   }
 
-  function silence(len) {
-    return new Float32Array(len);
-  }
-
   // 正弦波（带起止包络，防爆音）
+  // 包络必须让首尾采样正好落在 0，否则拼接/循环/淡出时会留下咔哒声。
   function sine(freq, len, sr, attackS, releaseS) {
     const a = attackS === undefined ? 0.005 : attackS;
     const r = releaseS === undefined ? 0.02 : releaseS;
     const b = new Float32Array(len);
-    const atk = Math.max(1, Math.floor(a * sr));
-    const rel = Math.max(1, Math.floor(r * sr));
+    const atk = Math.max(1, Math.min(len, Math.floor(a * sr)));
+    const rel = Math.max(1, Math.min(len, Math.floor(r * sr)));
     const w = TAU * freq / sr;
     for (let i = 0; i < len; i++) {
       let e = 1;
-      if (i < atk) e = i / atk;
-      const back = len - i;
-      if (back < rel) e = Math.min(e, back / rel);
+      if (i < atk) e = i / atk;                    // 首样本 e = 0
+      const back = len - 1 - i;
+      if (back < rel) e = Math.min(e, back / rel); // 末样本 e = 0
       b[i] = Math.sin(w * i) * e;
     }
     return b;
@@ -57,9 +61,10 @@ const Synth = (() => {
     return dst;
   }
 
-  // 线性重采样
+  // 线性重采样（降采样前请先自行抗混叠低通，见 biquadLowpass）
   function resample(src, fromSr, toSr) {
     if (fromSr === toSr) return src.slice();
+    if (!src.length) return new Float32Array(0);
     const ratio = fromSr / toSr;
     const out = new Float32Array(Math.max(1, Math.floor(src.length / ratio)));
     const last = src.length - 1;
@@ -76,36 +81,6 @@ const Synth = (() => {
   function reverse(buf) {
     const out = new Float32Array(buf.length);
     for (let i = 0; i < buf.length; i++) out[i] = buf[buf.length - 1 - i];
-    return out;
-  }
-
-  // 一阶低通（IIR）
-  function lowpass(buf, cutoff, sr) {
-    const rc = 1 / (TAU * cutoff);
-    const dt = 1 / sr;
-    const alpha = dt / (rc + dt);
-    const out = new Float32Array(buf.length);
-    let y = 0;
-    for (let i = 0; i < buf.length; i++) {
-      y += alpha * (buf[i] - y);
-      out[i] = y;
-    }
-    return out;
-  }
-
-  // 一阶高通（IIR）
-  function highpass(buf, cutoff, sr) {
-    const rc = 1 / (TAU * cutoff);
-    const dt = 1 / sr;
-    const alpha = rc / (rc + dt);
-    const out = new Float32Array(buf.length);
-    let y = 0;
-    let prev = 0;
-    for (let i = 0; i < buf.length; i++) {
-      y = alpha * (y + buf[i] - prev);
-      prev = buf[i];
-      out[i] = y;
-    }
     return out;
   }
 
@@ -144,16 +119,6 @@ const Synth = (() => {
 
   function biquadHighpass(buf, fc, sr, q) {
     return _biquad(buf, sr, _rbj('highpass', fc, sr, q));
-  }
-
-  // 淡入淡出
-  function fade(buf, sr, inS, outS) {
-    const nIn = Math.min(buf.length, Math.floor((inS === undefined ? 0.02 : inS) * sr));
-    const nOut = Math.min(buf.length, Math.floor((outS === undefined ? 0.05 : outS) * sr));
-    const out = buf.slice();
-    for (let i = 0; i < nIn; i++) out[i] *= i / nIn;
-    for (let i = 0; i < nOut; i++) out[out.length - 1 - i] *= i / nOut;
-    return out;
   }
 
   // 归一化到峰值
@@ -335,18 +300,14 @@ const Synth = (() => {
   }
 
   return {
-    TAU,
+    rng,
     noise,
-    silence,
     sine,
     mix,
     resample,
     reverse,
-    lowpass,
-    highpass,
     biquadLowpass,
     biquadHighpass,
-    fade,
     normalize,
     echo,
     amplitudeMod,

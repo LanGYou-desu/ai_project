@@ -107,6 +107,7 @@ class AudioLab {
     const self = this;
     src.onended = () => {
       if (self.src !== src) return;
+      self.src = null; // 结束的节点不再被引用（否则 setLoop/setSpeed 会打到死节点上）
       if (!self.loop) {
         self.playing = false;
         self.frac = 0;
@@ -145,6 +146,12 @@ class AudioLab {
   // ---------- 仪器 ----------
 
   setSpeed(v) {
+    // 变速前先把"已播放时长"结算进 frac，否则 getFrac() 会把变更前的全部时间
+    // 按新速度重算，进度会瞬间跳变（例：1x 播 4.5s 后切 0.5x，进度从 0.250 掉到 0.125）。
+    if (this.playing) {
+      this.frac = this.getFrac();
+      this.startedAt = this.ctx.currentTime;
+    }
     this.speed = v;
     if (this.src) this.src.playbackRate.value = v;
   }
@@ -162,8 +169,7 @@ class AudioLab {
 
   _rebuild() {
     const wasPlaying = this.playing;
-    this.pause();
-    this.frac = this.frac; // 保留进度
+    this.pause(); // pause() 已把当前进度结算进 frac
     if (wasPlaying) this.play();
   }
 
