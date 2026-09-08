@@ -24,6 +24,8 @@ function addThread(role, text, cls, md) {
 }
 
 function clearChat() {
+  // 清空对话时中止仍在进行的流式请求，避免回答继续往已清空的列表里写
+  if (asstAbort) { asstAbort.abort(); asstAbort = null; }
   askHistory = [];
   generatedCode = '';
   $('assistant-thread').textContent = '';

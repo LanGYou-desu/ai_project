@@ -2,8 +2,12 @@ const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { createApp, loadConfig } = require('./server');
-const { resolveInWorkspace } = require('./workspace-security');
-require('dotenv').config();
+const { resolveInWorkspaceReal } = require('./workspace-security');
+// 明确指定 .env 路径：从任意工作目录启动都能读到项目内的 .env
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+// 单个文件读取上限：避免超大文件同步读阻塞主进程（渲染进程只有一个编辑器）
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 let server = null;
 let win = null;
@@ -41,7 +45,7 @@ function registerFsHandlers() {
   ipcMain.handle('fs:list-dir', (e, rel) => {
     if (!isTrustedSender(e)) return { ok: false, error: '非法调用' };
     if (!workspaceRoot) return { ok: false, error: '尚未打开工作区' };
-    const p = resolveInWorkspace(workspaceRoot, rel || '');
+    const p = resolveInWorkspaceReal(workspaceRoot, rel || '');
     if (!p) return { ok: false, error: '非法路径' };
     try {
       const entries = fs.readdirSync(p, { withFileTypes: true });
@@ -51,15 +55,20 @@ function registerFsHandlers() {
   ipcMain.handle('fs:read-file', (e, rel) => {
     if (!isTrustedSender(e)) return { ok: false, error: '非法调用' };
     if (!workspaceRoot) return { ok: false, error: '尚未打开工作区' };
-    const p = resolveInWorkspace(workspaceRoot, rel || '');
-    if (!p) return { ok: false, error: '非法路径' };
-    try { return { ok: true, content: fs.readFileSync(p, 'utf8') }; }
-    catch (err) { return { ok: false, error: err.message }; }
+    const p = resolveInWorkspaceReal(workspaceRoot, rel || '');
+    if (!p) return { ok: false, error: '非法路径（可能通过符号链接指向工作区外）' };
+    try {
+      const stat = fs.statSync(p);
+      if (stat.size > MAX_FILE_BYTES) {
+        return { ok: false, error: `文件过大（${(stat.size / 1048576).toFixed(1)} MB，上限 5 MB）` };
+      }
+      return { ok: true, content: fs.readFileSync(p, 'utf8') };
+    } catch (err) { return { ok: false, error: err.message }; }
   });
   ipcMain.handle('fs:write-file', (e, rel, content) => {
     if (!isTrustedSender(e)) return { ok: false, error: '非法调用' };
     if (!workspaceRoot) return { ok: false, error: '尚未打开工作区' };
-    const p = resolveInWorkspace(workspaceRoot, rel || '');
+    const p = resolveInWorkspaceReal(workspaceRoot, rel || '');
     if (!p) return { ok: false, error: '非法路径' };
     try {
       fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -70,7 +79,7 @@ function registerFsHandlers() {
   ipcMain.handle('fs:create-file', (e, rel) => {
     if (!isTrustedSender(e)) return { ok: false, error: '非法调用' };
     if (!workspaceRoot) return { ok: false, error: '尚未打开工作区' };
-    const p = resolveInWorkspace(workspaceRoot, rel || '');
+    const p = resolveInWorkspaceReal(workspaceRoot, rel || '');
     if (!p) return { ok: false, error: '非法路径' };
     try {
       fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -81,7 +90,7 @@ function registerFsHandlers() {
   ipcMain.handle('fs:delete-file', (e, rel) => {
     if (!isTrustedSender(e)) return { ok: false, error: '非法调用' };
     if (!workspaceRoot) return { ok: false, error: '尚未打开工作区' };
-    const p = resolveInWorkspace(workspaceRoot, rel || '');
+    const p = resolveInWorkspaceReal(workspaceRoot, rel || '');
     if (!p) return { ok: false, error: '非法路径' };
     try { fs.unlinkSync(p); return { ok: true }; }
     catch (err) { return { ok: false, error: err.message }; }
@@ -92,8 +101,8 @@ function registerFsHandlers() {
     if (typeof newName !== 'string' || !newName.trim() || newName.includes('/') || newName.includes('\\') || newName === '.' || newName === '..') {
       return { ok: false, error: '非法名称' };
     }
-    const from = resolveInWorkspace(workspaceRoot, rel || '');
-    const to = resolveInWorkspace(workspaceRoot, path.join(path.dirname(rel || ''), newName.trim()));
+    const from = resolveInWorkspaceReal(workspaceRoot, rel || '');
+    const to = resolveInWorkspaceReal(workspaceRoot, path.join(path.dirname(rel || ''), newName.trim()));
     if (!from || !to) return { ok: false, error: '非法路径' };
     try { fs.renameSync(from, to); return { ok: true }; }
     catch (err) { return { ok: false, error: err.message }; }
@@ -101,7 +110,7 @@ function registerFsHandlers() {
   ipcMain.handle('fs:create-dir', (e, rel) => {
     if (!isTrustedSender(e)) return { ok: false, error: '非法调用' };
     if (!workspaceRoot) return { ok: false, error: '尚未打开工作区' };
-    const p = resolveInWorkspace(workspaceRoot, rel || '');
+    const p = resolveInWorkspaceReal(workspaceRoot, rel || '');
     if (!p) return { ok: false, error: '非法路径' };
     try { fs.mkdirSync(p, { recursive: true }); return { ok: true }; }
     catch (err) { return { ok: false, error: err.message }; }
@@ -109,7 +118,7 @@ function registerFsHandlers() {
   ipcMain.handle('fs:delete-dir', (e, rel) => {
     if (!isTrustedSender(e)) return { ok: false, error: '非法调用' };
     if (!workspaceRoot) return { ok: false, error: '尚未打开工作区' };
-    const p = resolveInWorkspace(workspaceRoot, rel || '');
+    const p = resolveInWorkspaceReal(workspaceRoot, rel || '');
     if (!p || p === workspaceRoot) return { ok: false, error: '非法路径' };
     try { fs.rmSync(p, { recursive: true, force: true }); return { ok: true }; }
     catch (err) { return { ok: false, error: err.message }; }
@@ -139,6 +148,8 @@ function startServer() {
       });
       srv.on('error', (err) => {
         if (err.code === 'EADDRINUSE' && attempts > 0) {
+          // 未成功监听的 server 不占用端口，只需丢弃并换端口重试
+          srv.removeAllListeners('error');
           tryListen(port + 1, attempts - 1);
         } else {
           reject(err);
@@ -161,7 +172,12 @@ app.whenReady().then(async () => {
       title: 'AI 编译器',
       backgroundColor: '#1e1e1e',
       autoHideMenuBar: true,
-      webPreferences: { nodeIntegration: false, contextIsolation: true, preload: path.join(__dirname, 'preload.js') },
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: true,
+        preload: path.join(__dirname, 'preload.js'),
+      },
     });
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.webContents.on('will-navigate', (e, url) => {
@@ -189,7 +205,17 @@ app.whenReady().then(async () => {
   }
 });
 
+// 统一关闭后端：正常关窗、异常退出都要释放监听端口（否则残留进程占用端口）
+function closeServer() {
+  if (!server) return;
+  const srv = server;
+  server = null;
+  try { srv.close(); } catch { /* 已关闭忽略 */ }
+}
+
+app.on('before-quit', closeServer);
+
 app.on('window-all-closed', () => {
-  if (server) server.close();
+  closeServer();
   app.quit();
 });

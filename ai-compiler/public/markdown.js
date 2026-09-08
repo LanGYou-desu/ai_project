@@ -1,90 +1,5 @@
-// 轻量 Markdown 渲染（无依赖）：面向 AI 输出的子集
-// 支持：fenced 代码块、标题、无序/有序列表、引用、分隔线、粗体、斜体、行内代码、http(s) 链接
-// 所有文本先 HTML 转义再套用标记，避免注入
-function escapeHtml(text) {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-// 行内标记：先整体 HTML 转义（防注入），再套用 行内代码 → 链接 → 粗体 → 斜体
-function inlineMd(text) {
-  let s = escapeHtml(text);
-  s = s.replace(/`([^`]+)`/g, (m, c) => '<code>' + c + '</code>');
-  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (m, t, u) => `<a href="${u}" data-ext="1">${t}</a>`);
-  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
-  return s;
-}
-
-// 渲染完整 markdown 文本为 HTML 字符串
-function renderMarkdown(text) {
-  const source = String(text || '').replace(/\r\n/g, '\n');
-  const codeBlocks = [];
-  // 1) 先提取行首开始的 fenced 代码块，内容原样保留（渲染时转义）
-  const withoutCode = source.replace(/^```([a-zA-Z0-9_+-]*)[ \t]*\n?([\s\S]*?)```/gm, (m, lang, code) => {
-    const id = '\u0000CB' + codeBlocks.length + '\u0000';
-    codeBlocks.push({ lang: lang || '', code: code.replace(/\n$/, '') });
-    return id;
-  });
-  // 2) 逐行解析块级结构
-  const lines = withoutCode.split('\n');
-  const html = [];
-  let listType = null; // 'ul' | 'ol' | null
-  const closeList = () => {
-    if (listType) { html.push(`</${listType}>`); listType = null; }
-  };
-  for (const raw of lines) {
-    const line = raw;
-    const cbMatch = line.match(/^\u0000CB(\d+)\u0000$/);
-    if (cbMatch) {
-      closeList();
-      const b = codeBlocks[Number(cbMatch[1])];
-      html.push(
-        '<div class="md-codeblock">' +
-        '<div class="md-codeblock-head"><span class="md-codeblock-lang">' + escapeHtml(b.lang || 'code') +
-        '</span><button type="button" class="md-copy">复制</button></div>' +
-        '<pre><code>' + escapeHtml(b.code) + '</code></pre>' +
-        '</div>'
-      );
-      continue;
-    }
-    if (/^\s*$/.test(line)) { closeList(); continue; }
-    if (/^#{1,4}\s+/.test(line)) {
-      closeList();
-      const level = line.match(/^(#{1,4})\s+/)[1].length;
-      html.push(`<h${level}>` + inlineMd(line.replace(/^#{1,4}\s+/, '')) + `</h${level}>`);
-      continue;
-    }
-    if (/^[-*]\s+/.test(line)) {
-      if (listType !== 'ul') { closeList(); html.push('<ul>'); listType = 'ul'; }
-      html.push('<li>' + inlineMd(line.replace(/^[-*]\s+/, '')) + '</li>');
-      continue;
-    }
-    if (/^\d+[.、]\s+/.test(line)) {
-      if (listType !== 'ol') { closeList(); html.push('<ol>'); listType = 'ol'; }
-      html.push('<li>' + inlineMd(line.replace(/^\d+[.、]\s+/, '')) + '</li>');
-      continue;
-    }
-    if (/^>\s?/.test(line)) {
-      closeList();
-      html.push('<blockquote>' + inlineMd(line.replace(/^>\s?/, '')) + '</blockquote>');
-      continue;
-    }
-    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) {
-      closeList();
-      html.push('<hr>');
-      continue;
-    }
-    closeList();
-    html.push('<p>' + inlineMd(line) + '</p>');
-  }
-  closeList();
-  return html.join('\n');
-}
+// Markdown 面板的 DOM 行为：复制代码块、外链打开
+// 渲染逻辑（escapeHtml / inlineMd / renderMarkdown）在 markdown-core.js（纯函数，可单测）
 
 // 复制文本到剪贴板（secure context 用 Clipboard API，否则降级 execCommand）
 async function copyText(text, btn) {
@@ -120,6 +35,8 @@ document.addEventListener('click', (e) => {
   const link = e.target.closest('a[data-ext]');
   if (link) {
     e.preventDefault();
+    // 只放行 http/https：主进程也会再校验一次，这里是浏览器模式的兜底
+    if (!/^https?:\/\//i.test(link.href)) return;
     if (window.shell && window.shell.openExternal) window.shell.openExternal(link.href);
     else window.open(link.href, '_blank', 'noopener');
   }

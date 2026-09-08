@@ -80,37 +80,12 @@ function createThrottledRenderer(render) {
   };
 }
 
-// 解析 SSE 缓冲（CRLF 归一化，错误事件提取）
-function parseSse(buffer) {
-  buffer = buffer.replace(/\r\n/g, '\n');
-  let content = '';
-  let errored = false;
-  let idx;
-  while ((idx = buffer.indexOf('\n\n')) !== -1) {
-    const event = buffer.slice(0, idx);
-    buffer = buffer.slice(idx + 2);
-    let dataLines = [];
-    for (const line of event.split('\n')) {
-      if (!line.startsWith('data:')) continue;
-      // 多个 data: 行属于同一事件，按 SSE 规范用 \n 拼接
-      dataLines.push(line.slice(5).replace(/^ /, ''));
-    }
-    const data = dataLines.join('\n').trim();
-    if (!data || data === '[DONE]') continue;
-    try {
-      const json = JSON.parse(data);
-      if (json.error) {
-        errored = true;
-        const msg = typeof json.error === 'string' ? json.error : (json.error.message || JSON.stringify(json.error));
-        content += `\n[错误] ${msg}\n`;
-        continue;
-      }
-      const delta = json.choices?.[0]?.delta?.content;
-      if (delta) content += delta;
-    } catch { /* 忽略无法解析的分块 */ }
-  }
-  return { content, buffer, errored };
-}
+// SSE 解析在 sse.js（纯函数，可单测）：CRLF 归一化 / 多行 data / 错误事件 / 非流式 JSON 兜底
+const parseSse = (buffer, options) => (
+  typeof SseCore !== 'undefined'
+    ? SseCore.parseSse(buffer, options)
+    : { content: '', buffer, errored: true, done: false }
+);
 
 // 通用流式请求：POST + SSE 解析 + 回调
 async function streamRequest(url, body, { onDelta, onError, signal }) {
@@ -132,6 +107,10 @@ async function streamRequest(url, body, { onDelta, onError, signal }) {
     if (onError) onError(new Error(err.error || `HTTP ${res.status}`));
     return true;
   }
+  if (!res.body) {
+    if (onError) onError(new Error('响应没有内容'));
+    return true;
+  }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -147,7 +126,8 @@ async function streamRequest(url, body, { onDelta, onError, signal }) {
       if (r.content) onDelta(r.content);
     }
     buffer += decoder.decode();
-    const tail = parseSse(buffer);
+    // flush：流结束时兜底解析「上游返回普通 JSON」的尾部内容
+    const tail = parseSse(buffer, { flush: true });
     if (tail.content) onDelta(tail.content);
     if (tail.errored) sawError = true;
   } catch (err) {
@@ -183,9 +163,6 @@ function switchPanel(name) {
       sb.hidden = true;
       $('split-right').hidden = true;
     }
-  } else if (name === 'none') {
-    $('sidebar-right').hidden = true;
-    $('split-right').hidden = true;
   }
   syncActivity();
 }

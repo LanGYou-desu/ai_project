@@ -90,6 +90,7 @@ function switchTab(tab) {
 function closeTab(tab, force) {
   if (!force && tab.dirty && !confirm('文件未保存，确定关闭？')) return;
   const i = openTabs.indexOf(tab);
+  if (i === -1) return; // 已关闭（重复点击 / 并发调用）时不要误删最后一个 tab
   openTabs.splice(i, 1);
   if (currentTab === tab) {
     const next = openTabs[i] || openTabs[i - 1];
@@ -99,11 +100,6 @@ function closeTab(tab, force) {
   tab.model.dispose();
   renderTabs();
   previewOnClose(tab.rel);
-}
-
-function closeEditorTab(rel) {
-  const tab = openTabs.find((t) => t.rel === rel);
-  if (tab) closeTab(tab);
 }
 
 function currentTabLanguage() { return currentTab ? currentTab.language : currentLang; }
@@ -314,16 +310,24 @@ async function runCode() {
   setRunningUI(true);
   const runHistory = [];
   const t0 = Date.now();
+  // 整轮运行共用一个控制器：这样「停止」在等待输入、以及两轮请求之间的间隙都有效
+  const ac = new AbortController();
+  activeAbort = ac;
   let active = true;
   while (active) {
-    const ac = new AbortController();
-    activeAbort = ac;
+    if (ac.signal.aborted) {
+      appendOutput('terminal', '\n[已停止]\n', 'err');
+      setLastError('用户手动停止');
+      break;
+    }
     let raw = '';          // 已接收的原文（按帧批处理，避免逐 chunk 全量 replace 的 O(n²)）
     let shown = 0;         // 已展示的“去标记”字符数，用于处理 [需要输入] 被分块截断
     let frameScheduled = false;
-    const flushFrame = () => {
+    const flushFrame = (final) => {
       frameScheduled = false;
-      const clean = raw.replace(/\[需要输入\]/g, '');
+      // 末尾若可能是 [需要输入] 的前缀，先不显示，避免半个标记残留在终端
+      const hold = final ? 0 : pendingMarkerHold(raw);
+      const clean = raw.slice(0, raw.length - hold).replace(/\[需要输入\]/g, '');
       if (clean.length > shown) {
         appendOutput('terminal', clean.slice(shown));
         shown = clean.length;
@@ -339,23 +343,21 @@ async function runCode() {
         raw += d;
         if (!frameScheduled) {
           frameScheduled = true;
-          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flushFrame);
-          else setTimeout(flushFrame, 16);
+          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => flushFrame(false));
+          else setTimeout(() => flushFrame(false), 16);
         }
       },
       onError: (e) => { transportError = e.message; appendOutput('terminal', `[错误] ${e.message}\n`, 'err'); },
       signal: ac.signal,
     });
-    flushFrame(); // 收尾：确保缓冲的尾部立即渲染
+    flushFrame(true); // 收尾：确保缓冲的尾部立即渲染
     if (ac.signal.aborted) {
       appendOutput('terminal', '\n[已停止]\n', 'err');
       setLastError('用户手动停止');
-      active = false;
       break;
     }
     if (transportError) {
       setLastError(transportError);
-      active = false;
       break;
     }
     if (raw.includes('[需要输入]')) {
@@ -363,7 +365,6 @@ async function runCode() {
       if (input === null) {
         appendOutput('terminal', '\n[已停止]\n', 'err');
         setLastError('用户手动停止');
-        active = false;
         break;
       }
       appendOutput('terminal', `$ ${input}\n`);
@@ -380,6 +381,16 @@ async function runCode() {
   activeAbort = null;
   $('terminal-input-row').hidden = true;
   setRunningUI(false);
+}
+
+// raw 末尾如果是 [需要输入] 的真前缀（如 "[需要"），返回其长度，否则 0
+function pendingMarkerHold(raw) {
+  const marker = '[需要输入]';
+  const max = Math.min(marker.length - 1, raw.length);
+  for (let k = max; k > 0; k--) {
+    if (raw.endsWith(marker.slice(0, k))) return k;
+  }
+  return 0;
 }
 
 function stopCode() {
