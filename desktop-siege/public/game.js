@@ -31,11 +31,11 @@
   let wavesData = [];
   let scanData = null;
   let scanSummary = null;
+  let serverSeed = 20810719;
   let started = false;
   let bannerTimer = 0;
   let particles = [];
   let lastTime = 0;
-  let rafId = 0;
 
   const keys = {};
   const mouse = { x: 0, y: 0, down: false };
@@ -328,7 +328,9 @@
     hpBar.style.width = Math.max(0, st.player.hp / st.player.maxHp * 100) + '%';
     shieldBar.style.width = Math.max(0, st.player.shield / st.player.maxShield * 100) + '%';
     waveNumEl.textContent = st.wave;
-    waveTag.textContent = st.endless ? '· 无尽' : '· ' + (st.wavesCleared < 20 ? (20 - st.wavesCleared) + ' 波剩余' : '');
+    waveTag.textContent = st.endless
+      ? '· 无尽'
+      : (st.wavesCleared < 20 ? '· ' + (20 - st.wavesCleared) + ' 波剩余' : '· 最终波');
     scoreEl.textContent = st.score;
     comboEl.textContent = 'x' + st.combo;
     killsEl.textContent = st.kills;
@@ -344,17 +346,18 @@
   // ---------- 引擎事件 → 表现 ----------
   function wireEvents() {
     engine.onEvent = function (ev) {
-      if (ev.type === 'shoot') { if (ev.vol) sfxShoot(); }
+      if (ev.type === 'shoot') { sfxShoot(); }
       else if (ev.type === 'kill') {
         sfxHit();
-        const e = engine.enemies.find(function () { return false; });
-        spawnBurst(ev.x || 0, ev.y || 0, CLS_COLORS[ev.cls] || '#fff', 6);
+        // kill 事件自带坐标（引擎已保证），直接在此处做爆点
+        spawnBurst(ev.x || 0, ev.y || 0, CLS_COLORS[ev.cls] || '#fff', 10);
+        if (ev.cls === 'boss') sfxBossDown(); else sfxExplode();
       }
       else if (ev.type === 'bossDefeated') { sfxBossDown(); showToast('BOSS 已击破！'); }
       else if (ev.type === 'waveStart') {
         sfxWave();
         bannerTitle.textContent = '第 ' + ev.num + ' 波' + (ev.boss ? ' · BOSS' : '');
-        bannerSub.textContent = ev.boss ? ('BOSS：' + (ev.bossName || '???') + ' —— 你的桌面上最大的家伙') : (themeName(ev.theme) + ' 来袭');
+        bannerSub.textContent = ev.boss ? ('BOSS：' + (ev.bossName || '???') + ' —— 你桌面上最大的家伙') : (themeName(ev.theme) + ' 来袭');
         waveBanner.classList.remove('hidden');
         bannerTimer = ev.boss ? 3.2 : 2.0;
       }
@@ -374,15 +377,6 @@
         gameOverScreen.classList.remove('hidden');
       }
     };
-    // kill 事件需要坐标 → 覆写：记录最近击杀位置
-    const origDamage = engine.damageEnemy.bind(engine);
-    engine.damageEnemy = function (e, dmg) {
-      origDamage(e, dmg);
-      if (e.hp <= 0) {
-        spawnBurst(e.x, e.y, CLS_COLORS[e.cls] || '#fff', 10);
-        if (e.cls === 'boss') sfxBossDown(); else sfxExplode();
-      }
-    };
   }
 
   function themeName(t) {
@@ -399,7 +393,7 @@
 
   // ---------- 主循环 ----------
   function loop(now) {
-    rafId = requestAnimationFrame(loop);
+    requestAnimationFrame(loop);
     if (!engine) return;
     const dt = lastTime ? Math.min(0.05, (now - lastTime) / 1000) : 0.016;
     lastTime = now;
@@ -427,6 +421,8 @@
       wavesData = data.waves;
       scanData = data.scanData;
       scanSummary = data.scan;
+      // 用服务器下发的种子，保证客户端引擎与服务器波次数据完全一致（旧代码写死 20810719）
+      if (typeof data.seed === 'number') serverSeed = data.seed;
       const top = scanSummary.topDirs.slice(0, 3).map(function (d) { return d.dir + ' (' + d.count + ')'; }).join('、');
       const largest = scanSummary.largest ? scanSummary.largest.name + '（' + fmtSize(scanSummary.largest.size) + '）' : '（没有）';
       const bossPreview = wavesData.filter(function (w) { return w.boss; }).map(function (w) { return w.bossName; }).join(' / ');
@@ -456,10 +452,10 @@
   function startGame() {
     ensureAudio();
     engine = new DS_ENGINE.GameEngine({
-      seed: 20810719,
+      seed: serverSeed,
       waves: wavesData,
       endlessWaveGen: function (round) {
-        return DS_WAVES.generateEndlessWave(scanData, round, { seed: 20810719 });
+        return DS_WAVES.generateEndlessWave(scanData, round, { seed: serverSeed });
       }
     });
     wireEvents();

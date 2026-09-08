@@ -106,7 +106,7 @@ class GameEngine {
     const hpMul = 1 + (w - 1) * 0.14;
     const spdMul = 1 + (w - 1) * 0.02;
     const e = {
-      id: spec.id || 'e-' + this.rng.int(10000, 99999),
+      id: spec.id || 'e-' + w + '-' + this.rng.int(10000, 99999),
       cls: spec.cls,
       name: spec.name,
       x: this.spawnX(),
@@ -131,12 +131,15 @@ class GameEngine {
     return e;
   }
 
+  // 分裂者碎片：血量随波次成长，名字/ID 各不相同（便于分辨与测试）
   makeShard(cls, name, x, y) {
     const st = CLASS_STATS[cls];
+    const hpMul = 1 + (Math.max(1, this.waveNum()) - 1) * 0.14;
+    const hp = Math.max(1, Math.round(st.hp * hpMul));
     return {
       id: 's-' + this.rng.int(100000, 999999),
       cls: cls, name: name, x: x, y: y,
-      hp: st.hp, maxHp: st.hp, speed: st.speed, radius: st.radius,
+      hp: hp, maxHp: hp, speed: st.speed, radius: st.radius,
       score: st.score, contactDmg: st.contactDmg, fireCd: 0, hitFlash: 0
     };
   }
@@ -188,7 +191,8 @@ class GameEngine {
         const adx = input.aimX - p.x;
         const ady = input.aimY - p.y;
         const alen = Math.sqrt(adx * adx + ady * ady);
-        if (alen > 2) { p.aimX = adx / alen; p.aimY = ady / alen; }
+        // 只有指针和玩家几乎重合时才保留上一次朝向（旧阈值 2px 会让贴脸瞄准失效）
+        if (alen > 0.5) { p.aimX = adx / alen; p.aimY = ady / alen; }
       }
       p.fireCd -= dt;
       const rate = this.power.rapid > 0 ? p.fireRate * 0.55 : p.fireRate;
@@ -201,9 +205,11 @@ class GameEngine {
           this.bullets.push({
             x: p.x + Math.cos(ang) * 20, y: p.y + Math.sin(ang) * 20,
             vx: Math.cos(ang) * p.bulletSpeed, vy: Math.sin(ang) * p.bulletSpeed,
-            damage: p.damage, pierce: this.power.pierce > 0 ? 2 : 0, life: 1.6
+            damage: p.damage, pierce: this.power.pierce > 0 ? 2 : 0, life: 1.6,
+            hit: null // 每颗子弹记录已命中的敌人，避免穿透弹对同一敌人重复结算
           });
         }
+        this.onEvent({ type: 'shoot', shots: shots });
       }
       p.invuln = Math.max(0, p.invuln - dt);
     }
@@ -220,12 +226,18 @@ class GameEngine {
       let shouldRemove = false;
       for (let j = this.enemies.length - 1; j >= 0; j--) {
         const e = this.enemies[j];
+        if (b.hit && b.hit.has(e.id)) continue; // 同一颗子弹不重复打同一个敌人
         const d2 = (e.x - b.x) * (e.x - b.x) + (e.y - b.y) * (e.y - b.y);
         const rr = e.radius + 7;
         if (d2 <= rr * rr) {
           this.damageEnemy(e, b.damage);
-          if (b.pierce > 0) { b.pierce--; }
-          else { shouldRemove = true; }
+          if (b.pierce > 0) {
+            b.pierce--;
+            if (!b.hit) b.hit = new Set();
+            b.hit.add(e.id);
+          } else {
+            shouldRemove = true;
+          }
           break;
         }
       }
@@ -242,7 +254,10 @@ class GameEngine {
       if (e.cls === 'healer') {
         if (len < 260) spd = -e.speed * 0.7;
         else spd = e.speed;
-        if (this.time % 1.0 < dt * 2) {
+        // 治疗冷却（旧实现用 time % 1.0 < dt*2 判定，帧长抖动时会一秒治疗十几次）
+        e.fireCd -= dt;
+        if (e.fireCd <= 0) {
+          e.fireCd = 1.0;
           let best = null;
           for (const o of this.enemies) {
             if (o === e || o.hp >= o.maxHp) continue;
@@ -361,18 +376,19 @@ class GameEngine {
     this.score += Math.round(base * (1 + Math.min(this.combo, 10) * 0.1));
     if (e.cls === 'splitter') {
       for (let k = 0; k < 3; k++) {
-        this.enemies.push(this.makeShard('shard', e.name + '·碎片', e.x + (k - 1) * 22, e.y + (k % 2 ? 14 : -14)));
+        this.enemies.push(this.makeShard('shard', e.name + '·碎片' + (k + 1), e.x + (k - 1) * 22, e.y + (k % 2 ? 14 : -14)));
       }
     }
     if (e.cls === 'boss') {
       this.boss = null;
       this.score += 300;
-      this.onEvent({ type: 'bossDefeated', wave: this.waveNum() });
+      this.onEvent({ type: 'bossDefeated', wave: this.waveNum(), name: e.name, x: e.x, y: e.y });
     }
     if (this.rng.chance(0.13) && this.powerups.length < 6) {
       this.powerups.push({ x: e.x, y: e.y, kind: POWERUP_KINDS[this.rng.int(0, POWERUP_KINDS.length - 1)], ttl: 9 });
     }
-    this.onEvent({ type: 'kill', cls: e.cls, combo: this.combo });
+    // 带坐标的击杀事件，渲染层可直接做爆点，无需再覆盖 damageEnemy
+    this.onEvent({ type: 'kill', cls: e.cls, name: e.name, combo: this.combo, x: e.x, y: e.y });
   }
 
   applyPowerup(kind) {
@@ -385,10 +401,6 @@ class GameEngine {
       case 'freeze': this.freeze = 4; break;
       case 'pierce': this.power.pierce = 5; break;
     }
-  }
-
-  forceKillAll() {
-    while (this.enemies.length) this.killEnemy(this.enemies[0]);
   }
 
   // 测试辅助：清空生成队列 + 场上敌人 + 推进到下一波
