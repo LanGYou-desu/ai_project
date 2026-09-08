@@ -207,6 +207,10 @@ code += `
     var blob = ddStr.match(/hidden_flag_data=([A-Za-z0-9+/=]+)/)[1];
     await cmd('b64 -d ' + blob);
     await cmd('tail usb.dd 80');
+    var hdStart = printed.length;
+    await cmd('hexdump usb.dd');
+    var hdOut = printed.slice(hdStart).join('\\n');
+    check('hexdump 偏移用 16 进制显示', hdOut.indexOf('00000130') !== -1 && hdOut.indexOf('00000304') === -1);
     await cmd('submit flag{usb_evidence_recovered}');
     check('L5 通关', levelWon(5));
     check('L5 成就 forensic_master', Game.achievements.has('forensic_master'));
@@ -308,6 +312,24 @@ code += `
     var xpAfterHints = Game.xp;
     await cmd('hint'); // 第 4 次: 已满级, 不应再扣分
     check('hint 用满不再扣分', Game.xp === xpAfterHints);
+
+    /* ===== 扩展场景提示与主线提示互不干扰 ===== */
+    await loadLevel(1);
+    var l1lvl = Game.levels.find(function (l) { return l.id === 1; });
+    var l1sc = l1lvl.scenarios[0];
+    l1lvl.hintLevel = 0; l1lvl.hintUsed = false;
+    l1sc.hintLevel = 0; l1sc.hintUsed = false;
+    var hintsUsedBefore = Game.hintsUsed;
+    await cmd('scenario 1');
+    await cmd('hint');
+    await cmd('hint');
+    check('场景提示进度记在场景上', l1sc.hintLevel === 2 && (l1lvl.hintLevel || 0) === 0);
+    await cmd('scenario main');
+    await cmd('hint');
+    check('主线提示不被场景提示消耗', (l1lvl.hintLevel || 0) === 1);
+    check('提示次数按主线/场景分别计数', Game.hintsUsed === hintsUsedBefore + 2);
+    await loadLevel(9);
+
     await cmd('learn 1');
     check('learn 记录卡片', Game.cardsRead.size >= 1);
     await cmd('tools');
@@ -483,15 +505,20 @@ code += `
     await cmd('panel on');
 
     /* ===== 存档/恢复 ===== */
+    await loadLevel(1);          // 存档时正处在扩展场景中
+    await cmd('scenario 1');
     saveGame();
     var savedXp = Game.xp;
     var savedAch = Game.achievements.size;
     resetProgress();
     check('重置后 XP=0', Game.xp === 0);
+    check('重置后场景清空', Game.scenario === null);
     restoreSave(loadSave());
     check('恢复后 XP 一致', Game.xp === savedXp);
     check('恢复后成就一致', Game.achievements.size === savedAch);
     check('恢复后 L6 通关状态', levelWon(6));
+    check('恢复后保留进行中的扩展场景', Game.scenario === 's1');
+    check('恢复后场景提示进度一致', (Game.levels[1].scenarios[0].hintLevel || 0) === 2);
     // 损坏/旧版本存档应判无效
     localStorage.setItem(SAVE_KEY, '{corrupt-json');
     check('损坏存档返回 null', loadSave() === null);

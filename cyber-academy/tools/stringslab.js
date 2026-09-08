@@ -15,7 +15,9 @@ function main() {
     process.exit(1);
   }
   const minLen = args[1] ? parseInt(args[1], 10) : 4;
-  const buf = fs.readFileSync(file);
+  if (!fs.existsSync(file)) { console.log('✘ 文件不存在: ' + file + ' (先用 node make-practice.js 生成练习素材?)'); process.exit(1); }
+  let buf;
+  try { buf = fs.readFileSync(file); } catch (e) { console.log('✘ 无法读取文件: ' + e.message); process.exit(1); }
   const runs = [];
   let cur = '';
   const flush = () => { if (cur.length >= minLen) runs.push(cur); cur = ''; };

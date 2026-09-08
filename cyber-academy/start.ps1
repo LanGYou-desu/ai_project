@@ -28,7 +28,7 @@ if (-not (Test-Path (Join-Path $here "practice\login.pcap"))) {
 
 # 3. 启动游戏 + 靶场 (可见窗口, 与 start.bat 行为一致)
 Write-Host "[2/3] 启动游戏与本地靶场服务器..." -ForegroundColor Cyan
-Start-Process cmd -ArgumentList '/k', 'title Cyber-Academy-Server && cd /d "' + $here + '" && node server.js'
+Start-Process powershell -ArgumentList '-NoExit', '-ExecutionPolicy', 'Bypass', '-File', ('"' + (Join-Path $here 'server-run.ps1') + '"')
 Start-Sleep -Seconds 2
 
 # 4. 打开浏览器

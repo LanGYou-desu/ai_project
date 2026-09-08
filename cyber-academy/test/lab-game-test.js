@@ -146,8 +146,13 @@ code += `
     check('lab exec 真实执行并回显', printed.some(function (p) { return p.indexOf('LAB_RCE_CONFIRMED') !== -1; }));
     await cmd('lab read secret.txt');
     check('lab read 读到机密文件', printed.some(function (p) { return p.indexOf('lab_secret_value_8f3a2c') !== -1; }));
-    await cmd('lab read ../server.js');
-    check('lab read 路径穿越成功', printed.some(function (p) { return p.indexOf('读取成功') !== -1; }));
+    var travStart = printed.length;
+    await cmd('lab read ../../server.js');
+    var travOut = printed.slice(travStart).join('\\n');
+    check('lab read 路径穿越成功 (真读到 server.js)', travOut.indexOf('读取成功') !== -1 && travOut.indexOf('赛博安全学院') !== -1);
+    var escStart = printed.length;
+    await cmd('lab read ../../../../Windows/win.ini');
+    check('lab read 越出项目目录被沙箱拦截', printed.slice(escStart).join('\\n').indexOf('sandbox boundary') !== -1);
 
     /* ===== 挑战 9/10 (需要真实靶场) ===== */
     await cmd('challenge 9');

@@ -46,16 +46,13 @@ function main() {
     console.log('⚠ 生成二进制/镜像失败: ' + e.message);
   }
 
-  // 3. 真实 pcap (Wireshark 可打开)
+  // 3. 真实 pcap (Wireshark 可打开) — 直接复用 tools/pcapgen.js 的导出函数
   try {
-    require('./tools/pcapgen.js');
-    fs.copyFileSync(path.join(PRACTICE, 'login.pcap'), path.join(PRACTICE, 'login.pcap'));
+    const { generate } = require('./tools/pcapgen.js');
+    generate(path.join(PRACTICE, 'login.pcap'), 'hunter2');
   } catch (e) {
-    // pcapgen 直接执行时会生成到 practice/login.pcap
-    const { execSync } = require('child_process');
-    execSync('node ' + path.join(ROOT, 'tools', 'pcapgen.js') + ' ' + path.join(PRACTICE, 'login.pcap'));
+    console.log('⚠ 生成 pcap 失败: ' + e.message);
   }
-  console.log('✔ 素材: practice/login.pcap (Wireshark 分析)');
 
   // 4. 真实钓鱼邮件样例 (.eml 格式, 可用邮件客户端/文本编辑器打开)
   const phish = [

@@ -69,9 +69,9 @@ const DEMOS = [
   {
     topic: 'forensics', title: '数字取证 (示例)',
     steps: [
-      { in: 'file usb.dd', out: ['usb.dd: 数据文件 (663 字节)', '   镜像内签名扫描:', '     └─ JPEG 图像 @ 0x114'] },
-      { in: 'strings usb.dd', out: ['[已删除文件 secret.png] 数据块残留', 'wifi_password=BlueWhale42', 'hidden_flag_data=ZmxhZ3...'] },
-      { in: 'b64 -d ZmxhZ3...', out: ['flag{...}'] },
+      { in: 'file usb.dd', out: ['usb.dd: 数据文件 (663 字节)', '   镜像内签名扫描:', '     └─ JPEG 图像 @ 0x137'] },
+      { in: 'strings usb.dd', out: ['[已删除文件 secret.png] 数据块残留', 'wifi_password=BlueWhale42', 'hidden_flag_data=ZmxhZ3t1c2JfZXZpZGVuY2VfcmVjb3ZlcmVkfQ=='] },
+      { in: 'b64 -d ZmxhZ3t1c2JfZXZpZGVuY2VfcmVjb3ZlcmVkfQ==', out: ['flag{usb_evidence_recovered}'] },
     ],
     tip: '三板斧: file 识别 → strings 捞串 → b64 解码。',
   },
@@ -85,10 +85,10 @@ const DEMOS = [
   {
     topic: 'malware', title: '恶意文件分析',
     steps: [
-      { in: 'file sample.bin', out: ['sample.bin: 数据文件 (二进制)'] },
-      { in: 'strings sample.bin', out: ['http://evil-c2.example/beacon', 'key=secret_key_123', 'flag{e...} ← 藏在载荷里'] },
+      { in: 'file sample.bin', out: ['sample.bin: PE 可执行文件 (Windows) (228 字节)'] },
+      { in: 'strings sample.bin', out: ['http://malware-c2.example/beacon', 'CreateRemoteThread', 'WriteProcessMemory', 'VirtualAllocEx', 'hidden_payload=ZmxhZ3ttYWx3YXJlX2FuYWx5c3R9'] },
     ],
-    tip: 'strings 是恶意软件分析的起点: URL/C2 地址/密钥常常裸奔。',
+    tip: 'strings 是恶意软件分析的起点: C2 地址、可疑 API 名常常裸奔。',
   },
   {
     topic: 'rce', title: '命令注入 (需靶场)',

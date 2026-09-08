@@ -11,7 +11,7 @@ let T;
 function saveGame() {
   try {
     const data = {
-      v: 4,
+      v: 5,
       xp: Game.xp,
       hintsUsed: Game.hintsUsed,
       flagsFound: [...Game.flagsFound],
@@ -26,13 +26,17 @@ function saveGame() {
       startedAt: Game.startedAt,
       hasStarted: Game.hasStarted,
       activeId: Game.active ? Game.active.id : null,
+      scenario: Game.scenario || null,   // 正在进行的扩展场景
       levels: {},
     };
     Game.levels.forEach((l) => {
       const obj = {};
       l.objectives.forEach((o) => { if (o.done) obj[o.id] = true; });
       const scenarios = {};
-      if (l.scenarios) l.scenarios.forEach((s) => { scenarios[s.id] = !!s.done; });
+      // 场景进度: 完成状态 + 场景自己的提示进度 (v5 起为对象, 兼容旧的布尔值)
+      if (l.scenarios) l.scenarios.forEach((s) => {
+        scenarios[s.id] = { done: !!s.done, hintUsed: !!s.hintUsed, hintLevel: s.hintLevel || 0 };
+      });
       data.levels[l.id] = { won: !!l.won, hintUsed: !!l.hintUsed, hintLevel: l.hintLevel || 0, objectives: obj, scenarios };
     });
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -71,15 +75,34 @@ function restoreSave(s) {
     l.hintUsed = !!sl.hintUsed;
     l.hintLevel = sl.hintLevel || 0;
     l.objectives.forEach((o) => { if (sl.objectives && sl.objectives[o.id]) o.done = true; });
-    if (l.scenarios && sl.scenarios) l.scenarios.forEach((sc) => { sc.done = !!sl.scenarios[sc.id]; });
+    if (l.scenarios && sl.scenarios) l.scenarios.forEach((sc) => {
+      const sv = sl.scenarios[sc.id];
+      if (sv === undefined || sv === null) return;
+      // v5 起场景进度是对象 {done,hintUsed,hintLevel}; 旧档是布尔值
+      if (typeof sv === 'object') {
+        sc.done = !!sv.done;
+        sc.hintUsed = !!sv.hintUsed;
+        sc.hintLevel = sv.hintLevel || 0;
+      } else {
+        sc.done = !!sv;
+      }
+    });
   });
+  // 恢复正在进行的扩展场景 (只有该场景存在且未完成时才恢复)
+  const activeLvl = Game.levels.find((l) => l.id === s.activeId);
+  if (s.scenario && activeLvl && activeLvl.scenarios) {
+    const sc = activeLvl.scenarios.find((x) => x.id === s.scenario);
+    Game.scenario = sc && !sc.done ? sc.id : null;
+  } else {
+    Game.scenario = null;
+  }
 }
 
 function resetProgress() {
   Game.levels.forEach((l) => {
     l.won = false; l.hintUsed = false; l.hintLevel = 0;
     l.objectives.forEach((o) => { o.done = false; });
-    if (l.scenarios) l.scenarios.forEach((sc) => { sc.done = false; });
+    if (l.scenarios) l.scenarios.forEach((sc) => { sc.done = false; sc.hintUsed = false; sc.hintLevel = 0; });
     delete l.fsRemote;
   });
   Game.scenario = null;

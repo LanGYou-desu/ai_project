@@ -16,6 +16,8 @@ async function req(method, url, body) {
     method,
     headers: body ? { 'Content-Type': 'application/json' } : {},
     body: body ? JSON.stringify(body) : undefined,
+    // 超时: 目标无响应时不要一直挂着 (Node 18+ 自带 AbortSignal.timeout)
+    signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined,
   });
   const text = await res.text();
   let parsed = null;

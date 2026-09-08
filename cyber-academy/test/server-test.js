@@ -39,6 +39,13 @@ const { createStaticHandler } = require('../server.js');
     check('编码穿越 %2f → 403', (await rawGet('/..%2fserver.js')) === 403);
     check('点穿越 %2e%2e → 403', (await rawGet('/%2e%2e/server.js')) === 403);
     check('深层穿越 → 403', (await rawGet('/lab/../../server.js')) === 403);
+    check('畸形 URI 编码 → 400', (await rawGet('/%zz')) === 400);
+    // 白名单: 只对外提供游戏本体资源 (靶场机密/源码/测试/素材不外溢)
+    check('靶场机密文件不暴露 → 404', (await rawGet('/lab/lab-files/secret.txt')) === 404);
+    check('服务端源码不暴露 → 404', (await rawGet('/server.js')) === 404);
+    check('测试脚本不暴露 → 404', (await rawGet('/test/server-test.js')) === 404);
+    check('dotfile 不暴露 → 404', (await rawGet('/.gitignore')) === 404);
+    check('练习素材不暴露 → 404', (await rawGet('/practice/auth.log')) === 404);
   } catch (e) {
     R.push(['测试执行异常: ' + e.message, false]);
     console.error(e);

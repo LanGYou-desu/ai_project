@@ -20,6 +20,14 @@ const run = (script, args) => new Promise((resolve, reject) => {
   p.stderr.on('data', (d) => { out += d; });
   p.on('close', (code) => (code === 0 ? resolve(out) : reject(new Error(out))));
 });
+/* 期望失败的命令 (参数/文件错误应友好报错并 exit 1, 不能抛 stack trace) */
+const runFail = (script, args) => new Promise((resolve) => {
+  const p = spawn(NODE, [path.join(ROOT, script), ...(args || [])], { cwd: ROOT });
+  let out = '';
+  p.stdout.on('data', (d) => { out += d; });
+  p.stderr.on('data', (d) => { out += d; });
+  p.on('close', (code) => resolve({ code, out }));
+});
 
 (async function () {
   const lab = createLab({ httpPort: 0, tcpPort: 0, sshPort: 0, downloadDir: path.join(os.tmpdir(), 'ct-' + Date.now()) });
@@ -70,6 +78,21 @@ const run = (script, args) => new Promise((resolve, reject) => {
     const cbPractice = fs.readFileSync(path.join(practice, 'crackme.bin'));
     const cbLab = Buffer.from(await (await fetch('http://127.0.0.1:' + lab.httpPort + '/api/files/crackme.bin')).arrayBuffer());
     check('practice crackme 与靶场一致', cbPractice.equals(cbLab));
+
+    // 10. 参数/文件错误要友好报错 (exit 1, 不抛 stack trace)
+    const hxMiss = await runFail('tools/hexlab.js', ['no_such.bin']);
+    check('hexlab 缺文件友好报错', hxMiss.code === 1 && hxMiss.out.includes('✘ 文件不存在') && hxMiss.out.indexOf('at Object.') === -1);
+    const stMiss = await runFail('tools/stringslab.js', ['no_such.bin']);
+    check('stringslab 缺文件友好报错', stMiss.code === 1 && stMiss.out.includes('✘ 文件不存在') && stMiss.out.indexOf('at Object.') === -1);
+    const hArg = await runFail('tools/hashlab.js', ['md5', '--file']);
+    check('hashlab --file 缺路径友好报错', hArg.code === 1 && hArg.out.includes('✘'));
+    const hMiss = await runFail('tools/hashlab.js', ['md5', '--file', 'no_such.bin']);
+    check('hashlab --file 文件不存在友好报错', hMiss.code === 1 && hMiss.out.includes('✘ 文件不存在'));
+
+    // 11. make-practice 可重复执行 (pcap 生成直接复用 pcapgen 导出, 不再自我拷贝)
+    await run('make-practice.js');
+    const pcap2 = fs.readFileSync(path.join(practice, 'login.pcap'));
+    check('make-practice 可重复执行且 pcap 有效', pcap2.readUInt32LE(0) === 0xa1b2c3d4 && pcap2.includes(Buffer.from('password=hunter2')));
   } catch (e) {
     R.push(['测试执行异常: ' + e.message, false]);
     console.error(e);

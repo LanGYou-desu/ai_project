@@ -4,6 +4,7 @@
  *   → 本地靶场:   http://127.0.0.1:8090  (SQLi/XSS), TCP 1337 后门, TCP 2222 SSH
  * 加 --no-lab 可只启动静态站 (游戏退回模拟模式)。
  * 也可以直接双击 index.html 运行 (纯前端，无靶场)。
+ * 静态站只提供 index.html / css/ / js/ (靶场文件、源码、测试、练习素材不对外暴露)。
  * ⚠ 安全: 本服务器(含静态站与靶场全部服务)仅绑定 127.0.0.1, 切勿改为 0.0.0.0 暴露公网。
  */
 'use strict';
@@ -26,19 +27,35 @@ const MIME = {
   '.svg': 'image/svg+xml',
 };
 
+/* 只对外暴露游戏本体需要的静态资源。
+ * 靶场机密文件(lab/lab-files)、靶机下载(lab/downloads)、源码(tools/test/server.js)、
+ * 练习素材(practice)一律不通过静态站暴露 —— 否则挑战 10 的答案可以直接从 8080 读走。 */
+const STATIC_ALLOW = ['index.html', 'css/', 'js/'];
+
+function isAllowedStatic(relPath) {
+  const p = relPath.split(path.sep).join('/');
+  return STATIC_ALLOW.some((prefix) => (prefix.endsWith('/') ? p.startsWith(prefix) : p === prefix));
+}
+
 /* 静态文件处理器 (可被测试直接使用) */
 function createStaticHandler(root) {
   return (req, res) => {
     let urlPath;
-    try { urlPath = decodeURIComponent(req.url.split('?')[0]); } catch (e) { urlPath = '/'; }
+    try { urlPath = decodeURIComponent(req.url.split('?')[0]); } catch (e) {
+      res.writeHead(400); return res.end('400 Bad Request');
+    }
     if (urlPath === '/') urlPath = '/index.html';
     const file = path.normalize(path.join(root, urlPath));
     // path.relative 回推防穿越：startsWith 前缀匹配会被 root 的兄弟目录骗过
     const rel = path.relative(root, file);
     if (rel.startsWith('..') || path.isAbsolute(rel)) { res.writeHead(403); return res.end('403 Forbidden'); }
+    if (!isAllowedStatic(rel)) { res.writeHead(404); return res.end('404 Not Found'); }
     fs.readFile(file, (err, data) => {
       if (err) { res.writeHead(404); return res.end('404 Not Found'); }
-      res.writeHead(200, { 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream' });
+      res.writeHead(200, {
+        'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+        'Cache-Control': 'no-store', // 本地教学: 避免改动后浏览器拿旧缓存
+      });
       res.end(data);
     });
   };
@@ -69,7 +86,7 @@ if (require.main === module) {
         console.log('  靶机文件:            ' + lab.downloadDir + '/');
         console.log('  命令注入 (RCE):      GET /api/ping?host=...');
         console.log('  IDOR 越权:           GET /api/profile?id=2');
-        console.log('  路径穿越:            GET /api/read?file=../server.js');
+        console.log('  路径穿越:            GET /api/read?file=../../server.js');
         console.log('  SQL 引擎:            ' + lab.engine);
         console.log('⚠ 仅绑定 127.0.0.1，仅供本地学习，切勿暴露到公网');
         console.log('  游戏内输入 lab 查看靶场菜单，L1/L3/L6 自动切换真实模式');

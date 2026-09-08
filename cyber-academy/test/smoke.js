@@ -182,6 +182,34 @@ code += `
   check('L6 哈希 = md5("password")', l6.crackHash === '5f4dcc3b5aa765d61d8327deb882cf99');
   check('L6 哈希可被字典命中', WORDLIST.indexOf('password') !== -1);
 
+  // ---- 示例/手册/课程 与实现数据一致 (防止教学内容与真实数据漂移) ----
+  var l5dd = toBytes(Game.levels.find(function (l) { return l.id === 5; }).fs['usb.dd']);
+  var jpegOff = -1;
+  for (var bi = 0; bi < l5dd.length - 3; bi++) {
+    if (l5dd[bi] === 0xff && l5dd[bi + 1] === 0xd8 && l5dd[bi + 2] === 0xff) { jpegOff = bi; break; }
+  }
+  check('usb.dd 内嵌 JPEG 偏移 = 0x137', jpegOff === 0x137 && l5dd.length === 663);
+  var offHex = '0x' + jpegOff.toString(16);
+  var demoF = DEMOS.find(function (d) { return d.topic === 'forensics'; });
+  check('demo 取证示例偏移与实现一致', demoF.steps[0].out.join(' ').indexOf(offHex) !== -1);
+  check('工具手册 file 示例偏移与实现一致', TOOL_MANUAL['file'].example.indexOf(offHex) !== -1);
+  check('course 5.3 示例偏移与实现一致', fs.readFileSync(path.join(__dirname, '..', 'js', 'course.js'), 'utf8').indexOf(offHex) !== -1);
+  var l8str = bytesToStr(toBytes(Game.levels.find(function (l) { return l.id === 8; }).fs['sample.bin']));
+  var demoM = DEMOS.find(function (d) { return d.topic === 'malware'; });
+  var demoMtxt = demoM.steps.map(function (s) { return s.out.join(' '); }).join(' ');
+  check('demo 恶意样本示例与 L8 实现一致', demoMtxt.indexOf('malware-c2.example') !== -1 && l8str.indexOf('malware-c2.example') !== -1 && l8str.indexOf('CreateRemoteThread') !== -1);
+  check('demo 恶意样本大小与实现一致', demoM.steps[0].out.join(' ').indexOf('(' + l8str.length + ' 字节)') !== -1);
+
+  // ---- 工具可复用性 / 启动器编码 (PowerShell 5.1) ----
+  var pcapgen = require('../tools/pcapgen.js');
+  check('pcapgen 导出可复用函数 (require 无副作用)', typeof pcapgen.generate === 'function' && typeof pcapgen.buildPcap === 'function');
+  var onePkt = pcapgen.buildPcap([pcapgen.buildTcpPacket('aa:bb:cc:11:22:33', 'aa:bb:cc:44:55:66', '1.2.3.4', '5.6.7.8', 1234, 80, 1, 0, 0x02, Buffer.alloc(0), 1)]);
+  check('pcapgen 构造的 pcap 魔数正确', onePkt.length > 40 && onePkt.readUInt32LE(0) === 0xa1b2c3d4);
+  var startBytes = fs.readFileSync(path.join(__dirname, '..', 'start.ps1'));
+  check('start.ps1 带 UTF-8 BOM (PS 5.1 中文不乱码)', startBytes[0] === 0xef && startBytes[1] === 0xbb && startBytes[2] === 0xbf);
+  check('server-run.ps1 纯 ASCII', /^[\x00-\x7F]*$/.test(fs.readFileSync(path.join(__dirname, '..', 'server-run.ps1'), 'utf8')));
+  check('start.ps1 确实调用 server-run.ps1', fs.readFileSync(path.join(__dirname, '..', 'start.ps1'), 'utf8').indexOf('server-run.ps1') !== -1);
+
   // ---- 异步 SHA-256 向量 ----
   sha256Hex('abc').then(function (h) {
     check('sha256("abc") 向量', h === 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');

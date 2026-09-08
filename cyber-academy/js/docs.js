@@ -470,7 +470,7 @@ const DOC_APPENDIX = [
       '  学习: course <n> <章> | quiz <n> | demo <主题> | docs <章> | docs term <词>',
       '  挑战: challenge <n> | submit <flag或答案> | ai <内容> | board | mistakes',
       '  任务: scenario <编号|main> (扩展场景) | next | mission',
-      '  靶场: lab | lab get <文件> | lab exec <命令> | lab read <路径> | browser',
+      '  靶场: lab | lab get <文件> | lab exec <命令> | lab read <路径> | lab open | browser',
       '  界面: theme <名称> | panel on|off | guide (新手引导) | export (学习报告)',
       '  文件: ls / cat <文件> / file <文件> / strings <文件> / tail <文件> / hexdump <文件>',
       '  工具箱: tools (tools <命令> 看手册)',

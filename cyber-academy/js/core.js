@@ -407,7 +407,7 @@ async function loadLevel(id, resumed = false) {
   const lvl = Game.levels.find((l) => l.id === id);
   if (!lvl) return;
   Game.active = lvl;
-  Game.scenario = null;
+  if (!resumed) Game.scenario = null; // 恢复存档时保留当前扩展场景
   Game.remote = false;
   Game.browsing = null;
   Game.browserLine = null;
@@ -687,7 +687,8 @@ GLOBAL_COMMANDS['hexdump'] = (toks) => {
     const chunk = b.slice(off, off + 16);
     const hx = Array.from(chunk).map(hex).join(' ').padEnd(47, ' ');
     const asc = Array.from(chunk).map((c) => (c >= 32 && c < 127 ? String.fromCharCode(c) : '.')).join('');
-    T.print(`${pad(off, 8)}  ${hx}  |${asc}|`, 'cmd');
+    // 偏移用 16 进制显示, 与真实 hexdump/xxd 及 tools/hexlab.js 一致
+    T.print(`${off.toString(16).padStart(8, '0')}  ${hx}  |${asc}|`, 'cmd');
     lines++;
   }
   if (b.length - start > maxLines * 16) T.print(`  ... (共 ${b.length} 字节，仅显示前 ${lines * 16} 字节)`, 'dim');
@@ -704,7 +705,7 @@ const HELP_INDEX = [
   ['course', '课本式课程 (course <n> <章>)'], ['quiz', '课后测验'], ['demo', '示例教学 (demo <主题>)'],
   ['docs', '知识手册 (docs <章> / docs term <词>)'], ['tools', '工具箱 (tools <命令> 手册)'],
   ['challenge', '实战挑战大厅'], ['scenario', '切换扩展任务场景'], ['next', '进入下一关'],
-  ['lab', '本地靶场 (lab get/exec/read)'], ['browser', '打开真实浏览器窗口'], ['ai', '实验室 AI 聊天'],
+  ['lab', '本地靶场 (lab get/exec/read/open)'], ['browser', '打开真实浏览器窗口'], ['ai', '实验室 AI 聊天'],
   ['submit', '提交 flag 或答案'], ['mistakes', '错题本回顾'], ['board', '挑战排行榜'], ['export', '导出学习报告'],
   ['theme', '切换界面主题'], ['panel', '任务面板开关'], ['sound', '音效开关'], ['guide', '新手引导'],
   ['ls', '列出文件'], ['cat', '查看文件内容'], ['file', '识别文件类型'], ['strings', '提取可读字符串'],
@@ -800,11 +801,14 @@ GLOBAL_COMMANDS['hint'] = (toks) => {
   const lvl = Game.active;
   const hints = activeHints();
   if (!lvl || !hints || !hints.length) { T.print('当前没有可用的提示。', 'info'); return; }
+  // 提示进度按"主线 / 扩展场景"分别记录: 场景提示不再吃掉主线提示次数
+  const sc = activeScenario();
+  const scope = sc || lvl;
   // 已用完全部提示: 不再展示也不再扣分
-  if ((lvl.hintLevel || 0) >= hints.length) { T.print('已使用完所有提示 — 建议复习 course 或试试 demo。', 'info'); return; }
-  const idx = lvl.hintLevel || 0;
+  if ((scope.hintLevel || 0) >= hints.length) { T.print('已使用完所有提示 — 建议复习 course 或试试 demo。', 'info'); return; }
+  const idx = scope.hintLevel || 0;
   const level = idx + 1;
-  if (!lvl.hintUsed) { lvl.hintUsed = true; Game.hintsUsed++; }
+  if (!scope.hintUsed) { scope.hintUsed = true; Game.hintsUsed++; }
   T.print(`💡 提示 ${level}/${hints.length}: ${hints[idx]}`, 'hint');
   if (level >= 2) {
     const penalty = level === 2 ? 10 : 20;
@@ -814,7 +818,8 @@ GLOBAL_COMMANDS['hint'] = (toks) => {
   if (level >= hints.length) {
     T.print('  (这是最终答案提示 — 建议先自己试! 使用任何提示都会失去「无师自通」成就)', 'error');
   }
-  lvl.hintLevel = idx + 1;
+  scope.hintLevel = idx + 1;
+  if (scope !== lvl) T.print('  (本次扣的是扩展场景的提示进度，主线提示不受影响)', 'dim');
   updateHud();
   Game.save();
 };

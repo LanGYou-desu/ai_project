@@ -82,10 +82,10 @@ function buildPcap(packets) {
   return Buffer.concat(parts);
 }
 
-function main() {
-  const args = process.argv.slice(2);
-  const outFile = args[0] || path.join(__dirname, '..', 'practice', 'login.pcap');
-  const password = args[1] || 'hunter2';
+/* 生成 pcap 文件 (可被 make-practice.js 直接复用, 不必再 spawn 子进程) */
+function generate(outFile, password) {
+  outFile = outFile || path.join(__dirname, '..', 'practice', 'login.pcap');
+  password = password || 'hunter2';
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
   const clientMac = 'aa:bb:cc:11:22:33';
@@ -111,6 +111,14 @@ function main() {
   console.log(`  密码 "${password}" 以明文藏在 HTTP POST 中 — 用 Wireshark 打开分析:`);
   console.log('    Wireshark → File → Open → ' + outFile);
   console.log('    或命令行: tshark -r ' + outFile + ' -Y http');
+  return { file: outFile, bytes: data.length, packets: packets.length };
 }
 
-main();
+/* 只有直接运行本文件时才生成 (被 require 时只导出函数) */
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  generate(args[0], args[1]);
+}
+
+module.exports = { generate, buildPcap, buildTcpPacket, checksum16 };
+

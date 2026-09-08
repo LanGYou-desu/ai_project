@@ -1,7 +1,7 @@
 'use strict';
 /* =========================================================
  * 赛博安全学院 — 实战挑战大厅
- * 10 个独立挑战: 随时可做 (challenge <编号>)，与主线关卡解耦。
+ * 20 个独立挑战: 随时可做 (challenge <编号>)，与主线关卡解耦。
  * 挑战 9/10 需要本地真实靶场在线 (node server.js)。
  * ========================================================= */
 
@@ -152,7 +152,7 @@ CHALLENGES.push({
 /* 10 · 任意文件读取 (需靶场) */
 CHALLENGES.push({
   id: 10, title: '任意文件读取', xp: 90, needsLab: true, answer: 'lab_secret_value_8f3a2c',
-  desc: '靶场 /api/read 端点把文件名直接拼进路径，存在路径穿越漏洞。\n靶机上藏着一个机密文件 lab/lab-files/secret.txt。\n用 lab read secret.txt 读取它 (它会解析到 lab-files 目录)，提交文件内容。\n挑战: 再试试 lab read ../server.js — 读到目录之外的文件，这就是路径穿越!',
+  desc: '靶场 /api/read 端点把文件名直接拼进路径，存在路径穿越漏洞。\n靶机上藏着一个机密文件 lab/lab-files/secret.txt。\n用 lab read secret.txt 读取它 (它会解析到 lab-files 目录)，提交文件内容。\n挑战: 再试试 lab read ../../server.js — 读到目录之外的文件，这就是路径穿越!',
   hint: 'lab read secret.txt → 看内容 → submit。试试 ../ 逃逸目录。',
   explain: '路径穿越 (Path Traversal) 让攻击者读取任意文件。修复: 规范化路径 + 强制限定在允许目录内。',
 });
@@ -327,7 +327,18 @@ CHALLENGES.push({
       const btn = document.createElement('button');
       btn.className = 'gui-flag-btn';
       btn.textContent = '标记钓鱼';
-      btn.addEventListener('click', () => onPick(m));
+      btn.addEventListener('click', () => {
+        row.className = 'gui-mail picked';
+        btn.disabled = true;
+        btn.textContent = '已标记';
+        if (typeof onPick === 'function') { onPick(m); return; }
+        // 命令行 (challenge 17) 调用时没有回调: 直接给出甄别反馈, 答案仍需 submit 提交
+        T.print(`  [标记钓鱼] ${m.from} — ${m.subj}`, 'cmd');
+        T.print(m.phish
+          ? '  ⚠ 判定: 钓鱼邮件 (仿冒域名 / 制造恐慌 / 诱导点击)'
+          : '  判定: 正常邮件 (发件域名与官方一致)', m.phish ? 'error' : 'dim');
+        T.print('  确认后用 submit <发件人地址> 提交答案。', 'dim');
+      });
       row.appendChild(btn);
       wrap.appendChild(row);
     });
@@ -407,7 +418,7 @@ function completeChallenge() {
   const errors = ch.errors || 0;
   const rec = Game.challengeRecords[c.id] || { bestMs: Infinity, errors: 0, count: 0 };
   rec.bestMs = Math.min(rec.bestMs, ms);
-  rec.errors = errors;
+  rec.errors = Math.min(rec.errors || Infinity, errors); // 记录"最少错误数"而不是最后一次
   rec.count = (rec.count || 0) + 1;
   Game.challengeRecords[c.id] = rec;
   T.print(`✔ 挑战完成: ${c.title}! (用时 ${fmtTime(ms)}, 错误 ${errors} 次)`, 'success');
@@ -422,7 +433,7 @@ function completeChallenge() {
 GLOBAL_COMMANDS['challenge'] = async (toks) => {
   const n = parseInt(toks[1], 10);
   if (!n) {
-    T.print('═══ 实战挑战大厅 ═══ (10 个独立任务)', 'header');
+    T.print(`═══ 实战挑战大厅 ═══ (${CHALLENGES.length} 个独立任务, 已完成 ${Game.challengesDone.size})`, 'header');
     CHALLENGES.forEach((c) => {
       const done = Game.challengesDone.has(c.id);
       const labTag = c.needsLab ? ' [需靶场]' : '';

@@ -23,6 +23,8 @@ function main() {
   }
   let input;
   if (args[1] === '--file') {
+    if (!args[2]) { console.log('✘ --file 后面要跟上文件路径'); process.exit(1); }
+    if (!fs.existsSync(args[2])) { console.log('✘ 文件不存在: ' + args[2]); process.exit(1); }
     input = fs.readFileSync(args[2]);
     console.log(`输入: 文件 ${args[2]} (${input.length} 字节)`);
   } else {

@@ -28,9 +28,15 @@ const Lab = {
   },
 
   async api(path, opts) {
-    const r = await fetch(this.base + path, Object.assign({
-      headers: { 'Content-Type': 'application/json' },
-    }, opts));
+    const init = Object.assign({ headers: { 'Content-Type': 'application/json' } }, opts);
+    // 超时: 靶场卡住时不要连游戏一起卡死
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) init.signal = AbortSignal.timeout(8000);
+    const r = await fetch(this.base + path, init);
+    if (r.status === 403) {
+      // 靶场只接受本机页面来源 (见 lab/lab.js 的 Origin 白名单)
+      const j = await r.json().catch(() => ({}));
+      throw new Error((j && j.error) || '靶场拒绝本次请求 (403)。请用 http://localhost:8080 打开游戏，不要用 file:// 直接打开 index.html');
+    }
     return r.json();
   },
 
@@ -94,6 +100,7 @@ GLOBAL_COMMANDS['lab'] = async (toks) => {
   if (arg === 'open') {
     if (!Lab.available) { T.print('靶场离线。运行 node server.js 启动本地靶场。', 'error'); return; }
     window.open(Lab.base, '_blank');
+    T.print('✔ 已在新标签页打开靶场: ' + Lab.base + '/', 'success');
     return;
   }
 
@@ -103,7 +110,9 @@ GLOBAL_COMMANDS['lab'] = async (toks) => {
     if (!Lab.available) { T.print('靶场离线。运行 node server.js 启动本地靶场。', 'error'); return; }
     const host = '127.0.0.1' + Lab.sep + cmdStr;
     T.print('正在通过 /api/ping 注入命令...', 'info');
-    const j = await Lab.api('/api/ping?host=' + encodeURIComponent(host));
+    let j;
+    try { j = await Lab.api('/api/ping?host=' + encodeURIComponent(host)); }
+    catch (e) { T.print('靶场请求失败: ' + e.message, 'error'); return; }
     T.print('真实执行: ' + j.command, 'dim');
     T.print('命令输出:', 'info');
     (j.output || (j.error ? '执行失败: ' + j.error : '')).split('\n').forEach((l) => T.print('  ' + l, 'cmd'));
@@ -115,7 +124,9 @@ GLOBAL_COMMANDS['lab'] = async (toks) => {
     const file = toks.slice(2).join(' ');
     if (!file) { T.print('用法: lab read <路径> — 利用靶场路径穿越读取靶机文件', 'info'); return; }
     if (!Lab.available) { T.print('靶场离线。运行 node server.js 启动本地靶场。', 'error'); return; }
-    const j = await Lab.api('/api/read?file=' + encodeURIComponent(file));
+    let j;
+    try { j = await Lab.api('/api/read?file=' + encodeURIComponent(file)); }
+    catch (e) { T.print('靶场请求失败: ' + e.message, 'error'); return; }
     if (j.ok) {
       T.print(`✔ 读取成功 (解析到: ${j.resolved})`, 'success');
       String(j.content || '').split('\n').forEach((l) => T.print('  ' + l, 'cmd'));
@@ -141,6 +152,8 @@ GLOBAL_COMMANDS['lab'] = async (toks) => {
     T.print('  [5] 命令注入漏洞  GET /api/ping?host=...   → lab exec <命令>', 'cmd');
     T.print('  [6] IDOR 越权漏洞  GET /api/profile?id=1   → 遍历 id 越权', 'cmd');
     T.print('  [7] 路径穿越漏洞  GET /api/read?file=...   → lab read <路径>', 'cmd');
+    T.print('  (安全边界: 穿越可逃出 lab-files 读到 ../../server.js, 但被限制在项目目录内;', 'dim');
+    T.print('   命令注入真实执行, 但有 3 秒超时 + 并发上限, 不会在主机上留下孤儿进程)', 'dim');
     T.newline();
     T.print('游戏内接入:', 'info');
     T.print('  lab get <文件名>    拉取真实靶机文件到虚拟终端', 'cmd');
@@ -155,4 +168,4 @@ GLOBAL_COMMANDS['lab'] = async (toks) => {
     T.print('启动后本命令刷新状态，L1/L3/L6 将切换为真实网络攻击。', 'dim');
   }
 };
-GLOBAL_COMMANDS['lab'].usage = 'lab [get <文件>|exec <命令>|read <路径>] — 本地靶场操作';
+GLOBAL_COMMANDS['lab'].usage = 'lab [get <文件>|exec <命令>|read <路径>|open] — 本地靶场操作';

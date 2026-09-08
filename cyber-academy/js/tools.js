@@ -31,7 +31,7 @@ const TOOL_MANUAL = {
   'file': {
     usage: 'file <文件>',
     detail: '识别文件类型 — 靠的是文件头"魔数" (如 ELF=7F 45 4C 46, JPEG=FF D8 FF)。还会扫描镜像内嵌的签名。',
-    example: '> file usb.dd\n> usb.dd: 数据文件 (663 字节)\n>   镜像内签名扫描:\n>     └─ JPEG 图像 @ 0x114',
+    example: '> file usb.dd\n> usb.dd: 数据文件 (663 字节)\n>   镜像内签名扫描:\n>     └─ JPEG 图像 @ 0x137',
     out: '告诉你文件的真实类型。取证/逆向的第一步。',
   },
   'strings': {
