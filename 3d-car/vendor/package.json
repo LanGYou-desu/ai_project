@@ -1,0 +1,5 @@
+{
+  "//": "仅用于声明 vendor 下的 .js 文件是 ES Module，让 Node（测试脚本）无需警告即可 import；浏览器不读这个文件。",
+  "type": "module",
+  "private": true
+}

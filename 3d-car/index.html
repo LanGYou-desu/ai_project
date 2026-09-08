@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 内联图标：避免浏览器请求 /favicon.ico 产生 404（离线模式下也一样干净） -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBkMTUyNiIvPjxwYXRoIGQ9Ik01LjUgMjAuNWgyMWwtMy4yLTcuMkg4Ljd6IiBmaWxsPSIjZDQwMDAwIi8+PGNpcmNsZSBjeD0iMTEiIGN5PSIyMy41IiByPSIyLjYiIGZpbGw9IiNlNmViZjEiLz48Y2lyY2xlIGN4PSIyMSIgY3k9IjIzLjUiIHI9IjIuNiIgZmlsbD0iI2U2ZWJmMSIvPjwvc3ZnPg==">
 <title>Ferrari 458 · 3D 车展</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -81,7 +83,7 @@
   <div class="spin"></div>
   <div id="ovText">正在加载 3D 引擎…</div>
   <div class="bar"><div id="ovBar"></div></div>
-  <p id="ovHint">首次加载约 1.7MB 车辆模型</p>
+  <p id="ovHint">首次加载约 1.6MB 车辆模型</p>
   <button id="ovRetry" hidden>重新加载</button>
 </div>
 
@@ -105,14 +107,114 @@
 
 <script type="module">
 'use strict';
+
+/* ============================================================
+ * 配置与纯逻辑（放在 main() 之外：可读、可测，见 test/run.js）
+ * ============================================================ */
+
+// 用 http(s) 打开（start.bat / node server.js）走本地 vendor；
+// 直接双击 index.html（file://）走 CDN。vendor 内部全部用相对路径互相 import，
+// 不依赖 importmap，所以本地模式真正完全离线。
 const LOCAL = location.protocol === 'http:' || location.protocol === 'https:';
 const CDN = 'https://cdn.jsdelivr.net/npm/three@0.160.0/';
+const LOCAL_GLB = './ferrari.glb';
 const GLB_REMOTE = [
   'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/models/gltf/ferrari.glb',
   'https://raw.githubusercontent.com/mrdoob/three.js/r160/examples/models/gltf/ferrari.glb',
   'https://threejs.org/examples/models/gltf/ferrari.glb'
 ];
+const LOCAL_DRACO = './vendor/draco/';
+const CDN_DRACO = CDN + 'examples/jsm/libs/draco/';
 
+const PAINTS = [
+  ['罗索红', '#d40000'], ['竞速黄', '#f7b400'], ['深海蓝', '#16407c'], ['珍珠白', '#e9ebee'],
+  ['曜石黑', '#131417'], ['银灰', '#b7bcc3'], ['荧光绿', '#35c94e'], ['落日橙', '#ff6b1a']
+];
+const RIMS = [['亮银', '#d9dee4'], ['曜黑', '#1a1c20'], ['金色', '#c9a24b']];
+
+const DRIVE_R = 8.5;         // 环形公路半径（米）
+const DRIVE_MAX_SPEED = 2.4; // 最高速度
+const STEER_MAX = 0.3;       // 前轮最大转向角（弧度）
+
+// 部件名 → 材质键。键到真实材质的映射是 main() 里的 MAT_KEYS。
+const SPECIAL_KEYS = {
+  body: 'paint', blue: 'accentBlue', yellow_trim: 'accentYellow', glass: 'glass',
+  brakes: 'caliper', grills: 'grill', wipers: 'darkPlastic',
+  lights: 'headlight', lights_red: 'taillight', leds: 'taillight',
+  steering_red_lights: 'taillight', interior_light: 'interiorLight'
+};
+const CHROME_MESHES = { chrome: 1, metal: 1, steering_metal: 1, nuts: 1, centre: 1 };
+const MATERIAL_KEYS = {
+  'Body_Color': 'paint', '_0098_DodgerBlue': 'accentBlue', 'Ferrari_Yellow': 'accentYellow',
+  'Tires': 'tyre', 'metal_gray': 'metalGray', 'metal_chrome': 'chrome',
+  'plastic_gray': 'plasticGray', 'Leather': 'leather', 'Leather_red': 'leatherRed',
+  'Interior_dark': 'interiorDark', 'Carpet': 'carpet', 'Carbon_Fiber': 'carbon',
+  'Glass_Gray': 'glass', 'Taillight_Glass': 'taillight', 'Projector_Glass': 'projectorGlass',
+  'Turn_Signal_LED': 'turn', 'Interior_light': 'interiorLight'
+};
+
+// 先按部件名匹配，再按原始材质名兜底；返回 null 表示保持模型自带材质。
+function resolveMaterialKey(meshName, materialName) {
+  const n = meshName || '';
+  let key = SPECIAL_KEYS[n] || null;
+  if (n === 'wheel' || /^rim_/.test(n)) key = 'rim';
+  else if (/^tire/.test(n)) key = 'tyre';
+  else if (n === 'brake') key = 'disc';
+  else if (/carbon/.test(n)) key = 'carbon';
+  else if (CHROME_MESHES[n]) key = 'chrome';
+  if (!key) key = MATERIAL_KEYS[materialName] || null;
+  return key;
+}
+
+// 加载计划：本地模型 + 本地解码器优先；解码器或模型缺失时再退 CDN。
+// 每个元素 { decoder, url }，相邻同 decoder 的尝试复用同一个 DRACOLoader。
+function buildLoadAttempts(local) {
+  const attempts = [];
+  if (local) {
+    attempts.push({ decoder: LOCAL_DRACO, url: LOCAL_GLB });
+    for (const url of GLB_REMOTE) attempts.push({ decoder: LOCAL_DRACO, url: url });
+    for (const url of GLB_REMOTE) attempts.push({ decoder: CDN_DRACO, url: url });
+  } else {
+    for (const url of GLB_REMOTE) attempts.push({ decoder: CDN_DRACO, url: url });
+  }
+  return attempts;
+}
+
+// 窗口/画布尺寸为 0 或非法时退化成 1×1，避免 camera.aspect = NaN 导致画面全黑。
+function viewSize(w, h) {
+  return [Math.max(1, Math.floor(w) || 1), Math.max(1, Math.floor(h) || 1)];
+}
+
+// 探测 WebGL 是否可用；探测用的上下文立即释放，不占用浏览器上下文配额。
+function hasWebGL() {
+  try {
+    const canvas = document.createElement('canvas');
+    if (!canvas || typeof canvas.getContext !== 'function') return false;
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (!gl) return false;
+    if (typeof gl.getExtension === 'function') {
+      const lose = gl.getExtension('WEBGL_lose_context');
+      if (lose && typeof lose.loseContext === 'function') lose.loseContext();
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// 车头方向与「指向环心」方向的叉积符号：决定前轮往哪边打方向。
+function steerSign(fwdX, fwdZ, toCX, toCZ) {
+  return (fwdZ * toCX - fwdX * toCZ) >= 0 ? 1 : -1;
+}
+
+// 车轮自转角度增量（与行驶速度、轮径相关）
+function wheelSpinDelta(speed, radius, dt) {
+  return -(speed * DRIVE_R / radius) * dt;
+}
+
+/* ============================================================
+ * 加载遮罩
+ * ============================================================ */
 const overlay = document.getElementById('overlay');
 const ovText = document.getElementById('ovText');
 const ovBar = document.getElementById('ovBar');
@@ -130,17 +232,23 @@ function ovFail(msg) {
   ovRetry.hidden = false;
 }
 
+/* ============================================================
+ * 引擎与模型加载
+ * ============================================================ */
 let THREE, OrbitControls, GLTFLoader, DRACOLoader, RoomEnvironment;
 
-async function loadLibs() {
+async function loadThree() {
+  THREE = LOCAL ? await import('./vendor/three.module.js') : await import(CDN + 'build/three.module.js');
+}
+
+// 加载器/控制器只在确认 WebGL 可用后才加载：无 WebGL 的环境不再白下 4 个模块
+async function loadAddons() {
   if (LOCAL) {
-    THREE = await import('./vendor/three.module.js');
     OrbitControls = (await import('./vendor/OrbitControls.js')).OrbitControls;
     GLTFLoader = (await import('./vendor/GLTFLoader.js')).GLTFLoader;
     DRACOLoader = (await import('./vendor/DRACOLoader.js')).DRACOLoader;
     RoomEnvironment = (await import('./vendor/RoomEnvironment.js')).RoomEnvironment;
   } else {
-    THREE = await import(CDN + 'build/three.module.js');
     OrbitControls = (await import(CDN + 'examples/jsm/controls/OrbitControls.js')).OrbitControls;
     GLTFLoader = (await import(CDN + 'examples/jsm/loaders/GLTFLoader.js')).GLTFLoader;
     DRACOLoader = (await import(CDN + 'examples/jsm/loaders/DRACOLoader.js')).DRACOLoader;
@@ -149,30 +257,67 @@ async function loadLibs() {
 }
 
 async function loadModel(onProgress) {
-  const loader = new GLTFLoader();
-  const draco = new DRACOLoader();
-  draco.setDecoderPath(LOCAL ? './vendor/draco/' : CDN + 'examples/jsm/libs/draco/');
-  loader.setDRACOLoader(draco);
-  if (LOCAL) {
-    try { return await loader.loadAsync('./ferrari.glb', onProgress); }
-    catch (e) { console.warn('本地模型加载失败，回退 CDN', e); }
+  const attempts = buildLoadAttempts(LOCAL);
+  let loader = null, draco = null, decoderPath = null, lastErr = null;
+  try {
+    for (let i = 0; i < attempts.length; i++) {
+      const a = attempts[i];
+      if (a.decoder !== decoderPath) {
+        // DRACOLoader 初始化失败后不会自愈，换解码器路径必须换一个新实例
+        if (draco) draco.dispose();
+        draco = new DRACOLoader();
+        draco.setDecoderPath(a.decoder);
+        loader = new GLTFLoader();
+        loader.setDRACOLoader(draco);
+        decoderPath = a.decoder;
+      }
+      try {
+        return await loader.loadAsync(a.url, onProgress);
+      } catch (e) {
+        lastErr = e;
+        console.warn('车辆模型加载失败：' + a.url + '（解码器 ' + a.decoder + '）', e);
+      }
+    }
+    throw lastErr || new Error('车辆模型加载失败');
+  } finally {
+    // 解码已完成，worker 与 wasm 模块不再需要
+    if (draco) draco.dispose();
   }
-  let lastErr = null;
-  for (const url of GLB_REMOTE) {
-    try { return await loader.loadAsync(url, onProgress); }
-    catch (e) { lastErr = e; console.warn('GLB 加载失败', url, e); }
-  }
-  throw lastErr || new Error('车辆模型加载失败');
 }
 
+/* ============================================================
+ * 主流程
+ * ============================================================ */
 (async function main() {
   try {
-    await loadLibs();
+    await loadThree();
+
+    // 测试/调试钩子（不影响渲染）：暴露纯逻辑与引擎版本，供 test/run.js 断言。
+    window.__carDebug = {
+      REVISION: THREE.REVISION,
+      PAINTS: PAINTS, RIMS: RIMS, GLB_REMOTE: GLB_REMOTE,
+      LOCAL_GLB: LOCAL_GLB, LOCAL_DRACO: LOCAL_DRACO, CDN_DRACO: CDN_DRACO,
+      DRIVE_R: DRIVE_R, DRIVE_MAX_SPEED: DRIVE_MAX_SPEED, STEER_MAX: STEER_MAX,
+      viewSize: viewSize, hasWebGL: hasWebGL, resolveMaterialKey: resolveMaterialKey,
+      buildLoadAttempts: buildLoadAttempts, steerSign: steerSign, wheelSpinDelta: wheelSpinDelta
+    };
+
+    if (!hasWebGL()) {
+      ovText.textContent = '⚠️ 无法创建 WebGL 上下文';
+      ovHint.textContent = '请在浏览器设置中开启硬件加速（WebGL），或换用最新版 Chrome / Edge / Firefox 后重试。';
+      ovRetry.hidden = false;
+      return;
+    }
+
+    ovProgress(0.06, '正在加载加载器…');
+    await loadAddons();
+
     ovProgress(0.08, '正在搭建场景…');
+    const startSize = viewSize(innerWidth, innerHeight);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    renderer.setSize(startSize[0], startSize[1]);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -181,7 +326,18 @@ async function loadModel(onProgress) {
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0xe8edf3, 45, 160);
 
-    const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 300);
+    // 诊断钩子：控制台里 __carStats() 可查看显存对象数量与每帧绘制统计
+    window.__carStats = function () {
+      return {
+        geometries: renderer.info.memory.geometries,
+        textures: renderer.info.memory.textures,
+        programs: renderer.info.programs ? renderer.info.programs.length : null,
+        calls: renderer.info.render.calls,
+        triangles: renderer.info.render.triangles
+      };
+    };
+
+    const camera = new THREE.PerspectiveCamera(45, startSize[0] / startSize[1], 0.1, 300);
     camera.position.set(7.8, 3.4, 7.8);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -224,12 +380,16 @@ async function loadModel(onProgress) {
     );
     scene.add(dome);
 
+    // 环境反射：两张 PMREM 贴图烘焙完成后，PMREM 内部资源与临时场景即可释放
     const pmrem = new THREE.PMREMGenerator(renderer);
     const envDayScene = new RoomEnvironment();
     const envNightScene = new RoomEnvironment();
     envNightScene.traverse(function (o) { if (o.isLight) o.intensity *= 0.22; });
     const envDay = pmrem.fromScene(envDayScene, 0.04).texture;
     const envNight = pmrem.fromScene(envNightScene, 0.04).texture;
+    pmrem.dispose();
+    envDayScene.dispose();
+    envNightScene.dispose();
     scene.environment = envDay;
 
     const hemi = new THREE.HemisphereLight(0xffffff, 0x8d9aab, 0.55);
@@ -245,7 +405,6 @@ async function loadModel(onProgress) {
     sun.shadow.camera.near = 1;
     sun.shadow.camera.far = 70;
     sun.shadow.bias = -0.0004;
-    sun.shadow.radius = 5;
     sun.shadow.camera.updateProjectionMatrix();
     scene.add(sun);
     scene.add(sun.target);
@@ -276,10 +435,12 @@ async function loadModel(onProgress) {
     road.position.y = 0.02;
     road.receiveShadow = true;
     scene.add(road);
+    // 40 条车道虚线共用一份几何体（原先每条各建一份）
     const dashMat = new THREE.MeshStandardMaterial({ color: 0xd5dbe2, roughness: 0.7 });
+    const dashGeo = new THREE.BoxGeometry(0.14, 0.015, 0.9);
     for (let i = 0; i < 40; i++) {
       const a = (i / 40) * Math.PI * 2;
-      const dash = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.015, 0.9), dashMat);
+      const dash = new THREE.Mesh(dashGeo, dashMat);
       dash.position.set(Math.cos(a) * 8.7, 0.035, Math.sin(a) * 8.7);
       dash.rotation.y = -a + Math.PI / 2;
       dash.receiveShadow = true;
@@ -296,22 +457,27 @@ async function loadModel(onProgress) {
     curbRing(7.32, 7.4, 0.03);
     curbRing(10.0, 10.08, 0.03);
 
+    // 8 盏路灯：灯杆/灯臂/灯泡共用几何体与材质（原先每盏各建 3 份几何体 + 2 份相同材质）
     const lampMats = [];
     const lampSpots = [];
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x23262b, roughness: 0.6 });
+    const poleGeo = new THREE.CylinderGeometry(0.05, 0.09, 4.4, 12);
+    const armGeo = new THREE.BoxGeometry(1.1, 0.06, 0.06);
+    const lampGeo = new THREE.SphereGeometry(0.16, 16, 12);
     for (let i = 0; i < 8; i++) {
       const a = i / 8 * Math.PI * 2 + Math.PI / 8;
       const x = Math.cos(a) * 11.8, z = Math.sin(a) * 11.8;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.09, 4.4, 12), new THREE.MeshStandardMaterial({ color: 0x23262b, roughness: 0.6 }));
+      const pole = new THREE.Mesh(poleGeo, poleMat);
       pole.position.set(x, 2.2, z);
       pole.castShadow = true;
       scene.add(pole);
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.06, 0.06), new THREE.MeshStandardMaterial({ color: 0x23262b, roughness: 0.6 }));
+      const arm = new THREE.Mesh(armGeo, poleMat);
       arm.position.set(x - Math.cos(a) * 0.55, 4.35, z - Math.sin(a) * 0.55);
       arm.rotation.y = -a;
       arm.castShadow = true;
       scene.add(arm);
       const lampMat = new THREE.MeshStandardMaterial({ color: 0xfff2cf, emissive: 0xffe9b8, emissiveIntensity: 0.15, roughness: 0.4 });
-      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12), lampMat);
+      const lamp = new THREE.Mesh(lampGeo, lampMat);
       lamp.position.set(x - Math.cos(a) * 1.05, 4.3, z - Math.sin(a) * 1.05);
       scene.add(lamp);
       lampMats.push(lampMat);
@@ -330,21 +496,28 @@ async function loadModel(onProgress) {
       [2.73, 15.9], [3.2, 13.9], [3.75, 15.2], [4.2, 16.4], [4.72, 14.3],
       [5.18, 15.8], [5.7, 14.1], [6.16, 16.0]
     ];
+    // 13 棵树共用树干/树冠几何体（原先每棵各建 4 份）
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5b4632, roughness: 0.9 });
     const leafMats = [0x2f7d46, 0x276a3c, 0x3d9257].map(function (c) {
       return new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, flatShading: true });
     });
+    const trunkGeo = new THREE.CylinderGeometry(0.1, 0.16, 1.3, 8);
+    const leafGeo = [
+      new THREE.IcosahedronGeometry(0.95, 0),
+      new THREE.IcosahedronGeometry(0.75, 0),
+      new THREE.IcosahedronGeometry(0.65, 0)
+    ];
     TREE_POS.forEach(function (p) {
       const a = p[0], r = p[1];
       const g = new THREE.Group();
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.16, 1.3, 8), trunkMat);
+      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
       trunk.position.y = 0.65;
       g.add(trunk);
-      const s1 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 0), leafMats[0]);
+      const s1 = new THREE.Mesh(leafGeo[0], leafMats[0]);
       s1.position.y = 1.7;
-      const s2 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 0), leafMats[1]);
+      const s2 = new THREE.Mesh(leafGeo[1], leafMats[1]);
       s2.position.set(0.25, 2.3, 0.1);
-      const s3 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.65, 0), leafMats[2]);
+      const s3 = new THREE.Mesh(leafGeo[2], leafMats[2]);
       s3.position.set(-0.22, 2.25, -0.08);
       g.add(s1, s2, s3);
       g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
@@ -374,6 +547,17 @@ async function loadModel(onProgress) {
     const turnMat = new THREE.MeshStandardMaterial({ color: 0x8f5b0b, emissive: 0xffa520, emissiveIntensity: 0.9, roughness: 0.35 });
     const interiorLightMat = new THREE.MeshStandardMaterial({ color: 0x332a1a, emissive: 0xffd9a0, emissiveIntensity: 0.4, roughness: 0.5 });
     const projectorGlassMat = new THREE.MeshPhysicalMaterial({ color: 0xcfd6dd, metalness: 0.1, roughness: 0.1, transmission: 0.4, transparent: true });
+
+    // 材质键 → 材质实例（键来自 resolveMaterialKey）
+    const MAT_KEYS = {
+      paint: paint, accentBlue: accentBlue, accentYellow: accentYellow, glass: glassMat,
+      caliper: caliperMat, grill: grillMat, darkPlastic: darkPlasticMat,
+      headlight: headlightMat, taillight: taillightMat, interiorLight: interiorLightMat,
+      rim: rimMat, tyre: tyreMat, disc: discMat, carbon: carbonMat, chrome: chromeMat,
+      metalGray: metalGrayMat, plasticGray: plasticGrayMat, leather: leatherMat,
+      leatherRed: leatherRedMat, interiorDark: interiorDarkMat, carpet: carpetMat,
+      projectorGlass: projectorGlassMat, turn: turnMat
+    };
 
     const carGroup = new THREE.Group();
     scene.add(carGroup);
@@ -405,38 +589,28 @@ async function loadModel(onProgress) {
       carCenterY = size.y / 2;
       carGroup.position.set(-center.x, -box.min.y, -center.z);
 
-      const SPECIAL = {
-        body: paint, blue: accentBlue, yellow_trim: accentYellow, glass: glassMat,
-        brakes: caliperMat, grills: grillMat, wipers: darkPlasticMat,
-        lights: headlightMat, lights_red: taillightMat, leds: taillightMat,
-        steering_red_lights: taillightMat, interior_light: interiorLightMat
-      };
-      const MATMAP = {
-        'Body_Color': paint, '_0098_DodgerBlue': accentBlue, 'Ferrari_Yellow': accentYellow,
-        'Tires': tyreMat, 'metal_gray': metalGrayMat, 'metal_chrome': chromeMat,
-        'plastic_gray': plasticGrayMat, 'Leather': leatherMat, 'Leather_red': leatherRedMat,
-        'Interior_dark': interiorDarkMat, 'Carpet': carpetMat, 'Carbon_Fiber': carbonMat,
-        'Glass_Gray': glassMat, 'Taillight_Glass': taillightMat, 'Projector_Glass': projectorGlassMat,
-        'Turn_Signal_LED': turnMat, 'Interior_light': interiorLightMat
-      };
+      const originalMats = new Set();
       let partCount = 0;
       s.traverse(function (o) {
         if (!o.isMesh) return;
         partCount++;
-        const n = o.name;
-        let target = SPECIAL[n];
-        if (n === 'wheel' || /^rim_/.test(n)) target = rimMat;
-        else if (/^tire/.test(n)) target = tyreMat;
-        else if (n === 'brake') target = discMat;
-        else if (/carbon/.test(n)) target = carbonMat;
-        else if (n === 'chrome' || n === 'metal' || n === 'steering_metal' || n === 'nuts' || n === 'centre') target = chromeMat;
-        if (!target) {
-          const m = Array.isArray(o.material) ? o.material[0] : o.material;
-          if (m && MATMAP[m.name]) target = MATMAP[m.name];
-        }
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        for (let i = 0; i < mats.length; i++) if (mats[i]) originalMats.add(mats[i]);
+        const first = mats[0];
+        const key = resolveMaterialKey(o.name, first && first.name);
+        const target = key ? MAT_KEYS[key] : null;
         if (target) o.material = target;
-        o.castShadow = n !== 'glass';
+        o.castShadow = o.name !== 'glass';
       });
+
+      // 释放被替换掉、已无人引用的 GLB 自带材质
+      const usedMats = new Set();
+      s.traverse(function (o) {
+        if (!o.isMesh) return;
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        for (let i = 0; i < mats.length; i++) if (mats[i]) usedMats.add(mats[i]);
+      });
+      originalMats.forEach(function (m) { if (!usedMats.has(m)) m.dispose(); });
 
       const tire0 = s.getObjectByName('tire');
       if (tire0) {
@@ -460,6 +634,7 @@ async function loadModel(onProgress) {
 
       window.__car = {
         mode: LOCAL ? 'local' : 'cdn',
+        revision: THREE.REVISION,
         loaded: true,
         parts: partCount,
         length: +carLen.toFixed(2),
@@ -480,10 +655,6 @@ async function loadModel(onProgress) {
     ovProgress(1, '准备就绪');
 
     const paintBox = document.getElementById('paintSw');
-    const PAINTS = [
-      ['罗索红', '#d40000'], ['竞速黄', '#f7b400'], ['深海蓝', '#16407c'], ['珍珠白', '#e9ebee'],
-      ['曜石黑', '#131417'], ['银灰', '#b7bcc3'], ['荧光绿', '#35c94e'], ['落日橙', '#ff6b1a']
-    ];
     PAINTS.forEach(function (p) {
       const el = document.createElement('div');
       el.className = 'sw';
@@ -495,11 +666,10 @@ async function loadModel(onProgress) {
         el.classList.add('active');
       });
       paintBox.appendChild(el);
-      if (p[1] === '#d40000') el.classList.add('active');
+      if (p[1] === PAINTS[0][1]) el.classList.add('active');
     });
 
     const rimBox = document.getElementById('rimSw');
-    const RIMS = [['亮银', '#d9dee4'], ['曜黑', '#1a1c20'], ['金色', '#c9a24b']];
     RIMS.forEach(function (p) {
       const el = document.createElement('div');
       el.className = 'sw';
@@ -511,7 +681,7 @@ async function loadModel(onProgress) {
         el.classList.add('active');
       });
       rimBox.appendChild(el);
-      if (p[1] === '#d9dee4') el.classList.add('active');
+      if (p[1] === RIMS[0][1]) el.classList.add('active');
     });
 
     const driveBtn = document.getElementById('drive');
@@ -524,7 +694,6 @@ async function loadModel(onProgress) {
     let driveSpeed = 0;
     let driveAngle = 0;
     let rotateActive = true;
-    const DRIVE_R = 8.5;
 
     driveBtn.addEventListener('click', function () {
       driving = !driving;
@@ -591,26 +760,33 @@ async function loadModel(onProgress) {
     document.getElementById('v3').addEventListener('click', function () { if (!driving) flyView(4.6, 2.1, 4.6); });
     document.getElementById('v4').addEventListener('click', function () { if (!driving) flyView(7.6, 3.3, 7.6); });
 
+    // 每帧复用的临时向量，避免渲染循环里反复 new
     const FWD_LOCAL = new THREE.Vector3(0, 0, -1);
+    const _tangent = new THREE.Vector3();
+    const _fwd = new THREE.Vector3();
+    const _toCenter = new THREE.Vector3();
+    const _behind = new THREE.Vector3();
+    const _look = new THREE.Vector3();
+
     function updateDrive(dt) {
       if (driving) {
-        driveSpeed += (2.4 - driveSpeed) * Math.min(1, dt * 1.3);
+        driveSpeed += (DRIVE_MAX_SPEED - driveSpeed) * Math.min(1, dt * 1.3);
       } else {
         driveSpeed = Math.max(0, driveSpeed - dt * 1.1);
       }
       if (driveSpeed > 0.001) {
         driveAngle += driveSpeed * dt;
         carGroup.position.set(Math.sin(driveAngle) * DRIVE_R, 0, Math.cos(driveAngle) * DRIVE_R);
-        const tangent = new THREE.Vector3(Math.cos(driveAngle), 0, -Math.sin(driveAngle));
-        carGroup.quaternion.setFromUnitVectors(FWD_LOCAL, tangent);
-        const spinD = -(driveSpeed * DRIVE_R / wheelRadius) * dt;
+        _tangent.set(Math.cos(driveAngle), 0, -Math.sin(driveAngle));
+        carGroup.quaternion.setFromUnitVectors(FWD_LOCAL, _tangent);
+        const spinD = wheelSpinDelta(driveSpeed, wheelRadius, dt);
         for (const w of wheelSpin) w.rotation.x += spinD;
-        const fwd = FWD_LOCAL.clone().applyQuaternion(carGroup.quaternion);
-        const toC = new THREE.Vector3().copy(carGroup.position).multiplyScalar(-1);
-        toC.y = 0;
-        toC.normalize();
-        const crossY = fwd.z * toC.x - fwd.x * toC.z;
-        const steerTarget = 0.3 * (crossY >= 0 ? 1 : -1) * Math.min(1, driveSpeed / 2.4);
+        _fwd.copy(FWD_LOCAL).applyQuaternion(carGroup.quaternion);
+        _toCenter.copy(carGroup.position).multiplyScalar(-1);
+        _toCenter.y = 0;
+        _toCenter.normalize();
+        const steerTarget = STEER_MAX * steerSign(_fwd.x, _fwd.z, _toCenter.x, _toCenter.z) *
+          Math.min(1, driveSpeed / DRIVE_MAX_SPEED);
         for (const p of frontPivots) {
           p.rotation.y += (steerTarget - p.rotation.y) * Math.min(1, dt * 6);
         }
@@ -623,11 +799,12 @@ async function loadModel(onProgress) {
       const dt = Math.min(clock.getDelta(), 0.05);
       updateDrive(dt);
       if (follow) {
-        const behind = carGroup.localToWorld(new THREE.Vector3(0, 2.6, 7.0)).sub(carGroup.position);
-        camera.position.lerp(behind, 1 - Math.exp(-3.5 * dt));
-        const look = carGroup.position.clone();
-        look.y += 0.6;
-        controls.target.lerp(look, 1 - Math.exp(-4 * dt));
+        _behind.set(0, 2.6, 7.0);
+        carGroup.localToWorld(_behind).sub(carGroup.position);
+        camera.position.lerp(_behind, 1 - Math.exp(-3.5 * dt));
+        _look.copy(carGroup.position);
+        _look.y += 0.6;
+        controls.target.lerp(_look, 1 - Math.exp(-4 * dt));
         camera.lookAt(controls.target);
       } else if (camAnim && camAnim.t < 1) {
         camAnim.t = Math.min(1, camAnim.t + dt / 0.9);
@@ -646,9 +823,11 @@ async function loadModel(onProgress) {
     });
 
     addEventListener('resize', function () {
-      camera.aspect = innerWidth / innerHeight;
+      const s = viewSize(innerWidth, innerHeight);
+      camera.aspect = s[0] / s[1];
       camera.updateProjectionMatrix();
-      renderer.setSize(innerWidth, innerHeight);
+      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+      renderer.setSize(s[0], s[1]);
     });
   } catch (err) {
     console.error(err);
