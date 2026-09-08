@@ -155,12 +155,17 @@ async function goView(view) {
 /* ================= 我的工位 ================= */
 async function renderHome() {
   const p = S.profile;
-  if (!S.scenarios.length) S.scenarios = (await api("/api/scenarios")).scenarios;
+  if (!S.scenarios.length) {
+    const d = await api("/api/scenarios");
+    S.scenarios = d.scenarios;
+    S.taskTotal = d.task_total;
+  }
   const total = S.scenarios.length;
   const learnedTotal = p.learned ? p.learned.length : 0;
   const achTotal = (await api("/api/achievements")).achievements.length;
   $("#home-hello").textContent = `早上好，${p.name}！今天处理什么工单？`;
-  $("#home-tag").textContent = `${total} 个环境 · 80+ 个任务 · 33 道测验 · 每张工单都是真实的排障现场`;
+  const taskTotal = S.taskTotal || 79;
+  $("#home-tag").textContent = `${total} 个环境 · ${taskTotal} 个任务 · 33 道测验 · 每张工单都是真实的排障现场`;
   $("#home-cards").innerHTML = `
     <div class="dash"><span class="ic">🗂</span><div class="num">${p.finished.length}/${total}</div><div class="lbl">已修复工单</div></div>
     <div class="dash green"><span class="ic">📚</span><div class="num">${learnedTotal}</div><div class="lbl">已掌握知识点</div></div>
@@ -851,7 +856,8 @@ function checkDeltas() {
   }
   S.rankSnapshot = p.rank;
   const newAch = p.achievements.filter(a => !S.achSnapshot.has(a));
-  newAch.forEach(a => { sfx.coin(); toast("🏆 解锁成就：" + a, "gold"); });
+  const names = p.achievement_names || {};
+  newAch.forEach(a => { sfx.coin(); toast("🏆 解锁成就：" + (names[a] || a), "gold"); });
   S.achSnapshot = new Set(p.achievements);
 }
 
@@ -909,6 +915,12 @@ function bind() {
     if (d.messages) term.print(d.messages, "dim");
     if (d.dashboard) renderDashboard(d.dashboard);
     renderTask(); updateTicketHead(); updateStatus();
+    if (d.all_done) {
+      S.game.all_done = true;
+      term.print("🎉 工单已修复！得分 " + d.score, "ok big");
+      sfx.win(); confetti(60);
+      toast("工单修复完成！" + d.score + " 分", "gold");
+    }
     await refreshProfile();
   };
   $("#btn-help").onclick = async () => {

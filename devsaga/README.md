@@ -20,7 +20,7 @@
 | ⚙️ **三档难度** | 简单（提示多、XP×1.5）/ 标准 / 地狱（步数上限 60、能量消耗翻倍） |
 | 👾 **人机都能玩** | 人类玩网页版/终端版；机器用 `--bot` / `--grade` / `--serve` / RL 接口玩 |
 | 🎓 **算法竞技场** | 15 道题（哈希/双指针/DP/递归/二分/滑动窗口）+ 沙箱判题 |
-| 🏆 **养成系统** | 职级路线（实习 → 传奇）、绩效 XP、16 个成就、工单最佳成绩 |
+| 🏆 **养成系统** | 职级路线（实习 → 传奇）、绩效 XP、15 个成就、工单最佳成绩 |
 | ☕ **职场彩蛋** | 咖啡能量、7 种办公室小剧场、剧情抉择、音效与彩带动效 |
 
 ## 📦 快速开始
@@ -30,7 +30,7 @@
 ```
 [1] Play in browser  （网页版，推荐 —— 浏览器里玩，不用终端）
 [2] Play in terminal （经典终端版）
-[3] 机器人演示（10 个场景全通关）
+[3] 机器人演示（11 个场景全通关）
 [4] 算法判题（提交你的解答文件）
 [5] 创建桌面快捷方式（以后双击桌面图标就能玩）
 [0] 退出
@@ -67,7 +67,7 @@ python main.py --web [端口]   # 默认 8766，自动打开浏览器
 ```bash
 cd devsaga
 python main.py            # 进入主菜单（终端版）
-python main.py --bot      # 看机器人 10 场景全通关
+python main.py --bot      # 看机器人 11 场景全通关
 python main.py --demo     # 同上（流式输出版）
 ```
 
@@ -109,14 +109,14 @@ dev@glitchworks:~$ grep -c " 500 " /opt/app/logs/access.log
 ### 1. 内置机器人（演示机器通关）
 
 ```bash
-python main.py --bot                  # 通关全部 10 个场景
+python main.py --bot                  # 通关全部 11 个场景
 python main.py --bot terminal_master  # 只通关指定场景
 ```
 
 ### 2. 判题模式（给你的 AI 提交作业）
 
 ```bash
-python main.py --grade algo_arena 我的解答.py      # 判 12 道算法题
+python main.py --grade algo_arena 我的解答.py      # 只判文件里实际定义的题目函数
 python main.py --grade terminal_master 脚本.txt    # 按脚本逐行执行命令
 ```
 
@@ -149,6 +149,10 @@ python examples/rl_demo.py 300
 最终 7 步通关《终端老兵》——演示中还埋了一个经典的 RL 知识点：
 「链式动作」需要正确的状态表示（子目标标记），注释里有详细讲解。
 
+> 小提示：`main.py` 启动时会自动把 stdout/stderr 切到 UTF-8；直接运行
+> `examples/*.py` 时，Windows GBK 控制台可先 `set PYTHONUTF8=1`，
+> 或通过 `启动DevSaga.bat` 启动。
+
 ## 🗺️ 场景一览
 
 | ID | 场景 | 环境 | 难度 | 任务 | 学什么 |
@@ -158,7 +162,7 @@ python examples/rl_demo.py 300
 | `debug_detective` | 调试侦探 | 代码推理 | ★★ | 8 | 7 类经典 Bug + 交互式单步调试器 |
 | `sql_rescue` | 数据库救援 | SQL | ★★ | 6 | SELECT / WHERE / JOIN / GROUP BY / UPDATE |
 | `sysadmin_er` | 系统急救 | 服务器监控 | ★★ | 6 | top / kill / df / du / systemctl / netstat |
-| `algo_arena` | 算法竞技场 | 判题沙箱 | ★★★ | 12 | 哈希/双指针/DP/递归/二分/滑动窗口 |
+| `algo_arena` | 算法竞技场 | 判题沙箱 | ★★★ | 15 | 哈希/双指针/DP/递归/二分/滑动窗口 |
 | `network_sleuth` | 网络侦探 | 网络诊断 | ★★ | 6 | ping / DNS / curl / iptables / tcpdump |
 | `container_storm` | 容器风暴 | Docker | ★★ | 6 | ps / logs / inspect / update --memory / network |
 | `pipeline_deploy` | 发布流水线 | CI/CD | ★★ | 6 | build / test / lint 门禁、蓝绿发布、rollback |
@@ -169,45 +173,62 @@ python examples/rl_demo.py 300
 
 ```
 devsaga/
-├── main.py                 # CLI 入口（菜单 / --web / --bot / --grade / --serve / --learn）
+├── main.py                 # CLI 入口（菜单 / --web / --bot / --grade / --serve / --learn / --list / --play / --new / --demo）
 ├── web/                    # 网页版前端（index.html / app.js / style.css）
 ├── game/
 │   ├── engine.py           # 游戏引擎：档案/存档/成就/事件/剧情抉择/结局/难度/场景循环
 │   ├── terminal.py         # ANSI 终端 UI（面板/表格/进度条）
-│   ├── parser.py           # 命令分词与归一化
-│   ├── sandbox.py          # 算法判题沙箱（AST 静态检查 + 子进程隔离 + 超时）
-│   ├── lessons.py          # 知识手册（44 篇）+ 课后测验（10 场景 × 3 题）
+│   ├── parser.py           # 安全命令分词（引号不配对也不会崩）
+│   ├── sandbox.py          # 算法判题沙箱（AST 检查 + 子进程隔离 + 超时 + 输出/输入截断）
+│   ├── lessons.py          # 知识手册（51 篇 / 12 类）+ 课后测验（11 场景 × 3 题）
 │   ├── webui.py            # 网页版后端（本地 HTTP + JSON API + 命令面板）
 │   ├── bot.py              # 机器人模式（用参考脚本驱动同一引擎）
 │   ├── serve.py            # TCP JSON 机器接口
 │   ├── env.py              # Gym 风格 RL 接口
-│   └── scenarios/          # 10 个场景（每个是独立开发环境模拟器）
+│   └── scenarios/          # 11 个场景（每个是独立开发环境模拟器）
 ├── examples/
 │   ├── ai_client.py        # 外部 AI 接入示例
 │   └── rl_demo.py          # Q-learning 从零学打游戏
-└── tests/                  # 54 个单元测试（python -m unittest discover -s tests）
+└── tests/                  # 85 个单元测试（含 test_fixes.py / test_webui.py）
 ```
 
 ## 🧪 测试
 
 ```bash
-python -m unittest discover -s tests -v
+python -m unittest discover -s tests -p "test_*.py"
+# 想看每条用例名可以加 -v
+python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-覆盖：沙箱安全与判题、SQL 引擎、虚拟文件系统、全部 11 个场景参考脚本通关、
-新场景状态机（Docker/流水线/前端/安全）、15 道算法题判题、课后测验、难度系统、
-命运结算、11 套工作台面板、网页版 API 全流程（含编辑器判题）。机器人 + 58 个测试全绿。
+覆盖：沙箱安全与判题、SQL 引擎（含 UPDATE 保留未命中行）、虚拟文件系统、
+全部 11 个场景参考脚本通关、新场景状态机（Docker/流水线/前端/安全）、15 道算法题判题、
+课后测验、难度系统、命运结算、11 套工作台面板、网页版 API 全流程（含编辑器判题、
+路径穿越/请求体上限/越界写防护）、存档原子写入与损坏存档兜底。机器人 + 85 个测试全绿。
 
 ## 🔬 技术要点
 
 - **场景框架**：`Scenario` / `Task` 基类 + `handle(cmd)` 命令分发，新增场景只需继承并注册
 - **IO 抽象**：`HumanIO` / `ScriptIO` 让同一套引擎同时服务人类、机器人、测试、TCP
-- **判题沙箱**：AST 静态检查（禁危险 import/内置）+ `python -I` 隔离 + 2s 超时 + 输出截断
-- **迷你 SQL 引擎**：支持 WHERE / 多表 JOIN / GROUP BY 聚合 / DISTINCT / 排序 / 增删改
+- **判题沙箱**：AST 静态检查（禁危险 import/内置/`__import__`/`getattr` 等逃逸原语）+ `python -I` 隔离
+  + 2s 超时 + stdin/stdout 截断 + 随机 nonce 标记 + `ast.literal_eval` 解析，防止玩家伪造判题输出
+- **迷你 SQL 引擎**：支持 WHERE / 多表 JOIN / GROUP BY 聚合 / DISTINCT / 排序 / 增删改；
+  UPDATE 只修改命中行、DELETE 按位置删除，未命中数据不会丢失
 - **迷你 git**：提交图 / 分支 / stash / reflog / revert / cherry-pick / merge
 - **难度系统**：提示阈值 / 步数上限 / 能量消耗 / XP 倍率全配置化
-- **多结局系统**：属性驱动 + 通关数，纯数据驱动，加结局只需改 `ENDINGS`
-- **Windows 兼容**：自动启用 ANSI、UTF-8 处理，全平台可跑
+- **多结局系统**：属性驱动 + 通关数，纯数据驱动，`ENDINGS` 表统一映射结局路线
+- **Windows 兼容**：自动启用 ANSI；启动时把 stdout/stderr 切到 UTF-8，
+  GBK 控制台也不会因 emoji 抛 `UnicodeEncodeError`
+
+## 🛡️ 安全与稳定性
+
+- **沙箱逃逸修复**：`__import__('os')`、`getattr(__builtins__, ...)` 等 AST 绕过路径已被封禁；
+  判题输出用随机 nonce 标记 + `ast.literal_eval` 解析，玩家代码无法伪造通过结果。
+- **WebUI 路径穿越修复**：`/static/../` 被限制在 `web/` 目录内；`/api/code/run` 的题目 id
+  必须来自内置题库，`sid=../evil` 之类的越界写文件请求会返回 400。
+- **请求体边界**：WebUI 单请求 JSON 上限 1MB，TCP 机器接口单行 JSON 上限 64KB。
+- **SQL 数据安全**：`UPDATE` 只修改命中的行，`DELETE` 按位置删除，未命中的行和重复行不会被误删。
+- **存档安全**：`~/.devsaga/save.json` 采用“临时文件 + 原子替换”写入；损坏/非 JSON 对象的存档
+  会被安全忽略并回退到默认档案。
 
 ## 📖 更多
 

@@ -31,7 +31,7 @@ def banner():
 /____/\__,_/\__,_/_/   /____/ /_/ /_/ /_/\___/_/
 """, "cyan", "bold"))
     print(T.paint(f"  {__version__} ｜ 一个能玩又能学的程序员模拟器", "dim"))
-    print(T.paint("  7 种开发环境 ｜ 人机都能玩 ｜ 边玩边学", "dim"))
+    print(T.paint("  11 种开发环境 ｜ 人机都能玩 ｜ 边玩边学", "dim"))
 
 
 def get_profile(io=None):
@@ -120,17 +120,19 @@ def menu(profile):
 
 def quiz_menu(profile, io):
     from game.lessons import QUIZZES, run_quiz
-    rows = []
-    for i, cls in enumerate(ALL_SCENARIOS, 1):
+    rows, ids = [], []
+    for cls in ALL_SCENARIOS:
         if cls.id in QUIZZES:
             best = profile.get("quiz", {}).get(cls.id, 0)
-            rows.append([f"{i}", cls.name, f"{best}/3"])
+            rows.append([f"{len(rows) + 1}", cls.name, f"{best}/3"])
+            ids.append(cls.id)
     print()
     print(T.table(["#", "场景", "最佳成绩"], rows))
     print(T.paint("选择要测验的场景编号，0 返回。满分可解锁「学霸」成就！", "dim"))
     ans = io.input(T.paint("选择 > ", "bold", "cyan")).strip()
     if ans.isdigit() and 1 <= int(ans) <= len(rows):
-        sid = ALL_SCENARIOS[int(ans) - 1].id
+        # 用单独的 ids 列表映射，避免以后有场景缺测验时编号错位。
+        sid = ids[int(ans) - 1]
         run_quiz(profile, io, sid)
         E.save_profile(profile)
         io.pause()
@@ -203,6 +205,10 @@ def run_demo():
 
 def grade_mode(sid, path):
     """外部文件判题 / 脚本模式。"""
+    from game.scenarios import SCENARIO_MAP
+    if sid not in SCENARIO_MAP:
+        print(T.paint(f"未知场景：{sid}。用 --list 查看。", "red"))
+        sys.exit(1)
     if sid == "algo_arena" and path.lower().endswith(".py"):
         grade_algo_file(path)
         return
@@ -220,18 +226,41 @@ def grade_mode(sid, path):
 
 
 def grade_algo_file(path):
+    """对提交文件里实际定义的题目函数判题（不需要把 15 道题都写在一个文件里）。"""
+    import ast
+
+    from game import sandbox
     from game.scenarios.algo_arena import PROBLEMS
+
     print(T.paint(f"\n🔍 判题模式：{path}", "cyan"))
-    all_ok = True
-    for p in PROBLEMS:
+    try:
         with open(path, "r", encoding="utf-8") as f:
             code = f.read()
-        from game import sandbox
+    except OSError as exc:
+        print(T.paint(f"无法读取文件：{exc}", "red"))
+        sys.exit(1)
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as exc:
+        print(T.paint(f"❌ 语法错误：第 {exc.lineno} 行 {exc.msg}", "red"))
+        return
+    defined = {n.name for n in tree.body
+               if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    matched = [p for p in PROBLEMS
+               if p["func"].split("(")[0].split()[1] in defined]
+    if not matched:
+        print(T.paint("❌ 没有找到任何题目对应的函数（函数名必须和题目一致）。", "red"))
+        return
+    all_ok = True
+    for p in matched:
         func_name = p["func"].split("(")[0].split()[1]
         passed, total, _ = sandbox.grade_function(code, func_name, p["tests"])
         st = "✅" if passed == total else "❌"
         print(f"  {st} 《{p['title']}》({p['id']}): {passed}/{total}")
         all_ok = all_ok and passed == total
+    skipped = len(PROBLEMS) - len(matched)
+    if skipped:
+        print(T.paint(f"  （未提交 {skipped} 道题，已跳过）", "dim"))
     print(T.paint("全部通过！🎉" if all_ok else "还有题目没过，继续加油。", "green" if all_ok else "yellow"))
 
 
@@ -267,7 +296,11 @@ def main():
 
     if args.bot:
         from game.bot import run_bot, report
+        from game.scenarios import SCENARIO_MAP
         sid = None if args.bot == "all" else args.bot
+        if sid is not None and sid not in SCENARIO_MAP:
+            print(T.paint(f"未知场景：{sid}。用 --list 查看。", "red"))
+            sys.exit(1)
         print(T.paint("\n🤖 机器人 BOT-9000 开始挑战...", "cyan"))
         results = run_bot(sid)
         print(report(results))
@@ -279,12 +312,22 @@ def main():
 
     if args.serve:
         from game.serve import serve
-        serve(int(args.serve))
+        try:
+            port = int(args.serve)
+        except ValueError:
+            print(T.paint(f"端口号不合法：{args.serve}", "red"))
+            sys.exit(1)
+        serve(port)
         return
 
     if args.web:
         from game.webui import run
-        run(port=int(args.web))
+        try:
+            port = int(args.web)
+        except ValueError:
+            print(T.paint(f"端口号不合法：{args.web}", "red"))
+            sys.exit(1)
+        run(port=port)
         return
 
     if args.demo:

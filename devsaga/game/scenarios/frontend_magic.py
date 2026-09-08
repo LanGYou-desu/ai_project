@@ -3,9 +3,9 @@
 支持：view / inspect / js errors / js fix / event / css fix / perf / perf fix / fix <n> / screenshot。
 """
 
-import shlex
 
 from .. import terminal as T
+from ..parser import tokenize
 from .base import CommandError, Scenario, Task
 
 
@@ -59,7 +59,7 @@ class FrontendMagic(Scenario):
 
     def handle(self, cmd, session):
         self.ran.add(cmd)
-        tokens = shlex.split(cmd) if cmd.strip() else []
+        tokens = tokenize(cmd)
         if not tokens:
             raise CommandError("输入为空")
         c0 = tokens[0].lower()
@@ -94,11 +94,12 @@ class FrontendMagic(Scenario):
                 return self.issue_text[4][1] + "\n（修复：fix 4）"
             if c0 == "fix":
                 n = tokens[1] if len(tokens) > 1 else ""
-                if not n.isdigit():
+                if not n.isdigit() or int(n) not in self.issue_text:
                     raise CommandError("fix <编号>：1=JS 2=事件 3=盒模型 4=性能")
-                self.fixed.add(int(n))
-                name, _ = self.issue_text[int(n)]
-                return f"已修复问题 {n}（{name}）✅"
+                idx = int(n)
+                self.fixed.add(idx)
+                name, _ = self.issue_text[idx]
+                return f"已修复问题 {idx}（{name}）✅"
             if c0 == "screenshot":
                 return self._cmd_view("/", shot=True)
             raise CommandError(f"{c0}: 未找到命令。输入 help 查看前端调试命令。")

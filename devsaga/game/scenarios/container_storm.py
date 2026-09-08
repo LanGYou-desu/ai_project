@@ -5,9 +5,9 @@ update --memory / rm / run / network ls / network connect / exec / stats。
 """
 
 import re
-import shlex
 
 from .. import terminal as T
+from ..parser import tokenize
 from .base import CommandError, Scenario, Task
 
 
@@ -127,7 +127,7 @@ class ContainerStorm(Scenario):
     # ---------------- 命令 ----------------
     def handle(self, cmd, session):
         self.ran.add(cmd)
-        tokens = shlex.split(cmd) if cmd.strip() else []
+        tokens = tokenize(cmd)
         if not tokens:
             raise CommandError("输入为空")
         if tokens[0].lower() != "docker":
@@ -265,10 +265,19 @@ class ContainerStorm(Scenario):
             raise CommandError("用法：docker run --name <名> -p <端口> <镜像>")
         if image not in self.images:
             raise CommandError(f"docker: 镜像 {image} 不存在。docker images 看看有哪些。")
-        c = Container(name or "unnamed", image, "running", port,
+        if name and name in self.containers:
+            raise CommandError(f"docker: 容器名 {name} 已存在")
+        if port:
+            host_port = port.split(":")[0]
+            for other in self.containers.values():
+                if (other.status == "running" and other.host_port
+                        and other.host_port.split(":")[0] == host_port):
+                    raise CommandError(f"docker: 端口 {host_port} 已被容器 {other.name} 占用")
+        if not name:
+            name = f"container-{len(self.containers) + 1}"
+        c = Container(name, image, "running", port,
                       mem_limit=512, network="app-net", log=[f"[docker] 容器已创建（{image}）"])
-        if name:
-            self.containers[name] = c
+        self.containers[name] = c
         return f"已创建并启动容器 {c.name}（{image}）"
 
     def _cmd_network(self, rest):
@@ -284,7 +293,10 @@ class ContainerStorm(Scenario):
             if net not in self.networks:
                 raise CommandError(f"docker: 网络 {net} 不存在")
             c = self._get(name)
-            self.networks[net].append(c.name)
+            if c.network in self.networks and c.name in self.networks[c.network]:
+                self.networks[c.network].remove(c.name)
+            if c.name not in self.networks[net]:
+                self.networks[net].append(c.name)
             c.network = net
             return f"已将 {name} 接入网络 {net} ✅"
         raise CommandError("docker network: 支持 ls / connect")

@@ -5,11 +5,10 @@ stash / stash pop / revert / cherry-pick / reset / reflog / diff / merge / edit�
 """
 
 import hashlib
-import re
-import shlex
 from datetime import datetime
 
 from .. import terminal as T
+from ..parser import tokenize
 from .base import CommandError, Scenario, Task
 
 
@@ -189,7 +188,10 @@ class GitRepo:
 
     def cmd_stash(self):
         head = self.head_files()
-        changes = {p: c for p, c in self.worktree.items() if head.get(p) != c}
+        changes = {}
+        for p in set(self.worktree) | set(head):
+            if self.worktree.get(p) != head.get(p):
+                changes[p] = self.worktree.get(p)   # None 表示该文件被删除
         if not changes:
             raise CommandError("git: 没有可暂存的改动")
         self.stash.append(changes)
@@ -199,20 +201,28 @@ class GitRepo:
         if not self.stash:
             raise CommandError("git: stash 是空的")
         changes = self.stash.pop()
-        self.worktree.update(changes)
+        for p, content in changes.items():
+            if content is None:
+                self.worktree.pop(p, None)
+            else:
+                self.worktree[p] = content
 
     def cmd_revert(self, h):
         c = self.commits.get(h)
         if c is None:
             raise CommandError(f"git: 提交 {h} 不存在")
         parent = self.commits.get(c.parent) if c.parent else None
+        parent_files = parent.files if parent else {}
         files = self.worktree
-        for p, content in c.files.items():
-            old = parent.files.get(p) if parent else None
+        # 同时处理新增/修改/删除三类文件，才算真正 revert 了这次提交。
+        for p in set(c.files) | set(parent_files):
+            old = parent_files.get(p)
+            if c.files.get(p) == old:
+                continue
             if old is None:
-                files.pop(p, None)   # 该提交新增的文件 → 删掉
+                files.pop(p, None)
             else:
-                files[p] = old       # 该提交改动的文件 → 还原
+                files[p] = old
         self.new_commit(f"Revert \"{c.msg}\"", files, self.head_hash, self.head_branch)
 
     def cmd_cherry_pick(self, h):
@@ -234,7 +244,8 @@ class GitRepo:
         if target is None:
             raise CommandError(f"git: 找不到 {h}")
         old = self.head_hash
-        self.branches[self.head_branch] = target if self.head_branch else None
+        if self.head_branch:
+            self.branches[self.head_branch] = target
         self.head_hash = target
         if hard:
             self.worktree = self.head_files()
@@ -276,7 +287,8 @@ class GitRepo:
             return "Already up to date."
         if self.head_hash in self.ancestors(tip):
             # fast-forward
-            self.branches[self.head_branch] = tip
+            if self.head_branch:
+                self.branches[self.head_branch] = tip
             self.head_hash = tip
             self.worktree = self.head_files()
             self.reflog.append((self.head_hash, f"merge {branch} (fast-forward)"))
@@ -382,7 +394,7 @@ class GitQuest(Scenario):
     # ---------------- 命令 ----------------
     def handle(self, cmd, session):
         self.ran.add(cmd)
-        tokens = shlex.split(cmd) if cmd.strip() else []
+        tokens = tokenize(cmd)
         if not tokens:
             raise CommandError("输入为空")
         if tokens[0].lower() != "git":

@@ -4,9 +4,9 @@
 curl -v / tail / systemctl restart / iptables / tcpdump / ss。
 """
 
-import shlex
 
 from .. import terminal as T
+from ..parser import tokenize
 from .base import CommandError, Scenario, Task
 
 
@@ -83,7 +83,7 @@ class NetworkSleuth(Scenario):
 
     def handle(self, cmd, session):
         self.ran.add(cmd)
-        tokens = shlex.split(cmd) if cmd.strip() else []
+        tokens = tokenize(cmd)
         if not tokens:
             raise CommandError("输入为空")
         c0 = tokens[0].lower()
@@ -127,7 +127,8 @@ class NetworkSleuth(Scenario):
                     return "已修复 /etc/hosts：api.glitch.com → 203.0.113.10 ✅"
                 raise CommandError("fix 只支持：fix dns")
             if c0 == "curl":
-                target = tokens[2] if len(tokens) > 2 else ""
+                # 兼容 curl -v <url> 和 curl <url> 两种写法
+                target = tokens[-1] if len(tokens) > 1 else ""
                 if "api.glitch.com" not in target and "health" not in target:
                     raise CommandError("curl: 请访问 https://api.glitch.com/health")
                 if not self.backend_up:

@@ -6,6 +6,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import urllib.error
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -44,6 +45,19 @@ class WebTests(unittest.TestCase):
     def raw(self, path):
         with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=15) as resp:
             return resp.read().decode("utf-8")
+
+    def req_code(self, method, path, body=None):
+        """返回 (status, payload)，不因 4xx/5xx 抛异常。"""
+        url = f"http://127.0.0.1:{self.port}{path}"
+        data = json.dumps(body).encode("utf-8") if body is not None else None
+        r = urllib.request.Request(url, data=data, method=method,
+                                   headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(r, timeout=15) as resp:
+                return resp.status, json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            raw = exc.read().decode("utf-8")
+            return exc.code, json.loads(raw) if raw else {}
 
     def test_index_and_static(self):
         self.assertIn("DevSaga", self.raw("/"))
@@ -135,6 +149,43 @@ class WebTests(unittest.TestCase):
         g = self.req("POST", "/api/start", {"scenario": "git_quest"})
         self.assertIn("main", g["prompt"])
         self.assertIn("dev@glitch", g["prompt"])
+
+    def test_static_path_traversal_blocked(self):
+        with self.assertRaises(urllib.error.HTTPError) as cm:
+            self.raw("/static/%2e%2e/README.md")
+        self.assertEqual(cm.exception.code, 404)
+
+    def test_request_body_limit(self):
+        old = self.webui.MAX_BODY
+        self.webui.MAX_BODY = 64
+        try:
+            code, payload = self.req_code("POST", "/api/profile", {"name": "x" * 200})
+            self.assertEqual(code, 413)
+            self.assertIn("过大", payload["error"])
+        finally:
+            self.webui.MAX_BODY = old
+
+    def test_code_run_rejects_path_traversal(self):
+        self.req("POST", "/api/profile", {"name": "越界"})
+        self.req("POST", "/api/start", {"scenario": "algo_arena"})
+        code, payload = self.req_code("POST", "/api/code/run", {
+            "sid": "../evil", "code": "def two_sum(a, b):\n    return []\n"})
+        self.assertEqual(code, 400)
+        self.assertIn("未知题目", payload["error"])
+
+    def test_web_completion_persists_profile(self):
+        self.req("POST", "/api/profile", {"name": "通关"})
+        self.req("POST", "/api/start", {"scenario": "debug_detective"})
+        from game.scenarios.debug_detective import DebugDetective
+        out = None
+        for cmd in DebugDetective().solve():
+            out = self.req("POST", "/api/cmd", {"text": cmd})
+            if out["all_done"]:
+                break
+        self.assertTrue(out["all_done"])
+        state = self.req("GET", "/api/state")["state"]
+        self.assertIn("debug_detective", state["finished"])
+        self.assertIn("no_hint", state["achievements"])
 
     def test_algo_editor_flow(self):
         self.req("POST", "/api/profile", {"name": "码农"})

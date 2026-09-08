@@ -1,8 +1,8 @@
 """DevSaga 终端 UI 工具：ANSI 颜色、面板、表格、进度条。零第三方依赖。"""
 
 import os
+import re
 import sys
-import time
 
 ENABLE_COLOR = True
 
@@ -31,9 +31,16 @@ _STYLE = {
     "bg_white": "\033[47m",
 }
 
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
 
 def enable_ansi():
-    """Windows 下启用 ANSI 转义序列（cmd / PowerShell 默认可能关闭）。"""
+    """启用 ANSI 转义序列，并把标准输出切到 UTF-8（Windows 默认 GBK 会因 emoji 崩溃）。"""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     if os.name == "nt":
         try:
             import ctypes
@@ -53,48 +60,119 @@ def paint(text, *styles):
     return head + str(text) + _STYLE["reset"]
 
 
+def _visible_len(text):
+    """去掉 ANSI 转义码后的可见长度。"""
+    return len(_ANSI_RE.sub("", str(text)))
+
+
+def visible_len(text):
+    """公开的可见长度（供引擎等模块排版时使用）。"""
+    return _visible_len(text)
+
+
+def _reset_guard(text):
+    """截断/换行后如果还带着颜色，补一个 reset，避免颜色污染后续输出。"""
+    if _ANSI_RE.search(text) and not text.endswith(_STYLE["reset"]):
+        return text + _STYLE["reset"]
+    return text
+
+
+def _truncate_visible(text, n):
+    """按可见字符数截断，保留 ANSI 转义码。"""
+    text = str(text)
+    if _visible_len(text) <= n:
+        return text
+    out, count, pos = [], 0, 0
+    for m in _ANSI_RE.finditer(text):
+        for ch in text[pos:m.start()]:
+            if count >= n:
+                return _reset_guard("".join(out))
+            out.append(ch)
+            count += 1
+        out.append(m.group(0))
+        pos = m.end()
+    for ch in text[pos:]:
+        if count >= n:
+            break
+        out.append(ch)
+        count += 1
+    return _reset_guard("".join(out))
+
+
 def width():
     try:
-        return os.get_terminal_size().columns
+        return max(20, os.get_terminal_size().columns)
     except Exception:
         return 80
 
 
-def hr(ch="─", color="dim", w=None):
-    return paint(ch * (w or width()), color)
-
-
 def _wrap(text, n):
+    """按可见宽度折行，保留 ANSI 颜色；超长无空格时硬折。"""
     text = str(text)
-    if len(text) <= n:
+    if _visible_len(text) <= n:
         return [text]
-    parts = []
-    while len(text) > n:
-        cut = text.rfind(" ", 0, n)
-        if cut <= 0:
-            cut = n
-        parts.append(text[:cut])
-        text = text[cut:].lstrip()
-    parts.append(text)
-    return parts
+    tokens, pos = [], 0
+    for m in _ANSI_RE.finditer(text):
+        for ch in text[pos:m.start()]:
+            tokens.append((ch, False))
+        tokens.append((m.group(0), True))
+        pos = m.end()
+    for ch in text[pos:]:
+        tokens.append((ch, False))
+
+    parts, cur, cur_len, last_space = [], [], 0, None
+
+    def flush(keep_from=None):
+        nonlocal cur, cur_len, last_space
+        if keep_from is None:
+            parts.append(_reset_guard("".join(cur)))
+            cur, cur_len, last_space = [], 0, None
+        else:
+            head = "".join(cur[:keep_from])
+            tail = cur[keep_from + 1:]
+            parts.append(_reset_guard(head))
+            cur = tail
+            cur_len = sum(1 for t in tail if not _ANSI_RE.fullmatch(t))
+            last_space = None
+
+    for tok, is_ansi in tokens:
+        if is_ansi:
+            cur.append(tok)
+            continue
+        if tok == "\n":
+            flush()
+            continue
+        cur.append(tok)
+        cur_len += 1
+        if tok == " ":
+            last_space = len(cur) - 1
+        if cur_len > n:
+            if last_space is not None and last_space > 0:
+                flush(last_space)
+            else:
+                flush()
+    if cur:
+        parts.append(_reset_guard("".join(cur)))
+    return parts or [""]
 
 
 def box(lines, title=None, color="cyan", w=None):
     """把多行文本放进带边框的盒子，返回整块字符串。"""
     if isinstance(lines, str):
         lines = lines.split("\n")
-    w = w or width()
+    w = max(20, w or width())
     inner = max(1, w - 4)
     out = []
     if title:
         t = paint(" " + title + " ", color, "bold")
-        pad = max(1, w - len(t) - 3)
+        pad = max(1, w - _visible_len(t) - 3)
         out.append("┌─" + t + "─" * pad + "┐")
     else:
         out.append("┌" + "─" * (w - 2) + "┐")
     for ln in lines:
         for part in _wrap(ln, inner):
-            out.append("│ " + part.ljust(inner) + " │")
+            pad = max(0, inner - _visible_len(part))
+            out.append("│ " + part + " " * pad + " │")
     out.append("└" + "─" * (w - 2) + "┘")
     return "\n".join(out)
 
@@ -110,10 +188,10 @@ def table(headers, rows, color="cyan", max_w=None):
     rows = [[str(c) for c in r] for r in rows]
     max_w = max_w or width()
     ncols = len(headers)
-    widths = [len(str(h)) for h in headers]
+    widths = [_visible_len(h) for h in headers]
     for r in rows:
         for i in range(min(ncols, len(r))):
-            widths[i] = max(widths[i], len(r[i]))
+            widths[i] = max(widths[i], _visible_len(r[i]))
     # 若总宽超出屏幕，压缩
     total = sum(widths) + 3 * ncols + 1
     if total > max_w:
@@ -124,7 +202,8 @@ def table(headers, rows, color="cyan", max_w=None):
         cells = list(cells) + [""] * (ncols - len(cells))
         parts = []
         for i, cell in enumerate(cells):
-            parts.append(" " + str(cell)[: widths[i]].ljust(widths[i]) + " ")
+            cell = _truncate_visible(cell, widths[i])
+            parts.append(" " + cell + " " * max(0, widths[i] - _visible_len(cell)) + " ")
         return pad + pad.join(parts) + "│"
 
     top = "┌" + "┬".join("─" * (wd + 2) for wd in widths) + "┐"
@@ -135,16 +214,6 @@ def table(headers, rows, color="cyan", max_w=None):
         lines.append(fmt_row(r))
     lines.append(bot)
     return "\n".join(lines)
-
-
-def typewriter(text, delay=0.006):
-    """打字机效果输出（仅用于人类交互模式）。"""
-    for ch in str(text):
-        sys.stdout.write(ch)
-        sys.stdout.flush()
-        time.sleep(delay)
-    sys.stdout.write("\n")
-    sys.stdout.flush()
 
 
 def flush():

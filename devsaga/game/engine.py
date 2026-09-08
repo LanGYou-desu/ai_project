@@ -11,9 +11,6 @@ from datetime import datetime
 
 from . import terminal as T
 
-VERSION = "1.0.0"
-APP_NAME = "DevSaga 程序员模拟器"
-
 SAVE_DIR = os.path.join(os.path.expanduser("~"), ".devsaga")
 SAVE_FILE = os.path.join(SAVE_DIR, "save.json")
 WORKSPACE_DIR = os.path.join(SAVE_DIR, "workspace")
@@ -34,7 +31,7 @@ ACHIEVEMENTS = {
     "no_hint": ("无师自通", "不使用提示就完成一个场景"),
     "coffee_x3": ("咖啡因战神", "一场游戏里喝了 3 杯咖啡"),
     "all_scenarios": ("全能战士", "通关全部 10 个场景"),
-    "bug_hunter": ("捉虫大师", "调试侦探零失误通关"),
+    "bug_hunter": ("捉虫大师", "不用提示通关调试侦探"),
     "algo_perfect": ("算法大神", "算法竞技场全部题目一次通过"),
     "rank_senior": ("崭露头角", "晋升为高级工程师"),
     "cto": ("登顶", "成为 CTO"),
@@ -65,10 +62,6 @@ DIFFICULTIES = {
 def diff_cfg(profile):
     return DIFFICULTIES.get(profile["settings"].get("difficulty", "normal"), DIFFICULTIES["normal"])
 
-PROMPT_STYLE = "bold", "cyan"
-HUD_COLOR = "blue"
-
-
 # --------------------------------------------------------------------------
 # 玩家档案
 # --------------------------------------------------------------------------
@@ -88,6 +81,8 @@ def default_profile(name="新员工"):
         "quiz": {},             # scenario_id -> 测验最高分
         "choices_done": [],     # 已做过的剧情抉择
         "endings_seen": [],
+        "learned_topics": [],   # 网页版：已查看过的知识点
+        "web_stats": {},        # 网页版：命令/提示/咖啡等操作计数
         "settings": {"color": True, "story": False, "difficulty": "normal"},
     }
 
@@ -103,9 +98,21 @@ def workspace_dir():
 
 
 def save_profile(profile):
+    """原子写入存档：先写临时文件再替换，避免中途崩溃损坏存档。"""
     save_dir()
-    with open(SAVE_FILE, "w", encoding="utf-8") as f:
-        json.dump(profile, f, ensure_ascii=False, indent=2)
+    tmp = SAVE_FILE + ".tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(profile, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, SAVE_FILE)
+    except Exception:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def load_profile():
@@ -113,11 +120,31 @@ def load_profile():
         try:
             with open(SAVE_FILE, "r", encoding="utf-8") as f:
                 p = json.load(f)
-            d = default_profile()
-            d.update({k: v for k, v in p.items() if k in d})
-            return d
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError):
             return None
+        if not isinstance(p, dict):
+            return None
+        d = default_profile()
+        for k, v in p.items():
+            if k not in d:
+                continue
+            if k in ("settings", "stats") and isinstance(v, dict):
+                d[k].update(v)
+            else:
+                d[k] = v
+        # 旧存档/损坏存档的类型兜底，避免后续逻辑对 None 做下标操作。
+        for key in ("finished", "achievements", "choices_done", "endings_seen",
+                    "learned_topics"):
+            if not isinstance(d.get(key), list):
+                d[key] = []
+        for key in ("best", "quiz", "web_stats"):
+            if not isinstance(d.get(key), dict):
+                d[key] = {}
+        if not isinstance(d.get("stats"), dict):
+            d["stats"] = {"tech": 0, "comm": 0, "risk": 0}
+        if not isinstance(d.get("settings"), dict):
+            d["settings"] = {"color": True, "story": False, "difficulty": "normal"}
+        return d
     return None
 
 
@@ -274,10 +301,14 @@ def _hud(profile, session):
     w = T.width()
     inner = max(10, w - 4)
     frame = "┌" + "─" * (w - 2) + "┐"
+
+    def pad(line):
+        return line + " " * max(0, inner - T.visible_len(line))
+
     return "\n".join([
         frame,
-        "│ " + line1.ljust(inner) + " │",
-        "│ " + line2.ljust(inner) + " │",
+        "│ " + pad(line1) + " │",
+        "│ " + pad(line2) + " │",
         "└" + "─" * (w - 2) + "┘",
     ])
 
@@ -404,28 +435,27 @@ def maybe_plot(profile, io):
 
 
 def compute_ending(profile):
-    """根据属性和通关数结算结局。"""
+    """根据属性和通关数结算结局（路线由 ENDINGS 表统一映射）。"""
     stats = profile["stats"]
     finished = len(profile["finished"])
+
+    def route(title, desc):
+        return title, desc, ENDINGS.get(title, "stable")
+
     if finished >= 10 and stats["tech"] >= 5:
-        return ("👑 技术掌舵人",
-                "你把 10 个开发环境都踩平了，技术力无人能敌。董事会一致通过：你就是下一任 CTO。",
-                "tech")
+        return route("👑 技术掌舵人",
+                     "你把一个个开发环境都踩平了，技术力无人能敌。董事会一致通过：你就是下一任 CTO。")
     if stats["comm"] >= 5:
-        return ("🤝 创业合伙人",
-                "你太会来事了，连最难搞的客户都被你哄得服服帖帖。老板拉你一起创业，你成了联合创始人。",
-                "comm")
+        return route("🤝 创业合伙人",
+                     "你太会来事了，连最难搞的客户都被你哄得服服帖帖。老板拉你一起创业，你成了联合创始人。")
     if stats["risk"] >= 5:
-        return ("🚀 独立开发者",
-                "你不甘于朝九晚五，辞职做了独立开发者。第一款产品就火了，GitHub 万星。",
-                "risk")
+        return route("🚀 独立开发者",
+                     "你不甘于朝九晚五，辞职做了独立开发者。第一款产品就火了，GitHub 万星。")
     if finished >= 3:
-        return ("🏢 稳定打工人",
-                "不温不火，但胜在稳定。你的代码从没出过大事故，年终奖多拿了一个月。",
-                "stable")
-    return ("🌱 实习生",
-            "故事才刚刚开始。多通关几个场景、多做一些抉择，你的命运会改变。",
-            "stable")
+        return route("🏢 稳定打工人",
+                     "不温不火，但胜在稳定。你的代码从没出过大事故，年终奖多拿了一个月。")
+    return route("🌱 实习生",
+                 "故事才刚刚开始。多通关几个场景、多做一些抉择，你的命运会改变。")
 
 
 ENDINGS = {
@@ -438,21 +468,23 @@ ENDINGS = {
 
 
 def show_ending(profile, io):
+    from .scenarios import ALL_SCENARIOS
     title, desc, kind = compute_ending(profile)
     stats = profile["stats"]
+    total = len(ALL_SCENARIOS)
     io.print(T.box([
         T.paint(f"🎬 {title}", "bold", "yellow"),
         "",
         T.paint(desc, "white"),
         "",
         T.paint(f"  技术力 {stats['tech']}   沟通力 {stats['comm']}   冒险精神 {stats['risk']}", "dim"),
-        T.paint(f"  通关 {len(profile['finished'])}/10 个场景", "dim"),
+        T.paint(f"  通关 {len(profile['finished'])}/{total} 个场景", "dim"),
         "",
         T.paint("（结局由你的属性与通关数决定：技术/沟通/冒险三条路线）", "dim"),
     ], title="命运结算", color="yellow"))
-    if "ending_seen" not in profile["endings_seen"]:
+    if title not in profile["endings_seen"]:
         profile["endings_seen"].append(title)
-        unlock_achievement(profile, "ending_seen", io)
+    unlock_achievement(profile, "ending_seen", io)
     io.pause()
 
 
@@ -505,8 +537,8 @@ def run_scenario(profile, scenario, io, show_intro=True):
 
     cfg = diff_cfg(profile)
     while not session.all_done():
-        if session.steps > cfg["step_cap"]:
-            io.print(T.paint(f"⚠ 步数超过上限（{cfg['step_cap']}），强制结算。", "red"))
+        if session.steps >= cfg["step_cap"]:
+            io.print(T.paint(f"⚠ 步数达到上限（{cfg['step_cap']}），强制结算。", "red"))
             break
         io.print(_hud(profile, session))
         t = session.current_task()
@@ -573,46 +605,57 @@ def run_scenario(profile, scenario, io, show_intro=True):
         if io.interactive:
             maybe_event(profile, session)
 
-    # 场景通关
+    # 场景通关：先结算再取结果，保证返回值包含通关奖励。
     finished_all = session.all_done()
+    if finished_all:
+        finalize_scenario(profile, scenario, session, io)
+
     result = {"scenario": scenario.id, "tasks_done": session.task_idx,
               "score": session.score, "xp": session.xp_gained,
               "hint_used": session.hint_used, "finished": finished_all}
 
-    if finished_all:
-        bonus = scenario.xp_bonus
-        add_xp(profile, bonus, io)
-        session.xp_gained += bonus
-        session.score += bonus
-        profile["reputation"] += 10
-        if scenario.id not in profile["finished"]:
-            profile["finished"].append(scenario.id)
-        best = profile["best"].get(scenario.id)
-        if best is None or session.score > best.get("score", 0):
-            profile["best"][scenario.id] = {
-                "score": session.score,
-                "tasks": session.task_idx,
-                "date": datetime.now().isoformat(timespec="seconds"),
-            }
-        io.print(T.box(
-            [T.paint(f"🎉 场景《{scenario.name}》通关！", "green", "bold"),
-             T.paint(f"  得分 {session.score}  经验 +{bonus}  声望 +10", "cyan"),
-             T.paint(f"  用时 {session.steps} 步  提示使用 {'是' if session.hint_used else '否'}", "dim")],
-            title="通关", color="green"))
-        if scenario.id == "debug_detective" and not session.hint_used and session.attempts <= 2:
-            unlock_achievement(profile, "bug_hunter", io)
-        if not session.hint_used:
-            unlock_achievement(profile, "no_hint", io)
-        aid = SCENARIO_ACHIEVEMENTS.get(scenario.id)
-        if aid:
-            unlock_achievement(profile, aid, io)
-        if diff_cfg(profile)["label"] == "地狱":
-            unlock_achievement(profile, "hard_mode", io)
-        _check_all_finished(profile, io)
-
     save_profile(profile)
     io.pause()
     return result
+
+
+def finalize_scenario(profile, scenario, session, io):
+    """场景通关结算：加分/声望/最佳成绩/成就。可安全重复调用（幂等）。"""
+    if session.finished:
+        return False
+    session.finished = True
+    bonus = scenario.xp_bonus
+    add_xp(profile, bonus, io)
+    session.xp_gained += bonus
+    session.score += bonus
+    profile["reputation"] += 10
+    if scenario.id not in profile["finished"]:
+        profile["finished"].append(scenario.id)
+    best = profile["best"].get(scenario.id)
+    if best is None or session.score > best.get("score", 0):
+        profile["best"][scenario.id] = {
+            "score": session.score,
+            "tasks": session.task_idx,
+            "date": datetime.now().isoformat(timespec="seconds"),
+        }
+    io.print(T.box(
+        [T.paint(f"🎉 场景《{scenario.name}》通关！", "green", "bold"),
+         T.paint(f"  得分 {session.score}  经验 +{bonus}  声望 +10", "cyan"),
+         T.paint(f"  用时 {session.steps} 步  提示使用 {'是' if session.hint_used else '否'}", "dim")],
+        title="通关", color="green"))
+    if scenario.id == "debug_detective" and not session.hint_used and session.attempts <= 2:
+        unlock_achievement(profile, "bug_hunter", io)
+    if not session.hint_used:
+        unlock_achievement(profile, "no_hint", io)
+    aid = SCENARIO_ACHIEVEMENTS.get(scenario.id)
+    if aid:
+        unlock_achievement(profile, aid, io)
+    if scenario.id == "algo_arena":
+        unlock_achievement(profile, "algo_perfect", io)
+    if diff_cfg(profile)["label"] == "地狱":
+        unlock_achievement(profile, "hard_mode", io)
+    _check_all_finished(profile, io)
+    return True
 
 
 def _complete_task(session, task, skipped=False):
@@ -684,6 +727,8 @@ class Stepper:
         if done:
             t = self.session.current_task()
             _complete_task(self.session, t)
+        if self.session.all_done():
+            finalize_scenario(self.profile, self.scenario, self.session, self.io)
         return {
             "text": text,
             "messages": "\n".join(self.io.out),   # 任务完成/知识点等附加输出

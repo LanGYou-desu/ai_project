@@ -10,7 +10,8 @@
 
 import json
 import socketserver
-import threading
+
+MAX_LINE = 64 * 1024   # 单行 JSON 上限，防止超大请求占满内存
 
 from . import engine as E
 from . import terminal as T
@@ -24,12 +25,22 @@ class GameHandler(socketserver.StreamRequestHandler):
         self.profile = E.default_profile("AI-AGENT")
 
     def handle(self):
-        for raw in self.rfile:
+        while True:
+            raw = self.rfile.readline(MAX_LINE + 1)
+            if not raw:
+                break
+            if len(raw) > MAX_LINE:
+                resp = {"ok": False, "error": f"请求过长（>{MAX_LINE} 字节）"}
+                self.wfile.write((json.dumps(resp, ensure_ascii=False) + "\n").encode("utf-8"))
+                self.wfile.flush()
+                break
             line = raw.decode("utf-8", "replace").strip()
             if not line:
                 continue
             try:
                 req = json.loads(line)
+                if not isinstance(req, dict):
+                    raise ValueError("请求必须是 JSON 对象")
                 resp = self.dispatch(req)
             except json.JSONDecodeError:
                 resp = {"ok": False, "error": "JSON 解析失败"}
@@ -59,7 +70,7 @@ class GameHandler(socketserver.StreamRequestHandler):
         if t == "step":
             if self.stepper is None:
                 return {"ok": False, "error": "请先 reset"}
-            text = req.get("text", "")
+            text = str(req.get("text", ""))[:MAX_LINE]
             out = self.stepper.step(text)
             return {"ok": True, **out}
         return {"ok": False, "error": f"未知请求类型：{t}"}

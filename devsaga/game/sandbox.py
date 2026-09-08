@@ -16,19 +16,38 @@ BANNED_IMPORTS = {
     "signal", "asyncio", "pickle", "sqlite3", "http", "urllib", "ftplib",
     "telnetlib", "smtplib", "webbrowser", "glob", "shlex", "platform",
 }
-BANNED_ATTRS = {"__import__", "__builtins__", "__globals__", "__subclasses__", "__bases__", "__mro__"}
-BANNED_NAMES = {"open", "eval", "exec", "compile", "input", "breakpoint", "memoryview"}
+BANNED_ATTRS = {
+    "__import__", "__builtins__", "__globals__", "__subclasses__", "__bases__",
+    "__mro__", "__loader__", "__spec__", "__class__", "__dict__", "__code__",
+    "__closure__", "__func__", "__self__", "f_globals", "f_locals", "gi_frame",
+    "cr_frame", "gi_code", "cr_code", "__getattribute__", "__reduce__",
+    "__reduce_ex__",
+}
+BANNED_NAMES = {
+    "open", "eval", "exec", "compile", "breakpoint", "memoryview",
+    "__import__", "getattr", "setattr", "delattr", "vars", "globals", "locals",
+    "dir", "__builtins__", "__loader__", "__spec__",
+}
+# stdin/stdout 判题模式需要 input()，默认判题模式禁用。
+BANNED_INPUT_NAMES = {"input"}
 MAX_OUTPUT = 20000
+MAX_INPUT = 20000
 DEFAULT_TIMEOUT = 2.0
 
 
-def validate_code(code):
-    """AST 静态检查。返回 (ok, message)。"""
+def validate_code(code, allow_input=False):
+    """AST 静态检查。返回 (ok, message)。
+
+    allow_input=True 时允许 input()（stdin/stdout 判题模式需要）。
+    """
     try:
         tree = ast.parse(code)
     except SyntaxError as exc:
         return False, f"语法错误：第 {exc.lineno} 行 {exc.msg}"
+    banned = BANNED_NAMES if allow_input else (BANNED_NAMES | BANNED_INPUT_NAMES)
     for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id in banned:
+            return False, f"禁止使用：{node.id}"
         if isinstance(node, ast.Import):
             for a in node.names:
                 top = a.name.split(".")[0]
@@ -41,7 +60,7 @@ def validate_code(code):
             if top in BANNED_IMPORTS:
                 return False, f"禁止导入模块：{node.module}"
         elif isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id in BANNED_NAMES:
+            if isinstance(node.func, ast.Name) and node.func.id in banned:
                 return False, f"禁止使用：{node.func.id}()"
             if isinstance(node.func, ast.Attribute) and node.func.attr in BANNED_ATTRS:
                 return False, f"禁止访问：{node.func.attr}"
@@ -63,28 +82,36 @@ def _norm(value):
     return value
 
 
-def run_code(code, timeout=DEFAULT_TIMEOUT, stdin_text=""):
+def run_code(code, timeout=DEFAULT_TIMEOUT, stdin_text="", allow_input=False):
     """在子进程里执行代码，返回 (ok, output, error)。
 
     ok=True 表示进程正常退出（无论代码逻辑是否正确），output 为 stdout。
     ok=False 表示编译/运行错误或超时。
     """
-    ok, msg = validate_code(code)
+    ok, msg = validate_code(code, allow_input=allow_input)
     if not ok:
         return False, "", msg
+    if stdin_text is None:
+        stdin_text = ""
+    if len(stdin_text) > MAX_INPUT:
+        return False, "", f"标准输入过长（>{MAX_INPUT} 字节）"
     with tempfile.TemporaryDirectory(prefix="devsaga_") as tmp:
         src = os.path.join(tmp, "solution.py")
         with open(src, "w", encoding="utf-8") as f:
             f.write(code)
         env = dict(os.environ)
-        env.pop("PYTHONPATH", None)
-        env.pop("PYTHONHOME", None)
+        for key in ("PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP",
+                    "PYTHONUSERBASE", "PYTHONWARNINGS"):
+            env.pop(key, None)
+        env["PYTHONIOENCODING"] = "utf-8"
         try:
             proc = subprocess.run(
                 [sys.executable, "-I", "-B", src],
                 input=stdin_text,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=timeout,
                 env=env,
                 cwd=tmp,
@@ -93,8 +120,8 @@ def run_code(code, timeout=DEFAULT_TIMEOUT, stdin_text=""):
             return False, "", f"运行超时（>{timeout}s）"
         except OSError as exc:
             return False, "", f"无法启动沙箱进程：{exc}"
-    out = proc.stdout[:MAX_OUTPUT]
-    err = proc.stderr.strip()
+    out = (proc.stdout or "")[:MAX_OUTPUT]
+    err = (proc.stderr or "").strip()[:MAX_OUTPUT]
     if proc.returncode != 0:
         tail = "\n".join(err.splitlines()[-6:]) if err else f"退出码 {proc.returncode}"
         return False, out, tail
@@ -125,30 +152,35 @@ def grade_function(code, func_name, tests, timeout=DEFAULT_TIMEOUT):
 
     results = []
     for i, (args, expected) in enumerate(tests):
+        # 每次判题用一个随机标记，避免玩家代码伪造 DEV_R/DEV_E 输出。
+        token = os.urandom(8).hex()
+        ok_marker, err_marker = f"DEV_R_{token}:", f"DEV_E_{token}:"
         probe = (func_src + "\n" +
                  "try:\n"
                  f"    _r = {func_name}(*{args!r})\n"
-                 '    print("DEV_R:" + repr(_r))\n'
+                 f"    print({ok_marker!r} + repr(_r))\n"
                  "except Exception as _e:\n"
-                 '    print("DEV_E:" + type(_e).__name__ + ":" + str(_e))\n')
+                 f"    print({err_marker!r} + type(_e).__name__ + ':' + str(_e))\n")
         ok, out, err = run_code(probe, timeout=timeout)
         if not ok:
             results.append((i, False, None, expected, err or "运行失败"))
             continue
-        line = out.strip().splitlines()[-1] if out.strip() else ""
-        if line.startswith("DEV_E:"):
-            results.append((i, False, None, expected, line[6:]))
+        lines = out.splitlines()
+        ok_line = next((ln for ln in reversed(lines) if ln.startswith(ok_marker)), None)
+        err_line = next((ln for ln in reversed(lines) if ln.startswith(err_marker)), None)
+        if err_line is not None:
+            results.append((i, False, None, expected, err_line[len(err_marker):]))
             continue
-        if line.startswith("DEV_R:"):
-            try:
-                actual = eval(line[6:])  # noqa: S307 - 沙箱内已执行，此处只是解析自身输出
-            except Exception:
-                results.append((i, False, line, expected, "输出无法解析"))
-                continue
-            ok = _norm(actual) == _norm(expected)
-            results.append((i, ok, actual, expected, "" if ok else "结果不匹配"))
-        else:
+        if ok_line is None:
             results.append((i, False, None, expected, "没有产生可判定的输出"))
+            continue
+        try:
+            actual = ast.literal_eval(ok_line[len(ok_marker):])
+        except (ValueError, SyntaxError):
+            results.append((i, False, ok_line, expected, "输出无法解析"))
+            continue
+        ok = _norm(actual) == _norm(expected)
+        results.append((i, ok, actual, expected, "" if ok else "结果不匹配"))
     passed = sum(1 for _, ok, _, _, _ in results if ok)
     return passed, len(tests), results
 
@@ -157,7 +189,8 @@ def grade_stdin(code, cases, timeout=DEFAULT_TIMEOUT):
     """判题（stdin/stdout 模式）：cases 为 [(stdin_text, expected_stdout)]。"""
     results = []
     for i, (stdin_text, expected) in enumerate(cases):
-        ok, out, err = run_code(code, timeout=timeout, stdin_text=stdin_text)
+        ok, out, err = run_code(code, timeout=timeout, stdin_text=stdin_text,
+                                allow_input=True)
         actual = out.strip()
         expected = expected.strip()
         if ok and actual == expected:

@@ -211,7 +211,7 @@ def topic_category(key):
         "find": "终端", "grep": "终端", "redirect": "终端", "chmod": "终端",
         "git": "Git", "bug": "调试", "sql": "SQL", "sys": "运维",
         "net": "网络", "algo": "算法", "docker": "容器", "ci": "CI/CD",
-        "fe": "前端", "career": "职场",
+        "fe": "前端", "career": "职场", "sec": "安全",
     }
     return table.get(prefix, "通用")
 

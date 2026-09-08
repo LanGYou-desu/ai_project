@@ -4,9 +4,9 @@
 health check，rollback，test run。
 """
 
-import shlex
 
 from .. import terminal as T
+from ..parser import tokenize
 from .base import CommandError, Scenario, Task
 
 
@@ -84,7 +84,7 @@ class PipelineDeploy(Scenario):
 
     def handle(self, cmd, session):
         self.ran.add(cmd)
-        tokens = shlex.split(cmd) if cmd.strip() else []
+        tokens = tokenize(cmd)
         if not tokens:
             raise CommandError("输入为空")
         c0 = tokens[0].lower()

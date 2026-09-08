@@ -77,10 +77,40 @@ class SqlEngine:
             return r2[expr]
         return r.get(expr)
 
+    @staticmethod
+    def _split_conds(cond):
+        """按 AND 拆分条件，但忽略引号内部的 and。"""
+        parts, buf, quote = [], [], None
+        i = 0
+        while i < len(cond):
+            ch = cond[i]
+            if quote:
+                buf.append(ch)
+                if ch == quote:
+                    quote = None
+                i += 1
+                continue
+            if ch in "'\"":
+                quote = ch
+                buf.append(ch)
+                i += 1
+                continue
+            if (cond[i:i + 3].lower() == "and"
+                    and (i == 0 or not cond[i - 1].isalnum())
+                    and (i + 3 >= len(cond) or not cond[i + 3].isalnum())):
+                parts.append("".join(buf))
+                buf = []
+                i += 3
+                continue
+            buf.append(ch)
+            i += 1
+        parts.append("".join(buf))
+        return parts
+
     def _where(self, rows, cond, t1):
         if not cond or not cond.strip():
             return rows
-        conds = re.split(r"\band\b", cond, flags=re.I)
+        conds = self._split_conds(cond)
         out = []
         for r in rows:
             ok = True
@@ -295,12 +325,14 @@ class SqlEngine:
             if not km:
                 raise CommandError(f"SQL: 看不懂 SET 项 '{part}'")
             pairs.append((km.group(1), self._val(km.group(2))))
-        rows = self._where([dict(r) for r in table.rows], cond or "", tname)
-        for r in rows:
-            for k, v in pairs:
-                r[k] = v
-        table.rows = rows
-        return None, f"已更新 {len(rows)} 行"
+        # 只修改命中的行，未命中的行必须原样保留（旧实现会把整表替换成命中行）。
+        updated = 0
+        for row in table.rows:
+            if self._where([dict(row)], cond or "", tname):
+                for k, v in pairs:
+                    row[k] = v
+                updated += 1
+        return None, f"已更新 {updated} 行"
 
     def _delete(self, sql):
         m = re.match(r"delete\s+from\s+(\w+)(?:\s+where\s+(.+))?$", sql, re.I)
@@ -310,11 +342,12 @@ class SqlEngine:
         table = self.tables.get(tname)
         if table is None:
             raise CommandError(f"SQL: 表 {tname} 不存在")
-        all_rows = [dict(r) for r in table.rows]
-        to_delete = self._where(all_rows, cond or "", tname)
-        keep = [r for r in all_rows if r not in to_delete]
-        table.rows = keep
-        return None, f"已删除 {len(to_delete)} 行"
+        # 按位置删除，重复行也只删命中数量，不会把同内容的行一起误删。
+        all_rows = table.rows
+        doomed = {i for i, row in enumerate(all_rows)
+                  if self._where([dict(row)], cond or "", tname)}
+        table.rows = [row for i, row in enumerate(all_rows) if i not in doomed]
+        return None, f"已删除 {len(doomed)} 行"
 
     def _insert(self, sql):
         m = re.match(r"insert\s+into\s+(\w+)\s*(?:\(([^)]+)\))?\s*values\s*\(([^)]+)\)", sql, re.I)
@@ -326,6 +359,11 @@ class SqlEngine:
             raise CommandError(f"SQL: 表 {tname} 不存在")
         cols = [c.strip() for c in cols_s.split(",")] if cols_s else table.columns
         vals = [self._val(v) for v in vals_s.split(",")]
+        unknown = [c for c in cols if c not in table.columns]
+        if unknown:
+            raise CommandError(f"SQL: 未知列 {', '.join(unknown)}")
+        if len(cols) != len(vals):
+            raise CommandError("SQL: INSERT 的列数和值数量不一致")
         row = dict(zip(cols, vals))
         table.rows.append(row)
         return None, "已插入 1 行"

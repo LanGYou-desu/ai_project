@@ -4,9 +4,9 @@
 netstat / ss / tail / cat /proc/meminfo。
 """
 
-import shlex
 
 from .. import terminal as T
+from ..parser import tokenize
 from .base import CommandError, Scenario, Task
 
 
@@ -85,7 +85,7 @@ class SysadminER(Scenario):
     def handle(self, cmd, session):
         self.ran = getattr(self, "ran", set())
         self.ran.add(cmd)
-        tokens = shlex.split(cmd) if cmd.strip() else []
+        tokens = tokenize(cmd)
         if not tokens:
             raise CommandError("输入为空")
         c0 = tokens[0].lower()

@@ -32,6 +32,26 @@ from . import terminal as T
 from .scenarios import ALL_SCENARIOS, SCENARIO_MAP
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")
+STATIC_ROOT = os.path.realpath(WEB_DIR)
+MAX_BODY = 1024 * 1024          # 请求体上限 1MB，防止超大 JSON 拖垮服务
+MAX_CODE = 200 * 1024           # 算法题提交代码上限
+
+
+class _BadRequest(Exception):
+    """带 HTTP 状态码的请求错误。"""
+
+    def __init__(self, message, code=400):
+        super().__init__(message)
+        self.message = message
+        self.code = code
+
+
+def _safe_static(rel):
+    """把 /static/ 后面的相对路径限制在 web/ 目录内，返回绝对路径或 None。"""
+    target = os.path.realpath(os.path.join(STATIC_ROOT, rel))
+    if target != STATIC_ROOT and not target.startswith(STATIC_ROOT + os.sep):
+        return None
+    return target
 
 # 网页版可点击命令面板（按场景）。答案型任务的选项也放进去，方便纯鼠标操作。
 PALETTES = {
@@ -127,6 +147,7 @@ class WebState:
             "best": p["best"], "quiz": p.get("quiz", {}),
             "learned": p.get("learned_topics", []),
             "web_stats": p.get("web_stats", {}),
+            "achievement_names": {aid: v[0] for aid, v in E.ACHIEVEMENTS.items()},
             "pending_plot": pending_plot,
         }
 
@@ -147,6 +168,17 @@ class WebState:
 STATE = WebState()
 
 
+_TASK_TOTAL = None
+
+
+def _task_total():
+    """所有场景的任务总数（首次调用时构建一次并缓存）。"""
+    global _TASK_TOTAL
+    if _TASK_TOTAL is None:
+        _TASK_TOTAL = sum(len(cls().tasks) for cls in ALL_SCENARIOS)
+    return _TASK_TOTAL
+
+
 def _profile_snapshot():
     return STATE.snapshot()
 
@@ -157,6 +189,14 @@ def _stats(profile, key, amount=1):
 
 
 def _write_solution(sid, code):
+    """把算法题代码写入工作区。题目 id 必须来自内置题库，避免路径穿越。"""
+    from .scenarios.algo_arena import PROBLEMS
+    if sid not in {p["id"] for p in PROBLEMS}:
+        raise _BadRequest(f"未知题目：{sid}")
+    if not isinstance(code, str):
+        raise _BadRequest("code 必须是字符串")
+    if len(code) > MAX_CODE:
+        raise _BadRequest(f"代码过长（>{MAX_CODE} 字节）", 413)
     path = os.path.join(E.workspace_dir(), sid + ".py")
     with open(path, "w", encoding="utf-8") as f:
         f.write(code)
@@ -228,7 +268,7 @@ def _prompt(stepper):
 
 def _start_scenario(sid):
     if sid not in SCENARIO_MAP:
-        raise KeyError(f"未知场景：{sid}")
+        raise _BadRequest(f"未知场景：{sid}", 404)
     p = STATE.ensure_profile()
     p["settings"]["color"] = False
     stepper = E.Stepper(p, sid)
@@ -261,26 +301,41 @@ def _algo_problems(sid):
     } for p in PROBLEMS]}
 
 
+def _int_arg(data, key, default=-1):
+    """把 JSON 里的 index 安全转成 int，非法值回退到 default。"""
+    try:
+        return int(data.get(key, default))
+    except (TypeError, ValueError):
+        return default
+
+
 def _maybe_event(stepper):
-    """网页版随机事件：约 30% 概率在整 5 步触发。"""
+    """网页版随机事件：约 30% 概率在整 5 步触发，并记住这一次的选项。"""
     s = stepper.session
     if s.steps % 5 != 0 or random.random() > 0.3 or not s.current_task():
         return None
     who, line, options = random.choice(E.STANDUPS)
+    # 关键：把本次事件存下来，_apply_event 必须用同一组选项，
+    # 否则玩家看到的选项和实际加成的属性会对不上。
+    stepper.pending_event = {"who": who, "line": line, "options": options}
     return {"who": who, "line": line, "options": [o[0] for o in options]}
 
 
 def _apply_event(stepper, index):
     s = stepper.session
-    who, line, options = random.choice(E.STANDUPS)  # 与触发时同分布即可，索引对应
-    if not (0 <= index < len(options)):
+    ev = getattr(stepper, "pending_event", None)
+    stepper.pending_event = None
+    if not ev:
+        return {"message": "（没有待回应的突发事件）"}
+    options = ev["options"]
+    if not isinstance(index, int) or not (0 <= index < len(options)):
         return {"message": "（你沉默了，空气突然安静）"}
     _, stat, val = options[index]
     s.profile["stats"][stat] += val
     E.add_xp(s.profile, 5, s.io)
     s.xp_gained += 5
     s.profile["reputation"] += 2
-    return {"message": f"（{who}点点头，属性+{val}，声望+2，XP+5）"}
+    return {"message": f"（{ev['who']}点点头，属性+{val}，声望+2，XP+5）"}
 
 
 def _apply_plot(profile, index):
@@ -299,7 +354,9 @@ def _apply_plot(profile, index):
 def _grade_quiz(sid, answers):
     qs = lessons.QUIZZES.get(sid)
     if not qs:
-        raise KeyError("该场景没有测验")
+        raise _BadRequest("该场景没有测验", 404)
+    if not isinstance(answers, list):
+        raise _BadRequest("answers 必须是数组")
     p = STATE.ensure_profile()
     score = 0
     results = []
@@ -332,11 +389,12 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)
 
     def _send_file(self, path):
-        if not os.path.isfile(path):
+        if not path or not os.path.isfile(path):
             self._send_json({"error": "not found"}, 404)
             return
         ctype = mimetypes.guess_type(path)[0] or "application/octet-stream"
@@ -345,14 +403,31 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", ctype + ("; charset=utf-8" if ctype.startswith("text/") else ""))
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)
 
     def _read_json(self):
-        length = int(self.headers.get("Content-Length", 0))
+        raw_len = self.headers.get("Content-Length")
+        if raw_len is None:
+            return {}
+        try:
+            length = int(raw_len)
+        except (TypeError, ValueError):
+            raise _BadRequest("Content-Length 非法")
         if length <= 0:
             return {}
-        return json.loads(self.rfile.read(length).decode("utf-8"))
+        if length > MAX_BODY:
+            raise _BadRequest(f"请求体过大（>{MAX_BODY} 字节）", 413)
+        body = self.rfile.read(length)
+        try:
+            data = json.loads(body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise _BadRequest("JSON 解析失败")
+        if not isinstance(data, dict):
+            raise _BadRequest("请求体必须是 JSON 对象")
+        return data
 
     def _ok(self, obj=None):
         if obj is None:
@@ -368,11 +443,16 @@ class Handler(BaseHTTPRequestHandler):
                 if path in ("/", "/index.html"):
                     self._send_file(os.path.join(WEB_DIR, "index.html"))
                 elif path.startswith("/static/"):
-                    self._send_file(os.path.join(WEB_DIR, path[len("/static/"):]))
+                    target = _safe_static(path[len("/static/"):])
+                    if target is None:
+                        self._send_json({"error": "not found"}, 404)
+                        return
+                    self._send_file(target)
                 elif path == "/api/state":
                     self._ok({"state": _profile_snapshot()})
                 elif path == "/api/scenarios":
-                    self._ok({"scenarios": STATE.scenario_info()})
+                    self._ok({"scenarios": STATE.scenario_info(),
+                              "task_total": _task_total()})
                 elif path == "/api/achievements":
                     p = STATE.ensure_profile()
                     self._ok({"achievements": [
@@ -406,6 +486,8 @@ class Handler(BaseHTTPRequestHandler):
                 elif path == "/api/ending":
                     p = STATE.ensure_profile()
                     title, desc, kind = E.compute_ending(p)
+                    if title not in p["endings_seen"]:
+                        p["endings_seen"].append(title)
                     E.unlock_achievement(p, "ending_seen")
                     E.save_profile(p)
                     self._ok({"title": title, "desc": desc, "kind": kind})
@@ -426,9 +508,17 @@ class Handler(BaseHTTPRequestHandler):
         with STATE.lock:
             try:
                 data = self._read_json()
+            except _BadRequest as exc:
+                self._send_json({"error": exc.message}, exc.code)
+                return
+            try:
                 if path == "/api/profile":
-                    STATE.profile = E.default_profile(data.get("name") or "新员工")
-                    STATE.profile["settings"]["difficulty"] = data.get("difficulty", "normal")
+                    name = str(data.get("name") or "新员工").strip()[:24] or "新员工"
+                    diff = data.get("difficulty", "normal")
+                    if diff not in E.DIFFICULTIES:
+                        diff = "normal"
+                    STATE.profile = E.default_profile(name)
+                    STATE.profile["settings"]["difficulty"] = diff
                     STATE.stepper = None
                     E.save_profile(STATE.profile)
                     self._ok({"message": "档案已创建"})
@@ -457,9 +547,9 @@ class Handler(BaseHTTPRequestHandler):
                         STATE.stepper = None
                     self._ok({"message": "已离开场景"})
                 elif path == "/api/event":
-                    self._ok(_apply_event(STATE.stepper, int(data.get("index", -1))))
+                    self._ok(_apply_event(STATE.stepper, _int_arg(data, "index")))
                 elif path == "/api/plot":
-                    self._ok(_apply_plot(STATE.ensure_profile(), int(data.get("index", -1))))
+                    self._ok(_apply_plot(STATE.ensure_profile(), _int_arg(data, "index")))
                 elif path == "/api/code/save":
                     st = self._require_stepper()
                     _write_solution(data.get("sid", ""), data.get("code", ""))
@@ -478,13 +568,15 @@ class Handler(BaseHTTPRequestHandler):
                     self._ok({"difficulty": E.diff_cfg(p)["label"]})
                 else:
                     self._send_json({"error": "not found"}, 404)
+            except _BadRequest as exc:
+                self._send_json({"error": exc.message}, exc.code)
             except Exception as exc:  # noqa: BLE001
                 self._send_json({"error": str(exc)}, 500)
 
     # ---------- 场景内操作 ----------
     def _require_stepper(self):
         if STATE.stepper is None:
-            raise KeyError("没有进行中的场景，请先开始一个场景")
+            raise _BadRequest("没有进行中的场景，请先开始一个场景", 400)
         return STATE.stepper
 
     def _cmd(self, data):
@@ -507,18 +599,24 @@ class Handler(BaseHTTPRequestHandler):
     def _hint(self):
         st = self._require_stepper()
         t = st.session.current_task()
-        st.session.hint_used = True
-        _stats(STATE.profile, "hints")
-        hint = t.hints[0] if t and t.hints else "（这道题没有提示）"
-        self._ok({"hint": hint})
+        hint = t.hints[0] if t and t.hints else None
+        if hint:
+            # 只有真的给出提示才标记 hint_used，避免无提示任务误伤「无师自通」。
+            st.session.hint_used = True
+            _stats(STATE.profile, "hints")
+        self._ok({"hint": hint or "（这道题没有提示）"})
 
     def _skip(self):
         st = self._require_stepper()
         t = st.session.current_task()
         if t:
             E._complete_task(st.session, t, skipped=True)
+            if st.session.all_done():
+                E.finalize_scenario(STATE.profile, st.scenario, st.session, st.io)
             E.save_profile(STATE.profile)
-        self._ok({"task": _task_info(st), "messages": "\n".join(st.io.out)})
+        self._ok({"task": _task_info(st), "messages": "\n".join(st.io.out),
+                  "all_done": st.session.all_done(), "state": st.observe(),
+                  "score": st.session.score, "dashboard": _dashboard(st)})
 
     def _coffee(self):
         st = self._require_stepper()
@@ -543,9 +641,12 @@ class Handler(BaseHTTPRequestHandler):
         st = self._require_stepper()
         sid = data.get("sid", "")
         code = data.get("code", "")
-        _write_solution(sid, code)
         try:
+            _write_solution(sid, code)
             passed, total, results = st.scenario.grade_problem(sid, code)
+        except _BadRequest as exc:
+            self._send_json({"error": exc.message}, exc.code)
+            return
         except Exception as exc:  # noqa: BLE001
             self._send_json({"error": str(exc)}, 400)
             return
@@ -554,6 +655,8 @@ class Handler(BaseHTTPRequestHandler):
         if passed == total and t and t.check(st.session, f"submit {sid}"):
             E._complete_task(st.session, t)
             task_done = True
+        if st.session.all_done():
+            E.finalize_scenario(STATE.profile, st.scenario, st.session, st.io)
         E.save_profile(STATE.profile)
         self._ok({
             "passed": passed, "total": total,
@@ -591,7 +694,9 @@ def run(port=8766, open_browser=True):
     print(f"  DevSaga 网页版已启动：{url}")
     print("  浏览器应已自动打开；关闭此窗口即停止服务。")
     if open_browser:
-        threading.Timer(0.8, lambda: _open_browser(url)).start()
+        timer = threading.Timer(0.8, lambda: _open_browser(url))
+        timer.daemon = True
+        timer.start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:

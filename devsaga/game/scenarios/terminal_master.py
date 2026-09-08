@@ -6,9 +6,9 @@ mkdir / touch / rm / mv / cp / chmod / whoami / date / tree，以及简单管道
 
 import fnmatch
 import re
-import shlex
 
 from .. import terminal as T
+from ..parser import tokenize
 from .base import CommandError, Scenario, Task
 
 
@@ -113,8 +113,6 @@ class TerminalMaster(Scenario):
         self._build_fs()
         self.state["chmod_deploy"] = False
         self.state["deployed"] = False
-        self.state["grep500"] = False
-        self.state["pycount"] = False
         self._tail20 = self.access_log[-20:]
         self.tasks = [
             Task("t1", "找到并查看配置文件",
@@ -236,7 +234,7 @@ class TerminalMaster(Scenario):
         return p
 
     def handle(self, cmd, session):
-        tokens = shlex.split(cmd) if cmd.strip() else []
+        tokens = tokenize(cmd)
         if not tokens:
             raise CommandError("输入为空。输入 help 查看可用命令。")
 
@@ -287,10 +285,7 @@ class TerminalMaster(Scenario):
         out_parts = []
 
         def emit(text):
-            if capture:
-                out_parts.append(str(text))
-            else:
-                out_parts.append(str(text))
+            out_parts.append(str(text))
 
         # 脚本执行：./xxx 或 /path/script
         if cmd0.startswith("./") or cmd0.startswith("/"):
@@ -348,11 +343,21 @@ class TerminalMaster(Scenario):
                 text = " ".join(tokens[1:])
                 emit(text)
             elif c == "mkdir":
+                if len(tokens) < 2:
+                    raise CommandError("用法：mkdir <目录>")
                 for t in tokens[1:]:
+                    parent = self.fs.parent(t)
+                    if not self.fs.exists(parent) or self.fs.get(parent).kind != "dir":
+                        raise CommandError(f"mkdir: 无法创建 '{t}': 父目录 {parent} 不存在")
                     self.fs.mkdir(t)
                 emit("")
             elif c == "touch":
+                if len(tokens) < 2:
+                    raise CommandError("用法：touch <文件>")
                 for t in tokens[1:]:
+                    parent = self.fs.parent(t)
+                    if not self.fs.exists(parent) or self.fs.get(parent).kind != "dir":
+                        raise CommandError(f"touch: 无法创建 '{t}': 父目录 {parent} 不存在")
                     self.fs.touch(t)
                 emit("")
             elif c == "rm":
@@ -383,8 +388,10 @@ class TerminalMaster(Scenario):
         return "\n".join(out_parts)
 
     def _cmd_ls(self, args):
-        path = args[-1] if args and not args[0].startswith("-") else "."
-        long = "-l" in args
+        opts = [a for a in args if a.startswith("-")]
+        paths = [a for a in args if not a.startswith("-")]
+        path = paths[-1] if paths else "."
+        long = any("l" in o[1:] for o in opts)
         p = self._resolve(path)
         node = self.fs.get(p)
         if node.kind == "file":
@@ -467,8 +474,6 @@ class TerminalMaster(Scenario):
                 for ln in hits:
                     lines_out.append((f"{path}:" if recursive else "") + ln)
         if count_only:
-            if session is not None and pattern == " 500 " and "access.log" in target:
-                session.scenario.state["grep500"] = True
             return str(total)
         return "\n".join(lines_out) if lines_out else "（没有匹配的行）"
 
@@ -505,7 +510,7 @@ class TerminalMaster(Scenario):
     def _cmd_rm(self, args):
         if not args:
             raise CommandError("用法：rm [-r] <路径>")
-        recursive = "-r" in args or "-rf" in args
+        recursive = any(a in ("-r", "-R", "-rf", "-fr") for a in args)
         for a in args:
             if a.startswith("-"):
                 continue
@@ -513,9 +518,17 @@ class TerminalMaster(Scenario):
             node = self.fs.get(p)
             if node is None:
                 raise CommandError(f"rm: 无法删除 '{a}': 不存在")
-            if node.kind == "dir" and not recursive:
-                raise CommandError(f"rm: 无法删除目录 '{a}': 加 -r 试试")
-            del self.fs.nodes[p]
+            if p == "/":
+                raise CommandError("rm: 拒绝删除根目录（模拟终端也怕手滑）")
+            if node.kind == "dir":
+                if not recursive:
+                    raise CommandError(f"rm: 无法删除目录 '{a}': 加 -r 试试")
+                prefix = p.rstrip("/") + "/"
+                for child in list(self.fs.nodes):
+                    if child == p or child.startswith(prefix):
+                        del self.fs.nodes[child]
+            else:
+                del self.fs.nodes[p]
 
     def _cmd_mv(self, args):
         if len(args) < 2:
@@ -525,13 +538,30 @@ class TerminalMaster(Scenario):
         node = self.fs.get(src)
         if node is None:
             raise CommandError(f"mv: '{args[0]}' 不存在")
+        if src == "/":
+            raise CommandError("mv: 拒绝移动根目录")
+        parent = self.fs.parent(dst)
+        if not self.fs.exists(parent) or self.fs.get(parent).kind != "dir":
+            raise CommandError(f"mv: 目标目录 {parent} 不存在")
         dst_node = self.fs.get(dst)
         if dst_node is not None and dst_node.kind == "dir":
             dst = self.fs.norm(dst + "/" + src.rsplit("/", 1)[-1])
         if dst == src:
             return
-        del self.fs.nodes[src]
-        self.fs.add(dst, node)
+        if node.kind == "dir" and dst.startswith(src.rstrip("/") + "/"):
+            raise CommandError("mv: 不能把目录移动到它自己的子目录里")
+        if node.kind == "dir":
+            prefix = src.rstrip("/") + "/"
+            moved = [(p, n) for p, n in self.fs.nodes.items()
+                     if p == src or p.startswith(prefix)]
+            for p, _ in moved:
+                del self.fs.nodes[p]
+            for p, n in moved:
+                newp = dst if p == src else dst + p[len(src):]
+                self.fs.nodes[newp] = n
+        else:
+            del self.fs.nodes[src]
+            self.fs.add(dst, node)
 
     def _cmd_cp(self, args):
         if len(args) < 2:
@@ -543,9 +573,14 @@ class TerminalMaster(Scenario):
             raise CommandError(f"cp: '{args[0]}' 不存在")
         if node.kind == "dir":
             raise CommandError("cp: 暂不支持复制目录")
+        parent = self.fs.parent(dst)
+        if not self.fs.exists(parent) or self.fs.get(parent).kind != "dir":
+            raise CommandError(f"cp: 目标目录 {parent} 不存在")
         dst_node = self.fs.get(dst)
         if dst_node is not None and dst_node.kind == "dir":
             dst = self.fs.norm(dst + "/" + src.rsplit("/", 1)[-1])
+        if dst == src:
+            return
         self.fs.add(dst, Node("file", node.content, node.mode))
 
     def _cmd_chmod(self, args, session):
@@ -557,11 +592,11 @@ class TerminalMaster(Scenario):
         if node.kind == "dir":
             raise CommandError("chmod: 目标是个目录")
         if mode_arg in ("+x", "+X", "a+x"):
-            node.mode = node.mode[:2] + "1"
+            node.mode = "".join(str(int(c) | 1) for c in node.mode[:3])
             if p == "/opt/app/deploy.sh":
                 self.state["chmod_deploy"] = True
         elif mode_arg in ("-x",):
-            node.mode = node.mode[:2] + "0"
+            node.mode = "".join(str(int(c) & 6) for c in node.mode[:3])
         elif len(mode_arg) == 3 and mode_arg.isdigit():
             node.mode = mode_arg
         else:
@@ -588,12 +623,12 @@ class TerminalMaster(Scenario):
             raise CommandError(f"bash: {path}: 没有那个文件或目录")
         if node.kind == "dir":
             raise CommandError(f"bash: {path}: 是一个目录")
-        if "1" not in node.mode:
+        if not any(int(c) & 1 for c in node.mode[:3]):
             raise CommandError(f"bash: {path}: 权限不够（Permission denied）。先用 chmod +x 试试。")
         for line in node.content.splitlines():
             if line.startswith("#!"):
                 continue
-            parts = shlex.split(line)
+            parts = tokenize(line)
             if not parts:
                 continue
             if parts[0] == "echo":
@@ -629,12 +664,15 @@ class TerminalMaster(Scenario):
                 raise CommandError(f"grep: 正则错误：{exc}")
             hits = [ln for ln in out.splitlines() if rx.search(ln)]
             return "\n".join(hits) if hits else "（没有匹配的行）"
-        if r0 == "head":
-            n = int(right[right.index("-n") + 1]) if "-n" in right else 10
-            return "\n".join(out.splitlines()[:n])
-        if r0 == "tail":
-            n = int(right[right.index("-n") + 1]) if "-n" in right else 10
-            return "\n".join(out.splitlines()[-n:])
+        if r0 in ("head", "tail"):
+            n = 10
+            if "-n" in right:
+                try:
+                    n = int(right[right.index("-n") + 1])
+                except (ValueError, IndexError):
+                    raise CommandError(f"{right[0]}: -n 需要数字参数")
+            lines = out.splitlines()
+            return "\n".join(lines[:n] if r0 == "head" else lines[-n:])
         raise CommandError(f"{right[0]}: 暂不支持这个管道命令")
 
     # ---------------- 帮助 ----------------

@@ -78,6 +78,3 @@ class Scenario:
         """
         return {"theme": {"icon": "🛠", "title": "工作台", "accent": "#58a6ff"},
                 "panels": []}
-
-    def finish_hint(self, text):
-        return "💡 " + text
