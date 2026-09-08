@@ -141,6 +141,21 @@ body {
   animation: fadeIn 1.2s ease 0.3s both;
 }
 
+.date-header .overview {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  margin-top: 16px;
+  line-height: 1.8;
+  animation: fadeIn 1.2s ease 0.4s both;
+}
+
+.date-header .source {
+  color: var(--accent-dim);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  margin-top: 10px;
+}
+
 /* ── 时间线 ── */
 
 .timeline {

@@ -80,14 +80,13 @@ async function loadNarrative() {
     }
 
     var res = await fetch(url);
-    if (!res.ok) throw new Error('服务器返回错误: ' + res.status);
-    var data = await res.json();
-
+    // 先取 JSON：错误响应里也带着可读的 error 文案，别只甩一个状态码
+    var data = null;
+    try { data = await res.json(); } catch (e) { data = null; }
+    if (!res.ok) throw new Error((data && data.error) || ('服务器返回错误: ' + res.status));
     if (data.error) throw new Error(data.error);
 
-    document.getElementById('date').textContent = data.date;
-    document.getElementById('summary').textContent = data.summary;
-
+    renderHeader(data);
     renderTimeline(data.chapters);
     renderChapters(data.chapters);
     renderEnding(data.ending);
@@ -96,6 +95,24 @@ async function loadNarrative() {
       '<div class="error">无法读取历史记录：<br>' + escapeHtml(error.message) + '</div>' +
       '<div class="upload-hint"><p>试试 <a href="#" id="uploadLink">上传 JSON 文件</a></p></div>';
     setupUpload();
+  }
+}
+
+// ── 渲染头部（日期 / 摘要 / 概览 / 数据来源） ──
+
+function renderHeader(data) {
+  document.getElementById('date').textContent = data.date || '历史朗读者';
+  document.getElementById('summary').textContent = data.summary || '';
+
+  var overview = document.getElementById('overview');
+  if (overview) {
+    overview.textContent = data.overview || '';
+    overview.style.display = data.overview ? 'block' : 'none';
+  }
+
+  var source = document.getElementById('source');
+  if (source) {
+    source.textContent = data.source ? '数据来源：' + data.source : '';
   }
 }
 
@@ -140,7 +157,9 @@ function renderChapters(chapters) {
         '<span class="chapter-time">' + escapeHtml(chapter.time) + '</span>' +
         '<span class="chapter-stats">' + chapter.visits + ' 次访问 · ' + chapter.domains + ' 个网站</span>' +
       '</div>' +
-      '<div class="chapter-narrative" data-text="' + escapeHtml(chapter.narrative) + '"></div>';
+      '<div class="chapter-narrative"></div>';
+    // 用 dataset 赋值而不是拼进 HTML 属性：narrative 里出现引号也不会破坏属性边界
+    el.querySelector('.chapter-narrative').dataset.text = chapter.narrative || '';
     container.appendChild(el);
   });
 
@@ -164,7 +183,7 @@ function renderChapters(chapters) {
 // ── 打字机效果 ──
 
 function typewriterEffect(el) {
-  var text = el.getAttribute('data-text');
+  var text = el.dataset.text || '';
   var i = 0;
   var speed = 25;
 
@@ -224,13 +243,13 @@ function setupUpload() {
         });
         var result = await res.json();
 
+        if (!res.ok) throw new Error(result.error || ('服务器返回错误: ' + res.status));
         if (result.error) throw new Error(result.error);
 
-        document.getElementById('date').textContent = result.date;
-        document.getElementById('summary').textContent = result.summary;
         document.getElementById('chapters').innerHTML = '';
         document.getElementById('ending').style.display = 'none';
 
+        renderHeader(result);
         renderTimeline(result.chapters);
         renderChapters(result.chapters);
         renderEnding(result.ending);

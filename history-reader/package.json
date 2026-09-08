@@ -5,7 +5,11 @@
   "description": "The History Reader · 历史朗读者 — 把你的浏览器历史变成一首关于今天的小说",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node test/run.js"
+  },
+  "engines": {
+    "node": ">=16"
   },
   "dependencies": {
     "sql.js": "^1.8.0"

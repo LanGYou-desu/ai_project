@@ -2,7 +2,7 @@
 cd /d "%~dp0"
 
 echo.
-echo   The History Reader - History Reader
+echo   The History Reader - 历史朗读者
 echo.
 
 where node >nul 2>&1

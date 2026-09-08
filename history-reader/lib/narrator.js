@@ -6,11 +6,21 @@
 
 // ── 公共 API ──
 
+// 时段切分阈值：间隔超过 30 分钟视为不同时段。
+// 这个值必须 ≥ 30 分钟，否则「absorbed（沉浸）」模式永远不可能出现：
+// 3 条记录最多跨越 2 个间隔，15 分钟阈值下最多 30 分钟，达不到 60 分钟的门槛。
+const SESSION_GAP_MS = 30 * 60 * 1000;
+
 function generateNarrative(visits, timeRange) {
-  if (!visits || visits.length === 0) {
-    const emptyDate = timeRange ? formatDate(timeRange.startMs) + ' 到 ' + formatDate(timeRange.endMs) : '今天';
+  // 只保留带有效时间戳的记录：浏览器库或上传文件里混进一条 NaN 时间戳，
+  // 就足以让排序、时长和全部文案变成 NaN。
+  const clean = Array.isArray(visits)
+    ? visits.filter(function(v) { return v && Number.isFinite(v.visitTime); })
+    : [];
+
+  if (clean.length === 0) {
     return {
-      date: emptyDate,
+      date: periodLabel(timeRange),
       summary: '这个时间段你没有访问任何网站，或者历史记录不可用。',
       chapters: [],
       ending: '也许你在这个时间段需要的不是屏幕，而是别的什么。'
@@ -18,13 +28,13 @@ function generateNarrative(visits, timeRange) {
   }
 
   // 按时间排序（ oldest first ）
-  const sorted = [...visits].sort((a, b) => a.visitTime - b.visitTime);
-  const date = timeRange
+  const sorted = [...clean].sort((a, b) => a.visitTime - b.visitTime);
+  const date = hasRange(timeRange)
     ? formatDate(timeRange.startMs) + ' — ' + formatDate(timeRange.endMs)
     : formatDate(sorted[0].visitTime);
 
-  // 分组为时段（间隔 > 15 分钟视为不同时段）
-  const sessions = groupIntoSessions(sorted, 15 * 60 * 1000);
+  // 分组为时段（间隔 > 30 分钟视为不同时段）
+  const sessions = groupIntoSessions(sorted, SESSION_GAP_MS);
 
   // 生成章节
   const chapters = sessions.map(generateChapter);
@@ -44,7 +54,6 @@ function generateNarrative(visits, timeRange) {
 // ── 核心逻辑 ──
 
 function groupIntoSessions(visits, gapMs) {
-  gapMs = gapMs || 30 * 60 * 1000; // 30 分钟
   const sessions = [];
   let current = null;
 
@@ -207,7 +216,6 @@ function generateOverview(visits, chapters, timeRange) {
   const totalDuration = Math.round(
     (visits[visits.length - 1].visitTime - visits[0].visitTime) / 60000
   );
-  const periodLabel = timeRange ? (formatDate(timeRange.startMs) + ' 到 ' + formatDate(timeRange.endMs)) : '今天';
 
   // 统计各模式数量
   const counts = {};
@@ -229,14 +237,14 @@ function generateOverview(visits, chapters, timeRange) {
     return counts[p] + ' 段' + (patternLabels[p] || p);
   });
 
-  let overview = periodLabel + '，' + visits.length + ' 次访问，' + totalDomains + ' 个网站。';
+  let overview = periodLabel(timeRange) + '，' + visits.length + ' 次访问，' + totalDomains + ' 个网站。';
   overview += '在 ' + topDomain + ' 待得最久，一共 ' + totalDuration + ' 分钟。';
 
   if (parts.length > 0) {
     overview += ' 今天的节奏：' + parts.join('、') + '。';
   }
 
-  return overview;
+  return overview + truncationNote(visits, timeRange);
 }
 
 // ── 摘要 & 结尾 ──
@@ -244,8 +252,9 @@ function generateOverview(visits, chapters, timeRange) {
 function generateSummary(visits, timeRange) {
   const totalDomains = new Set(visits.map(extractDomain)).size;
   const topDomain = getTopDomainOverall(visits);
-  const period = timeRange ? (formatDate(timeRange.startMs) + ' 到 ' + formatDate(timeRange.endMs)) : '今天';
-  return period + '，你访问了 ' + visits.length + ' 次，' + totalDomains + ' 个网站，在 ' + topDomain + ' 待得最久。';
+  const period = periodLabel(timeRange);
+  return period + '，你访问了 ' + visits.length + ' 次，' + totalDomains + ' 个网站，在 ' + topDomain + ' 待得最久。' +
+    truncationNote(visits, timeRange);
 }
 
 function generateEnding(visits, chapters, timeRange) {
@@ -264,8 +273,7 @@ function generateEnding(visits, chapters, timeRange) {
   if (absorbedCount > 0) parts.push(absorbedCount + ' 个时段你在停留');
   if (scatteredCount > 0) parts.push(scatteredCount + ' 个时段你在切换');
 
-  const periodLabel = timeRange ? (formatDate(timeRange.startMs) + ' 到 ' + formatDate(timeRange.endMs)) : '今天';
-  var reflection = periodLabel + '，你一共访问了 ' + totalDomains + ' 个网站，在 ' + topDomain + ' 待得最久。';
+  var reflection = periodLabel(timeRange) + '，你一共访问了 ' + totalDomains + ' 个网站，在 ' + topDomain + ' 待得最久。';
 
   if (parts.length > 0) {
     reflection += '有 ' + parts.join('，') + '。';
@@ -278,10 +286,32 @@ function generateEnding(visits, chapters, timeRange) {
 
 // ── 工具函数 ──
 
+// 时间段是否可用（脏数据里的 NaN 不能进入文案）
+function hasRange(timeRange) {
+  return Boolean(timeRange) &&
+    Number.isFinite(timeRange.startMs) &&
+    Number.isFinite(timeRange.endMs);
+}
+
+function periodLabel(timeRange) {
+  return hasRange(timeRange)
+    ? formatDate(timeRange.startMs) + ' 到 ' + formatDate(timeRange.endMs)
+    : '今天';
+}
+
+// 读取时被 LIMIT 截断过，就明说，别让「你访问了 500 次」被误读成全部记录
+function truncationNote(visits, timeRange) {
+  if (!timeRange || !timeRange.truncated) return '';
+  return '（记录较多，这里只统计了最近 ' + visits.length + ' 条）';
+}
+
 function extractDomain(url) {
   try {
     var u = new URL(url);
-    return u.hostname.replace(/^www\./, '');
+    var host = u.hostname.replace(/^www\./, '');
+    // about:blank、chrome://history 这类没有主机名的地址不能留空，
+    // 否则文案会变成「在  待得最久」。
+    return host || '未知';
   } catch (e) {
     return '未知';
   }
