@@ -37,3 +37,21 @@ test('UMD：浏览器式全局可加载 scores', () => {
   assert.ok(sandbox.LB && sandbox.LB.scores);
   assert.ok(sandbox.LB.scores.SCORES['starlet']);
 });
+test('每首曲谱的音色/鼓点取值合法，且与数据里的曲目一一对应', () => {
+  const styles = ['piano', 'bell', 'lead', 'pad'];
+  const drums = ['none', 'soft'];
+  data.SONGS.forEach(s => {
+    const sc = scores.SCORES[s.id];
+    assert.ok(styles.includes(sc.style), s.id + ' 音色非法: ' + sc.style);
+    assert.ok(drums.includes(sc.drums), s.id + ' 鼓点非法: ' + sc.drums);
+    assert.strictEqual(sc.prog.length, 4);
+    assert.ok(sc.melody.length >= 4);
+  });
+  assert.strictEqual(Object.keys(scores.SCORES).length, data.SONGS.length, '曲谱与曲目数量必须一致');
+});
+test('melodyTrack 只依赖旋律本身（bpm 由调度器换算）', () => {
+  const t1 = scores.melodyTrack(scores.SCORES.starlet.melody);
+  const t2 = scores.melodyTrack(scores.SCORES.starlet.melody, 80);
+  assert.deepStrictEqual(t1, t2);
+  assert.strictEqual(t1.totalSteps, 64);
+});

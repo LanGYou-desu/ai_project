@@ -43,3 +43,35 @@ test('双来电回合存在（T3/T6/T9/T10）', () => {
   data.CALLS.forEach(c => { turns[c.turn] = (turns[c.turn] || 0) + 1; });
   [3, 6, 9, 10].forEach(t => assert.ok(turns[t] >= 2, '回合 ' + t + ' 应有至少两个来电'));
 });
+test('点播来电数量与文档一致（14 通来电中 10 通点歌）', () => {
+  assert.strictEqual(data.CALLS.length, 14);
+  assert.strictEqual(data.CALLS.filter(c => c.request).length, 10);
+});
+test('charFate 兜底不会输出 undefined（未覆盖的听众也有名字）', () => {
+  const g = { flags: {}, chars: {} };
+  const txt = data.charFate(g, { id: 'nobody', name: '无名氏', role: '路人' });
+  assert.strictEqual(txt, '无名氏：还好。');
+  assert.ok(!txt.includes('undefined'));
+});
+test('隐藏结局基准 BASE_ENDINGS 与 ENDINGS 一致', () => {
+  assert.strictEqual(data.BASE_ENDINGS.length, 6);
+  data.BASE_ENDINGS.forEach(id => assert.ok(data.ENDINGS[id], '基础结局必须存在: ' + id));
+  assert.ok(data.BASE_ENDINGS.indexOf('memorial') < 0, '隐藏结局不属于基础结局');
+  assert.strictEqual(data.memorialUnlocked(data.BASE_ENDINGS), true);
+  assert.strictEqual(data.memorialUnlocked(data.BASE_ENDINGS.slice(0, 5)), false);
+  assert.strictEqual(data.memorialUnlocked(null), false);
+  assert.strictEqual(data.memorialUnlocked('dawn'), false);
+});
+test('data.songById / charById 查得到也查不空', () => {
+  assert.strictEqual(data.songById('starlet').title, '《小星星变奏曲》');
+  assert.strictEqual(data.songById('nope'), null);
+  assert.strictEqual(data.charById('xiaoyu').name, '小雨');
+  assert.strictEqual(data.charById('nope'), null);
+});
+test('支线与考据引用的听众都存在', () => {
+  const ids = data.CHARACTERS.map(c => c.id);
+  data.ARCS.forEach(a => assert.ok(ids.includes(a.char), '支线角色必须存在: ' + a.char));
+  Object.keys(data.WORLD_NOTES).forEach(k => {
+    assert.ok(data.WORLD_NOTES[k].title && data.WORLD_NOTES[k].text);
+  });
+});

@@ -26,8 +26,8 @@
     var qual = CHORD_QUAL[m[2]] || [0, 4, 7];
     return qual.map(function (i) { return 440 * Math.pow(2, (root + i - 69) / 12); });
   }
-  // 旋律 -> 按 16 分音符展开的步骤表 {step: {freq, durSteps}}
-  function melodyTrack(melody, bpm) {
+  // 旋律 -> 按 16 分音符展开的步骤表 {step: {freq, durSteps}}（只依赖旋律本身，bpm 由调度器换算）
+  function melodyTrack(melody) {
     var map = {};
     var step = 0;
     melody.forEach(function (entry) {

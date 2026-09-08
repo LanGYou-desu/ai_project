@@ -14,14 +14,34 @@
   var ctx = null, master = null, analyser = null;
   var humGain = null, noiseGain = null, musicGain = null;
   var musicScore = null, track = null, schedTimer = null, nextT = 0, stepIdx = 0;
+  var volume = 0.9, noiseLevel = 0.05;      // 上下文创建前设置的音量/底噪要先记住
+  var trackCache = {};                       // 曲谱展开结果按曲目缓存
+  var hatBuffer = null;                      // 鼓点噪声只生成一次
+
+  // 一个音符用完的节点必须断开，否则整夜下来会累积上千个节点
+  function release(nodes) {
+    return function () {
+      for (var i = 0; i < nodes.length; i++) {
+        try { if (nodes[i] && nodes[i].disconnect) nodes[i].disconnect(); } catch (e) {}
+      }
+    };
+  }
 
   // ---------- 基础 ----------
+  function resumeCtx() {
+    if (!ctx || ctx.state !== 'suspended') return;
+    try {
+      var p = ctx.resume();
+      if (p && typeof p.catch === 'function') p.catch(function () {}); // 自动播放策略被拒时不产生未处理的 rejection
+    } catch (e) {}
+  }
+
   function ensure() {
-    if (ctx) return;
-    var AC = window.AudioContext || window.webkitAudioContext;
+    if (ctx) { resumeCtx(); return; }
+    var AC = (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) || null;
     if (!AC) return;
-    ctx = new AC();
-    master = ctx.createGain(); master.gain.value = 0.9;
+    try { ctx = new AC(); } catch (e) { ctx = null; return; }
+    master = ctx.createGain(); master.gain.value = volume;
     analyser = ctx.createAnalyser(); analyser.fftSize = 512;
     master.connect(analyser); analyser.connect(ctx.destination);
     var len = ctx.sampleRate * 2;
@@ -30,14 +50,14 @@
     for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * 0.5;
     var noise = ctx.createBufferSource(); noise.buffer = buf; noise.loop = true;
     var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200;
-    noiseGain = ctx.createGain(); noiseGain.gain.value = 0.05;
+    noiseGain = ctx.createGain(); noiseGain.gain.value = noiseLevel;
     noise.connect(lp); lp.connect(noiseGain); noiseGain.connect(master);
     noise.start();
     var hum = ctx.createOscillator(); hum.frequency.value = 50; hum.type = 'sine';
     humGain = ctx.createGain(); humGain.gain.value = 0.015;
     hum.connect(humGain); humGain.connect(master); hum.start();
     musicGain = ctx.createGain(); musicGain.gain.value = 0; musicGain.connect(master);
-    if (ctx.state === 'suspended') ctx.resume();
+    resumeCtx();
   }
 
   // ---------- 乐器（音色） ----------
@@ -63,6 +83,7 @@
     if (filter) filter.connect(g);
     g.connect(musicGain);
     o1.start(t); o1.stop(t + dur + 0.05);
+    o1.onended = release([o1, g, filter]);
     if (style === 'bell' || style === 'piano') {
       var o2 = ctx.createOscillator();
       o2.type = 'sine';
@@ -73,6 +94,7 @@
       g2.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.7);
       o2.connect(g2); g2.connect(musicGain);
       o2.start(t); o2.stop(t + dur);
+      o2.onended = release([o2, g2]);
     }
     if (style === 'pad') {
       var o3 = ctx.createOscillator();
@@ -83,6 +105,7 @@
       g3.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       o3.connect(g3); g3.connect(musicGain);
       o3.start(t); o3.stop(t + dur + 0.05);
+      o3.onended = release([o3, g3]);
     }
   }
 
@@ -98,21 +121,25 @@
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
     o.connect(g); g.connect(musicGain);
     o.start(t); o.stop(t + 0.15);
+    o.onended = release([o, g]);
   }
 
   function playHat(t, vol) {
     if (!ctx || !musicGain) return;
-    var len = Math.floor(ctx.sampleRate * 0.05);
-    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    var d = buf.getChannelData(0);
-    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
-    var src = ctx.createBufferSource(); src.buffer = buf;
+    if (!hatBuffer || hatBuffer.sampleRate !== ctx.sampleRate) {
+      var len = Math.floor(ctx.sampleRate * 0.05);
+      hatBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
+      var d = hatBuffer.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    }
+    var src = ctx.createBufferSource(); src.buffer = hatBuffer;
     var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6500;
     var g = ctx.createGain();
     g.gain.setValueAtTime(vol == null ? 0.1 : vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
     src.connect(hp); hp.connect(g); g.connect(musicGain);
-    src.start(t);
+    src.start(t); src.stop(t + 0.06);
+    src.onended = release([src, hp, g]);
   }
 
   // ---------- 音序器 ----------
@@ -121,6 +148,8 @@
   function scheduleAhead() {
     if (!musicScore || !track) return;
     var stepDur = spb(musicScore);
+    // 标签页被节流后 nextT 会落在过去，若不追上会一次性补发成百上千个音符
+    if (nextT < ctx.currentTime) nextT = ctx.currentTime + 0.02;
     while (nextT < ctx.currentTime + 0.22) {
       scheduleStep(stepIdx, nextT, stepDur);
       nextT += stepDur;
@@ -157,7 +186,8 @@
     if (typeof id === 'string') sc = SCORES[id] || null;
     if (!sc) return;
     musicScore = sc;
-    track = melodyTrack(sc.melody, sc.bpm);
+    // 同一首歌反复播放时不必重新展开曲谱
+    track = trackCache[id] || (trackCache[id] = melodyTrack(sc.melody));
     stepIdx = 0;
     nextT = ctx.currentTime + 0.12;
     var t = ctx.currentTime;
@@ -178,7 +208,12 @@
     }
   }
 
-  function setNoise(level) { if (noiseGain) noiseGain.gain.value = Math.max(0, Math.min(1, level)); }
+  // 底噪强度：上下文还没建立时先记住，建立后生效（平滑过渡，避免爆音）
+  function setNoise(level) {
+    noiseLevel = Math.max(0, Math.min(1, level));
+    if (!noiseGain || !ctx) return;
+    noiseGain.gain.setTargetAtTime(noiseLevel, ctx.currentTime, 0.4);
+  }
 
   // ---------- 仪表 ----------
   function vuLevel() {
@@ -197,12 +232,15 @@
     return data;
   }
 
-  function setVolume(v) { if (master) master.gain.value = Math.max(0, Math.min(1, v)); }
+  // 音量：上下文还没建立时先记住，ensure() 建好后立即生效（否则存档里的音量会被 0.9 覆盖）
+  function setVolume(v) {
+    volume = Math.max(0, Math.min(1, v));
+    if (master) master.gain.value = volume;
+  }
 
   function ring() {
-    ensure();
-    if (!ctx) return;
-    ctx.resume();
+    if (!ctx) return;           // 没有用户手势就不创建音频上下文（自动播放策略）
+    resumeCtx();
     var t = ctx.currentTime + 0.02;
     for (var i = 0; i < 2; i++) {
       var o = ctx.createOscillator();
@@ -213,6 +251,7 @@
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
       o.connect(g); g.connect(master);
       o.start(t); o.stop(t + 0.18);
+      o.onended = release([o, g]);
       t += 0.3;
     }
   }
@@ -236,8 +275,7 @@
     ambLfo.start();
   }
   function setAmbient(p) {
-    ensure();
-    if (!ctx) return;
+    if (!ctx) return;           // 不主动创建上下文（等用户手势），否则会被自动播放策略拦下
     ensureAmbient();
     var t = ctx.currentTime;
     var g = p.gain != null ? p.gain : 0.06;

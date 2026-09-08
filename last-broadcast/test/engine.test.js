@@ -197,3 +197,137 @@ test('charFate 覆盖全部听众（E3）', () => {
   });
   assert.ok(diff >= 3, '至少 3 位听众命运随状态变化，实际 ' + diff);
 });
+
+test('终局回合只能做最后发言：其他动作被拒绝，日志回合号不越界', () => {
+  const g = engine.createGame();
+  for (let i = 0; i < 11; i++) engine.applyAction(g, S('nightstar'));
+  const r = engine.applyAction(g, S('oldtape'));      // 曾会推进到 turn=12 并写出越界日志
+  assert.ok(r.error, '最后一刻不应接受播放歌曲');
+  assert.strictEqual(g.turn, 11);
+  assert.strictEqual(g.done, false);
+  assert.ok(g.log.every(l => data.TURNS[l.turn]), '所有日志都必须落在合法时段内');
+  const r2 = engine.applyAction(g, F('hope'));
+  assert.ok(!r2.error);
+  assert.strictEqual(g.done, true);
+  assert.ok(g.log.every(l => data.TURNS[l.turn]));
+});
+
+test('未到终局不能提前做最后发言（否则第 1 幕就能直接拿结局）', () => {
+  const g = engine.createGame();
+  const r = engine.applyAction(g, F('hope'));
+  assert.ok(r.error, '第 1 幕不应接受终局发言');
+  assert.strictEqual(g.done, false);
+  assert.strictEqual(g.finalChoice, null);
+});
+
+test('军队切频 / FREQUENCY X 只能在自己的回合处理', () => {
+  const g = engine.createGame();
+  assert.ok(engine.applyAction(g, SIG('military', 'ignore')).error, 'T0 不该能处理军队切频');
+  assert.strictEqual(g.flags.militaryHandled, false);
+  assert.ok(engine.applyAction(g, SIG('x', 'decode')).error, 'T0 不该能解码 X');
+  assert.strictEqual(g.turn, 0);
+  for (let i = 0; i < 5; i++) engine.applyAction(g, S('nightstar'));
+  assert.strictEqual(g.turn, data.SIGNAL_MILITARY.turn);
+  assert.ok(!engine.applyAction(g, SIG('military', 'ignore')).error, 'T5 应可处理军队切频');
+  assert.strictEqual(g.flags.militaryHandled, true);
+});
+
+test('存档校验：结构完整才可恢复（旧版本/被改坏的存档一律拒绝）', () => {
+  const good = engine.createGame();
+  assert.strictEqual(engine.isValidState(good), true);
+  assert.strictEqual(engine.isValidState(JSON.parse(JSON.stringify(good))), true);
+  assert.strictEqual(engine.isValidState(null), false);
+  assert.strictEqual(engine.isValidState({}), false);
+  const missing = JSON.parse(JSON.stringify(good)); delete missing.chars.lily;
+  assert.strictEqual(engine.isValidState(missing), false);
+  const badTurn = JSON.parse(JSON.stringify(good)); badTurn.turn = 99;
+  assert.strictEqual(engine.isValidState(badTurn), false);
+  const badLog = JSON.parse(JSON.stringify(good)); badLog.log = {};
+  assert.strictEqual(engine.isValidState(badLog), false);
+});
+
+test('新来电会顶掉还没兑现的点歌，并留下提示（不再悄悄丢失）', () => {
+  const g = engine.createGame();
+  engine.applyAction(g, S('nightstar'));
+  engine.applyAction(g, N('neutral'));
+  engine.applyAction(g, C('xiaoyu'));
+  assert.strictEqual(g.pendingRequest.songId, 'starlet');
+  engine.applyAction(g, C('daye'));
+  assert.strictEqual(g.pendingRequest.songId, 'oldtape');
+  assert.ok(g.log.some(l => l.text.includes('小雨') && l.text.includes('最终没有等到')),
+    '应提示上一首点播没等到');
+});
+
+test('availableActions：终局只给最后发言；X 锁定项带提示；无死字段', () => {
+  const g = engine.createGame();
+  const t0 = engine.availableActions(g);
+  assert.deepStrictEqual(t0.map(a => a.type), ['song', 'news', 'call', 'silence']);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(t0[0], 'unlockable'), false);
+
+  const gx = engine.createGame();
+  for (let i = 0; i < 10; i++) engine.applyAction(gx, S('nightstar'));
+  const x = engine.availableActions(gx).filter(a => a.which === 'x')[0];
+  assert.ok(x, 'T10 应列出 FREQUENCY X');
+  assert.strictEqual(x.locked, true, '没接温教授时应标记为听不懂');
+  assert.ok(x.hint.includes('温教授'));
+
+  engine.applyAction(gx, S('nightstar'));
+  assert.strictEqual(gx.turn, engine.TURN_COUNT - 1);
+  assert.deepStrictEqual(engine.availableActions(gx).map(a => a.type), ['final', 'final', 'final', 'final']);
+});
+
+test('收藏列表异常（非数组/空）不会让播放崩溃', () => {
+  const g = engine.createGame();
+  g.flags.favs = { starlet: true };
+  assert.ok(!engine.applyAction(g, S('starlet')).error);
+  g.flags.favs = null;
+  assert.ok(!engine.applyAction(g, S('starlet')).error);
+});
+
+test('极端动作序列（随机 200 局）：不抛异常、状态不越界、日志时段合法', () => {
+  // 固定种子的 LCG，保证可复现
+  let s = 123456789;
+  const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; };
+  const pick = arr => arr[Math.floor(rnd() * arr.length)];
+  const randAction = () => {
+    const kinds = ['song', 'news', 'call', 'signal', 'silence', 'final', 'bogus'];
+    const k = pick(kinds);
+    if (k === 'song') return S(pick(data.SONGS).id);
+    if (k === 'news') return N(pick(['soothe', 'neutral', 'truth']));
+    if (k === 'call') return C(pick(data.CHARACTERS).id);
+    if (k === 'signal') return SIG(pick(['military', 'x', 'weird']), pick(['relay', 'ignore', 'decode', 'bogus']));
+    if (k === 'final') return F(pick(['hope', 'truth', 'companion', 'silence', 'bogus']));
+    if (k === 'bogus') return { type: 'bogus' };
+    return SIL;
+  };
+  for (let game = 0; game < 200; game++) {
+    const g = engine.createGame('fuzz' + game);
+    for (let step = 0; step < 14; step++) {
+      assert.doesNotThrow(() => engine.applyAction(g, randAction()), '第 ' + game + ' 局第 ' + step + ' 步不应抛异常');
+      assert.ok(g.hope >= 0 && g.hope <= 100, 'hope 越界: ' + g.hope);
+      assert.ok(g.mood >= 0 && g.mood <= 100, 'mood 越界: ' + g.mood);
+      assert.ok(g.djStamina >= 0 && g.djStamina <= 100, '精力越界: ' + g.djStamina);
+      assert.ok(g.turn >= 0 && g.turn < engine.TURN_COUNT, '回合号越界: ' + g.turn);
+      assert.ok(g.log.every(l => data.TURNS[l.turn]), '日志时段越界');
+      Object.keys(g.chars).forEach(id => {
+        assert.ok(g.chars[id].hope >= 0 && g.chars[id].hope <= 100, id + ' 心情越界');
+      });
+      if (g.done) { assert.ok(engine.computeEnding(g).id, '结束后必须有结局'); break; }
+    }
+  }
+});
+
+test('歌曲对听众的影响与逐位匹配一致（曲目匹配缓存的等价性）', () => {
+  const clamp = v => Math.max(0, Math.min(100, v));
+  data.SONGS.forEach(song => {
+    const g = engine.createGame();
+    const before = {};
+    data.CHARACTERS.forEach(c => { before[c.id] = g.chars[c.id].hope; });
+    assert.ok(!engine.applyAction(g, S(song.id)).error, song.id);
+    data.CHARACTERS.forEach(c => {
+      const matches = song.tags.filter(t => c.likes.indexOf(t) >= 0).length;
+      const expected = matches > 0 ? clamp(before[c.id] + matches * 2 + (song.hope > 0 ? 1 : 0)) : before[c.id];
+      assert.strictEqual(g.chars[c.id].hope, expected, song.id + ' / ' + c.id);
+    });
+  });
+});

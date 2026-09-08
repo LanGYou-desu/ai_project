@@ -338,8 +338,9 @@
 
   function charFate(state, char) {
     var f = state.flags;
-    var st = state.chars[char.id] || { hope: 50 };
-    char = { id: char.id, hope: st.hope };
+    var st = (state.chars && state.chars[char.id]) || { hope: 50 };
+    var name = char.name || char.id;
+    char = { id: char.id, name: name, hope: st.hope };
     switch (char.id) {
       case 'susan': return char.hope >= 55 ? '苏珊把咖啡馆的灯开到天亮，门口挂着「免费热茶」。' : '苏珊锁了门。灯没有亮。';
       case 'twins': return f.lullaby ? '双胞胎在摇篮曲里睡着了，小熊收音机还抱在怀里。' : '小杰小安一夜没睡，数着窗外的光。';
@@ -365,6 +366,18 @@
     return null;
   }
 
+  function songById(id) {
+    for (var i = 0; i < SONGS.length; i++) if (SONGS[i].id === id) return SONGS[i];
+    return null;
+  }
+
+  // 隐藏结局/隐藏曲的解锁基准：6 个基础结局（dawn/signal/fire/dust/beacon/afterglow）
+  var BASE_ENDINGS = ['dawn', 'signal', 'fire', 'dust', 'beacon', 'afterglow'];
+  function memorialUnlocked(list) {
+    if (!Array.isArray(list)) return false;
+    return BASE_ENDINGS.every(function (id) { return list.indexOf(id) >= 0; });
+  }
+
   return {
     TURNS: TURNS, CHARACTERS: CHARACTERS, SONGS: SONGS, NEWS: NEWS, CALLS: CALLS,
     SIGNAL_MILITARY: SIGNAL_MILITARY, SIGNAL_X: SIGNAL_X,
@@ -372,6 +385,7 @@
     TURN_INTERLUDES: TURN_INTERLUDES,
     ARCS: ARCS, WORLD_NOTES: WORLD_NOTES,
     FINAL_OPTIONS: FINAL_OPTIONS, ENDINGS: ENDINGS,
-    charFate: charFate, charById: charById
+    BASE_ENDINGS: BASE_ENDINGS, memorialUnlocked: memorialUnlocked,
+    charFate: charFate, charById: charById, songById: songById
   };
 });

@@ -9,7 +9,7 @@
   var game = null;
   var history = [];   // [{hope, mood}] 每回合后快照
   var menu = 'main';  // main | songs | news | military | x
-  var ui = {};
+  var LAST_TURN = engine.TURN_COUNT - 1;
 
   var ACH = [
     { id: 'night1', name: '第一夜', desc: '完成一次完整的广播' },
@@ -22,28 +22,51 @@
 
   function $(id) { return document.getElementById(id); }
 
+  // ---------- 轻提示 ----------
+  var toastEl = null, toastTimer = null;
+  function toast(msg) {
+    if (!toastEl) {
+      toastEl = $('toast');
+      if (!toastEl) {
+        toastEl = document.createElement('div');
+        toastEl.id = 'toast';
+        toastEl.className = 'toast';
+        document.body.appendChild(toastEl);
+      }
+    }
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2600);
+  }
+
   // ---------- 渲染 ----------
+  // 剩余时间由时段表推算：终局那一幕的 22:00 就是零点（不能简单地用 24 - turn*2）
+  function hoursLeft() {
+    if (game.turn >= LAST_TURN) return 0;
+    var now = data.TURNS[game.turn].hour;
+    var end = data.TURNS[LAST_TURN].hour;
+    return (end - now + 24) % 24 || 24;
+  }
+
   function renderHeader() {
     var t = data.TURNS[game.turn];
     $('turnLabel').textContent = t.label;
-    var hoursLeft = 24 - game.turn * 2;
-    $('remaining').textContent = hoursLeft > 0 ? '还剩 ' + hoursLeft + ' 小时' : '终局时刻';
+    var left = hoursLeft();
+    $('remaining').textContent = left > 0 ? '还剩 ' + left + ' 小时' : '终局时刻';
     $('onair').className = 'onair ' + (menuHasMusic() ? 'on' : 'off');
     $('onair').textContent = menuHasMusic() ? '● ON AIR' : '○ OFF AIR';
     renderStamina();
   }
 
   function menuHasMusic() {
-    return game && game.turn < 11 && lastWasSong;
+    return game && game.turn < LAST_TURN && lastWasSong;
   }
   var lastWasSong = false;
   var lastAct = '— 静默 —';
   var vuStarted = false;
 
-  function songById(id) {
-    for (var i = 0; i < data.SONGS.length; i++) if (data.SONGS[i].id === id) return data.SONGS[i];
-    return null;
-  }
+  function songById(id) { return data.songById(id); }
 
   var AVATAR = {
     susan: '☕', twins: '🧸', xiaoyu: '🎀', daye: '🪑', apopo: '🧣',
@@ -74,7 +97,7 @@
     var html = '';
     var acts = engine.availableActions(game);
 
-    if (game.turn === 11) {
+    if (game.turn === LAST_TURN) {
       // 终局
       html += '<div class="btn primary" style="border-left-color:#ffd166">💬 这是你最后的发言——选择如何结束这一夜：</div>';
       acts.forEach(function (a) {
@@ -87,11 +110,12 @@
 
     if (menu === 'songs') {
       html += '<button class="btn back" data-act="back">← 返回</button>';
-      var memorialUnlocked = loadEndings().length >= 6;
+      var unlocked = memorialUnlocked();
+      var favList = favs();          // 只读一次 localStorage，别在循环里反复 parse
       data.SONGS.forEach(function (s) {
-        if (s.hidden && !memorialUnlocked) return;
+        if (s.hidden && !unlocked) return;
         var locked = s.unlockTurn != null && game.turn < s.unlockTurn;
-        var fav = favs().indexOf(s.id) >= 0;
+        var fav = favList.indexOf(s.id) >= 0;
         var eff = (s.hope >= 0 ? '+' : '') + s.hope + '希望 ' + (s.mood >= 0 ? '+' : '') + s.mood + '氛围 · 精力-3';
         var tag = s.tags.join('·') + (s.unlockTurn != null ? ' · 第' + (s.unlockTurn + 1) + '回合开放' : '');
         html += '<div class="song-row">' +
@@ -121,7 +145,7 @@
     } else {
       acts.forEach(function (a) {
         if (a.type === 'song') {
-          html += '<button class="btn primary" data-act="menu:songs"><span class="ic">🎵</span>播放歌曲<span class="sub">' + data.SONGS.length + ' 首</span></button>';
+          html += '<button class="btn primary" data-act="menu:songs"><span class="ic">🎵</span>播放歌曲<span class="sub">' + visibleSongCount() + ' 首</span></button>';
         } else if (a.type === 'news') {
           html += '<button class="btn primary" data-act="menu:news"><span class="ic">📢</span>新闻播报<span class="sub">3 种口径</span></button>';
         } else if (a.type === 'call') {
@@ -129,6 +153,9 @@
           var req = '';
           data.CALLS.forEach(function (cl) { if (cl.turn === game.turn && cl.caller === a.caller && cl.request) req = '点播《' + songById(cl.request).title.replace(/《|》/g, '') + '》'; });
           html += '<button class="btn call ring" data-act="call:' + a.caller + '"><span class="ic">📞</span><span class="ava">' + ava(a.caller) + '</span>接听来电 · ' + c.name + '<span class="sub">' + (req || c.role) + '</span></button>';
+        } else if (a.type === 'signal' && a.locked) {
+          // 没接温教授的电话：把"听不懂那个频率"显示成灰按钮，而不是让这条文案永远见不到光
+          html += '<button class="btn signal locked" disabled><span class="ic">📡</span>' + a.label + '<span class="sub">' + (a.hint || '做出选择') + '</span></button>';
         } else if (a.type === 'signal') {
           html += '<button class="btn signal" data-act="menu:' + a.which + '"><span class="ic">📡</span>' + a.label + '<span class="sub">做出选择</span></button>';
         } else if (a.type === 'silence') {
@@ -141,9 +168,17 @@
   }
 
   function favs() {
-    try { return JSON.parse(storage.get('lb-favs') || '[]'); } catch (e) { return []; }
+    var list;
+    try { list = JSON.parse(storage.get('lb-favs') || '[]'); } catch (e) { list = []; }
+    if (!Array.isArray(list)) return [];        // 手改过的/旧格式的存档不该让播放崩溃
+    return list.filter(function (id) { return typeof id === 'string'; });
   }
   function saveFavs(list) { storage.set('lb-favs', JSON.stringify(list)); }
+
+  function visibleSongCount() {
+    var unlocked = memorialUnlocked();
+    return data.SONGS.filter(function (s) { return !s.hidden || unlocked; }).length;
+  }
 
   function bindAct(el) {
     el.querySelectorAll('button[data-act]').forEach(function (b) {
@@ -156,7 +191,8 @@
           var i = list.indexOf(id);
           if (i >= 0) list.splice(i, 1); else list.push(id);
           saveFavs(list);
-          if (game.flags.favs) { var j = game.flags.favs.indexOf(id); if (j >= 0) game.flags.favs.splice(j, 1); else game.flags.favs.push(id); }
+          if (!Array.isArray(game.flags.favs)) game.flags.favs = list.slice();
+          else { var j = game.flags.favs.indexOf(id); if (j >= 0) game.flags.favs.splice(j, 1); else game.flags.favs.push(id); }
           renderActions();
           return;
         }
@@ -195,6 +231,10 @@
     });
   }
 
+  function turnLabelOf(i) {
+    return data.TURNS[i] ? data.TURNS[i].label.split(' · ')[0] : '—';
+  }
+
   function renderChars() {
     var el = $('chars');
     el.innerHTML = '';
@@ -203,6 +243,7 @@
       var honored = (c.id === 'laozhou' && game.flags.laozhouHonored) || (c.id === 'veteran' && game.flags.veteranHonored);
       var div = document.createElement('div');
       div.className = 'char' + (honored ? ' honored' : '');
+      div.title = c.intro;    // 数据里的"听众小传"用上了：悬停即可读
       div.innerHTML = '<span class="ava">' + ava(c.id) + '</span><span class="name">' + c.name + '</span><span class="role">' + c.role + '</span>' +
         '<span class="bar"><i class="' + moodClass(st.hope) + '" style="width:' + st.hope + '%"></i></span><span style="font-size:10px;color:var(--dim)">' + st.hope + '</span>';
       el.appendChild(div);
@@ -215,7 +256,7 @@
     game.log.forEach(function (l) {
       var div = document.createElement('div');
       div.className = 'entry ' + l.type;
-      div.innerHTML = '<span class="tt">' + data.TURNS[l.turn].label.split(' · ')[0] + '</span>' + l.text.replace(/\n/g, '<br>');
+      div.innerHTML = '<span class="tt">' + turnLabelOf(l.turn) + '</span>' + l.text.replace(/\n/g, '<br>');
       el.appendChild(div);
     });
     el.scrollTop = el.scrollHeight;
@@ -234,6 +275,13 @@
     }
   })();
 
+  var SKY_COLORS = {
+    bright: ['#16284f', '#0d1730'],
+    dim: ['#101c38', '#0a1022'],
+    dark: ['#0a0e1e', '#05070d'],
+    ruin: ['#170b0b', '#05070d']
+  };
+
   function drawSkyline() {
     var cv = $('skyline');
     var dpr = window.devicePixelRatio || 1;
@@ -245,12 +293,7 @@
     var turn = game.turn;
     var t = Date.now() / 1000;
 
-    var sky = {
-      bright: ['#16284f', '#0d1730'],
-      dim: ['#101c38', '#0a1022'],
-      dark: ['#0a0e1e', '#05070d'],
-      ruin: ['#170b0b', '#05070d']
-    }[phase] || sky.dark;
+    var sky = SKY_COLORS[phase] || SKY_COLORS.dark;
 
     var g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1]);
@@ -395,10 +438,9 @@
   function doAction(action) {
     if (game.done) return;
     var r = engine.applyAction(game, action);
-    if (r.error) return;
+    if (r.error) { toast('⛔ ' + r.error); return; }
     if (action.type === 'song') {
-      var s = null;
-      data.SONGS.forEach(function (x) { if (x.id === action.songId) s = x; });
+      var s = songById(action.songId);
       if (s) { synth.ensure(); synth.startMusic(s.id); lastWasSong = true; lastAct = '♪ ' + s.title; }
     } else if (action.type === 'final') {
       synth.ensure();
@@ -411,7 +453,6 @@
       else if (action.type === 'call') lastAct = '📞 通话中';
       else if (action.type === 'signal') lastAct = '📡 信号处理中';
       else if (action.type === 'silence') lastAct = '🤐 沉默';
-      else if (action.type === 'final') lastAct = '💬 最后发言';
     }
     history.push({ hope: game.hope, mood: game.mood });
     menu = 'main';
@@ -432,9 +473,10 @@
   }
   function continueSave() {
     var s = loadSave();
-    if (!s || !s.game) return false;
+    if (!s || !engine.isValidState(s.game)) return false;   // 旧版本/被改坏的存档直接拒绝，而不是让界面崩掉
     game = s.game;
-    history = s.history || [{ hope: game.hope, mood: game.mood }];
+    if (!Array.isArray(game.flags.favs)) game.flags.favs = favs();
+    history = (Array.isArray(s.history) && s.history.length) ? s.history : [{ hope: game.hope, mood: game.mood }];
     menu = 'main';
     lastWasSong = false;
     lastAct = '💾 已恢复存档';
@@ -449,9 +491,12 @@
 
   // ---------- 结局 ----------
   function loadEndings() {
-    try { return JSON.parse(localStorage.getItem('lb-endings') || '[]'); } catch (e) { return []; }
+    var list;
+    try { list = JSON.parse(storage.get('lb-endings') || '[]'); } catch (e) { list = []; }
+    return Array.isArray(list) ? list : [];
   }
-  function saveEndings(list) { localStorage.setItem('lb-endings', JSON.stringify(list)); }
+  function saveEndings(list) { storage.set('lb-endings', JSON.stringify(list)); }
+  function memorialUnlocked() { return data.memorialUnlocked(loadEndings()); }
 
   function cityArchive(state) {
     var f = state.flags;
@@ -463,7 +508,7 @@
     if (state.djStamina < 20) lines.push('值班员的嗓子哑了，但没有人抱怨。');
     if (state.hope >= 70) lines.push('天亮时，城市的灯比想象中多。');
     if (state.hope < 30) lines.push('天亮时，城市比想象中安静。');
-    if (state.pendingRequest) lines.push('有人在等一首没等到歌。');
+    if (state.pendingRequest) lines.push('有人点的那首歌，最终没有等到。');
     if (!lines.length) lines.push('这座城市记住了这个夜晚，以它自己的方式。');
     return lines;
   }
@@ -598,44 +643,29 @@
   function applyAmbient() {
     if (!game || game.done) { synth.ambientOff(); return; }
     var t = game.turn;
-    var p;
-    if (t <= 2) p = { gain: 0.05, filterFreq: 800, lfoRate: 0.2 };
-    else if (t <= 4) p = { gain: 0.09, filterFreq: 420, lfoRate: 0.3 };
-    else if (t === 5) p = { gain: 0.11, filterFreq: 700, lfoRate: 0.9 };
-    else if (t <= 7) p = { gain: 0.11, filterFreq: 2600, lfoRate: 0.25 };
-    else if (t <= 9) p = { gain: 0.14, filterFreq: 160, lfoRate: 0.4 };
-    else p = { gain: 0.06, filterFreq: 900, lfoRate: 0.18 };
+    var p, noise;
+    if (t <= 2) { p = { gain: 0.05, filterFreq: 800, lfoRate: 0.2 }; noise = 0.05; }
+    else if (t <= 4) { p = { gain: 0.09, filterFreq: 420, lfoRate: 0.3 }; noise = 0.06; }
+    else if (t === 5) { p = { gain: 0.11, filterFreq: 700, lfoRate: 0.9 }; noise = 0.09; }
+    else if (t <= 7) { p = { gain: 0.11, filterFreq: 2600, lfoRate: 0.25 }; noise = 0.06; }
+    else if (t <= 9) { p = { gain: 0.14, filterFreq: 160, lfoRate: 0.4 }; noise = 0.03; }
+    else { p = { gain: 0.06, filterFreq: 900, lfoRate: 0.18 }; noise = 0.04; }
     synth.setAmbient(p);
+    synth.setNoise(noise);      // 底噪随剧情起伏：军队切频最吵，停电后最安静
   }
 
   function render() {
     renderHeader(); renderBeat(); renderActions(); renderPhone(); renderChars(); renderLog();
-    renderNowPlaying(); drawSkyline(); drawChart(); applyAmbient();
+    renderNowPlaying(); applyAmbient();
+    // 天际线与情绪曲线由 vuLoop 每帧绘制，这里不再重复画一遍
   }
 
-  function boot() {
-    synth.cleanup();
-    game = engine.createGame();
-    game.flags.favs = favs();
-    // 隐藏结局解锁：集齐 6 个基础结局
-    var base6 = ['dawn', 'signal', 'fire', 'dust', 'beacon', 'afterglow'];
-    var got = loadEndings();
-    game.flags.memorialUnlocked = base6.every(function (id) { return got.indexOf(id) >= 0; });
-    history = [{ hope: 50, mood: 50 }];
-    menu = 'main';
-    lastWasSong = false;
-    lastAct = '— 静默 —';
-    // 重播统计
-    var plays = 1;
-    try { plays = (+storage.get('lb-plays') || 0) + 1; storage.set('lb-plays', String(plays)); } catch (e) {}
-    $('ending').classList.add('hidden');
-    $('endNight').textContent = '🌙 第 ' + plays + ' 夜 · 城市之声 FM 95.5';
-    // 存档继续按钮
-    $('btnContinue').classList.toggle('hidden', !loadSave());
-    $('btnReplay').addEventListener('click', function () {
-      synth.stopMusic();
-      boot();
-    });
+  // 全局事件只绑定一次（否则"再播一夜"会把监听器越叠越多）
+  var globalBound = false;
+  function bindGlobalOnce() {
+    if (globalBound) return;
+    globalBound = true;
+    $('btnReplay').addEventListener('click', function () { synth.stopMusic(); boot(); });
     $('btnLog').addEventListener('click', downloadLog);
     $('btnLore').addEventListener('click', showLore);
     $('btnLoreClose').addEventListener('click', function () { $('lorePanel').classList.add('hidden'); });
@@ -645,36 +675,64 @@
       var names = ACH.filter(function (a) { return list.indexOf(a.id) >= 0; }).map(function (a) { return a.name; });
       toast(names.length ? '已解锁：' + names.join('、') : '还没有成就——去完成一个夜晚吧');
     });
-    // 音量
-    var vol = 90;
-    try { vol = +localStorage.getItem('lb-vol') || 90; } catch (e) {}
-    $('vol').value = vol; $('volVal').textContent = vol;
-    synth.setVolume(vol / 100);
     $('vol').addEventListener('input', function () {
       var v = +this.value;
       $('volVal').textContent = v;
       synth.setVolume(v / 100);
-      try { localStorage.setItem('lb-vol', String(v)); } catch (e) {}
+      storage.set('lb-vol', String(v));
     });
     $('btnIntroOk').addEventListener('click', function () {
       $('intro').classList.add('hidden');
       storage.set('lb-intro-seen', '1');
     });
-    // 首次交互时解锁音频
     ['intro', 'lorePanel'].forEach(function (id) {
       $(id).addEventListener('click', function (ev) { if (ev.target === $(id)) $(id).classList.add('hidden'); });
     });
     document.addEventListener('keydown', function (ev) {
       if (ev.key === 'Escape') { $('intro').classList.add('hidden'); $('lorePanel').classList.add('hidden'); }
     });
+    // 首次交互解锁音频：此刻才允许创建 AudioContext（自动播放策略），并把环境音与来电铃补齐
     document.addEventListener('pointerdown', function once() {
       synth.ensure();
+      applyAmbient();
+      if (game && !game.done && data.CALLS.some(function (c) { return c.turn === game.turn; })) {
+        lastRingTurn = -1;      // 首屏那次铃声因没有上下文而没响，这里补一次
+        renderPhone();
+      }
       document.removeEventListener('pointerdown', once);
     }, { once: true });
     // 标签页隐藏时挂起音频（C2/E6）
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) { try { synth.cleanup(); } catch (e) {} } else { synth.ensure(); }
     });
+  }
+
+  function boot() {
+    synth.cleanup();
+    game = engine.createGame();
+    game.flags.favs = favs();
+    // 隐藏结局解锁：集齐 6 个基础结局（与引擎/曲单判定共用同一份基准）
+    game.flags.memorialUnlocked = memorialUnlocked();
+    history = [{ hope: 50, mood: 50 }];
+    menu = 'main';
+    lastWasSong = false;
+    lastAct = '— 静默 —';
+    lastRingTurn = -1;
+    // 重播统计
+    var plays = 1;
+    try { plays = (+storage.get('lb-plays') || 0) + 1; storage.set('lb-plays', String(plays)); } catch (e) {}
+    $('ending').classList.add('hidden');
+    $('endNight').textContent = '🌙 第 ' + plays + ' 夜 · 城市之声 FM 95.5';
+    // 存档继续按钮
+    $('btnContinue').classList.toggle('hidden', !loadSave());
+    // 音量（存的是 0-100）
+    var vol = 90;
+    try { vol = +storage.get('lb-vol') || 90; } catch (e) {}
+    $('vol').value = vol; $('volVal').textContent = vol;
+    synth.setVolume(vol / 100);
+    bindGlobalOnce();
+    // 隐私模式 / 禁用存储时明确告知：这一局的进度、收藏、结局图鉴都不会被记住
+    if (!storage.available) toast('⚠️ 浏览器不允许本地存储：这一局的进度与收藏不会被保存');
     // 首访介绍
     var seen = false;
     try { seen = storage.get('lb-intro-seen') === '1'; } catch (e) {}
@@ -728,16 +786,16 @@
   // ---------- 下载广播日志 ----------
   function downloadLog() {
     var lines = [];
+    var res = game.done ? engine.ending(game) : null;
     lines.push('LASTBROADCAST · 广播日志');
     lines.push('电台：城市之声 FM 95.5');
     lines.push('时间：隔离第七天 22:00 → 次日 22:00');
-    lines.push('结局：' + (game.done && engine.ending(game) ? engine.ending(game).ending.title : '进行中'));
+    lines.push('结局：' + (res ? res.ending.title : '进行中'));
     lines.push('最终发言：' + (game.finalWords || '—'));
     lines.push('城市希望 ' + game.hope + ' / 氛围 ' + game.mood + ' / 你的精力 ' + game.djStamina);
     lines.push('================================');
-    if (game.done && engine.ending(game)) {
-      var e = engine.ending(game).ending;
-      lines.push('达成条件：' + e.conditions);
+    if (res) {
+      lines.push('达成条件：' + res.ending.conditions);
       var road = engine.endingConditions(game);
       Object.keys(road).forEach(function (id) {
         var met = road[id].filter(function (c) { return c.met; }).length;
@@ -746,8 +804,7 @@
       lines.push('================================');
     }
     game.log.forEach(function (l) {
-      var t = data.TURNS[l.turn] ? data.TURNS[l.turn].label.split(' · ')[0] : '';
-      lines.push('[' + t + '] ' + l.text.replace(/\n/g, ' '));
+      lines.push('[' + turnLabelOf(l.turn) + '] ' + l.text.replace(/\n/g, ' '));
     });
     var blob = new Blob([lines.join('\r\n')], { type: 'text/plain;charset=utf-8' });
     var a = document.createElement('a');

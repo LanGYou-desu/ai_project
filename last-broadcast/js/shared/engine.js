@@ -51,15 +51,25 @@
     };
   }
 
-  function char(state, id) { return state.chars[id]; }
-
   function log(state, text, type) {
     state.log.push({ turn: state.turn, text: text, type: type || 'info' });
   }
 
-  function songById(id) {
-    for (var i = 0; i < data.SONGS.length; i++) if (data.SONGS[i].id === id) return data.SONGS[i];
-    return null;
+  function songById(id) { return data.songById(id); }
+
+  // 歌曲 -> 会被影响的听众（按曲目缓存，避免每次播放都重新匹配 15 位听众）
+  var SONG_MATCH_CACHE = {};
+  function songMatches(song) {
+    var cached = SONG_MATCH_CACHE[song.id];
+    if (cached) return cached;
+    var list = [];
+    data.CHARACTERS.forEach(function (c) {
+      var matches = 0;
+      song.tags.forEach(function (t) { if (c.likes.indexOf(t) >= 0) matches++; });
+      if (matches > 0) list.push({ id: c.id, matches: matches });
+    });
+    SONG_MATCH_CACHE[song.id] = list;
+    return list;
   }
 
   // 歌曲对听众的影响（低精力时效果打折）
@@ -69,10 +79,10 @@
     state.hope = clamp(state.hope + Math.round(song.hope * f));
     state.mood = clamp(state.mood + Math.round(song.mood * f));
     state.djStamina = clamp(state.djStamina - 3);
-    data.CHARACTERS.forEach(function (c) {
-      var st = state.chars[c.id];
-      var matches = song.tags.filter(function (t) { return c.likes.indexOf(t) >= 0; }).length;
-      if (matches > 0) st.hope = clamp(st.hope + Math.round((matches * 2 + (song.hope > 0 ? 1 : 0)) * f));
+    songMatches(song).forEach(function (hit) {
+      var st = state.chars[hit.id];
+      if (!st) return;
+      st.hope = clamp(st.hope + Math.round((hit.matches * 2 + (song.hope > 0 ? 1 : 0)) * f));
     });
     if (song.tags.indexOf('lullaby') >= 0) state.flags.lullaby = true;
     if (song.tags.indexOf('nostalgic') >= 0) state.flags.nostalgic = true;
@@ -90,13 +100,11 @@
       log(state, '（你没有放' + data.charById(state.pendingRequest.caller).name + '点的那首歌。她轻轻叹了口气。）', 'call');
       state.pendingRequest = null;
     }
-    // 收藏加成（D6）：播放收藏过的歌
-    if (state.flags.favs && state.flags.favs.indexOf(song.id) >= 0) {
+    // 收藏加成（D6）：播放收藏过的歌（收藏列表来自 localStorage，必须容错）
+    if (Array.isArray(state.flags.favs) && state.flags.favs.indexOf(song.id) >= 0) {
       state.hope = clamp(state.hope + 1);
       log(state, '（这是你收藏的歌——它听起来格外有力。）', 'song');
     }
-    // 记录点播达成
-    if (song.tags.indexOf('lullaby') >= 0 && state.flags.lullaby) { /* no-op */ }
   }
 
   function applyNews(state, tone) {
@@ -133,13 +141,21 @@
     if (callerId === 'laozhou') state.flags.laozhouHonored = true;
     if (callerId === 'veteran') state.flags.veteranHonored = true;
     state.flags.answered[callerId] = true;
-    if (call.request) state.pendingRequest = { caller: callerId, songId: call.request };
+    if (call.request) {
+      // 上一通电话的点歌还没放，就先被这一通顶掉了——留下痕迹，别让玩家悄悄丢东西
+      if (state.pendingRequest) {
+        var prev = data.charById(state.pendingRequest.caller);
+        log(state, '（' + (prev ? prev.name : '有人') + '点的那首歌，最终没有等到。）', 'call');
+      }
+      state.pendingRequest = { caller: callerId, songId: call.request };
+    }
     log(state, call.line + '\n你回答：' + call.reply, 'call');
     return {};
   }
 
   function applySignal(state, which, choice) {
     if (which === 'military') {
+      if (state.turn !== data.SIGNAL_MILITARY.turn) return { error: '军队还没有切频' };
       var m = data.SIGNAL_MILITARY;
       state.flags.militaryHandled = true;
       var opt = null;
@@ -153,6 +169,7 @@
       return {};
     }
     if (which === 'x') {
+      if (state.turn !== data.SIGNAL_X.turn) return { error: 'FREQUENCY X 还没出现' };
       var x = data.SIGNAL_X;
       if (!state.flags.professorMet) { log(state, x.locked, 'signal'); return { locked: true }; }
       var ox = null;
@@ -198,9 +215,17 @@
     }
   }
 
-  // 应用一个动作；返回 { events, done }
+  // 应用一个动作；返回 { done } 或 { error }
   function applyAction(state, action) {
+    if (!action || typeof action.type !== 'string') return { error: '未知动作' };
     if (state.done) return { done: true, error: '广播已结束' };
+    // 最后一个回合只有"最后发言"，其余动作会让回合号越界（日志/UI 会读到不存在的时段）
+    if (state.turn >= TURN_COUNT - 1 && action.type !== 'final') {
+      return { error: '已经是最后一刻，只能做最后的发言' };
+    }
+    if (action.type === 'final' && state.turn !== TURN_COUNT - 1) {
+      return { error: '还没到终局时刻' };
+    }
     var result = {};
     if (action.type === 'song') {
       var s = songById(action.songId);
@@ -270,7 +295,7 @@
         log(state, '💌 ' + data.charById(arc.char).name + '：' + arc.text, 'call');
       }
     });
-    return { done: state.done, advanced: true };
+    return { done: state.done };
   }
 
   // 当前回合可用动作（供 UI 渲染）
@@ -283,11 +308,19 @@
       });
       return list;
     }
-    list.push({ type: 'song', label: '播放歌曲', unlockable: data.SONGS.filter(function (s) { return !s.unlockTurn || state.turn >= s.unlockTurn; }).length < data.SONGS.length });
+    list.push({ type: 'song', label: '播放歌曲' });
     list.push({ type: 'news', label: '新闻播报' });
     data.CALLS.forEach(function (c) { if (c.turn === state.turn) list.push({ type: 'call', caller: c.caller, label: '接听来电 · ' + data.charById(c.caller).name }); });
     if (state.turn === data.SIGNAL_MILITARY.turn) list.push({ type: 'signal', which: 'military', label: '回应军用电台' });
-    if (state.turn === data.SIGNAL_X.turn && state.flags.professorMet) list.push({ type: 'signal', which: 'x', label: '解码 FREQUENCY X' });
+    if (state.turn === data.SIGNAL_X.turn) {
+      // 没接温教授的电话时也列出来，但标记 locked：UI 会渲染成"听不懂"的灰按钮，而不是让这条文案永远看不见
+      var met = !!state.flags.professorMet;
+      list.push({
+        type: 'signal', which: 'x', locked: !met,
+        label: met ? '解码 FREQUENCY X' : 'FREQUENCY X · 听不懂',
+        hint: met ? '' : data.SIGNAL_X.locked
+      });
+    }
     list.push({ type: 'silence', label: '沉默' });
     return list;
   }
@@ -381,10 +414,27 @@
     };
   }
 
+  // 存档校验（B6/健壮性）：旧存档、被手改过的存档都不该让界面崩掉
+  function isValidState(s) {
+    if (!s || typeof s !== 'object') return false;
+    if (typeof s.turn !== 'number' || !isFinite(s.turn) || s.turn < 0 || s.turn >= TURN_COUNT) return false;
+    if (typeof s.hope !== 'number' || typeof s.mood !== 'number' || typeof s.djStamina !== 'number') return false;
+    if (!s.flags || typeof s.flags !== 'object') return false;
+    if (!s.chars || typeof s.chars !== 'object') return false;
+    for (var i = 0; i < data.CHARACTERS.length; i++) {
+      var st = s.chars[data.CHARACTERS[i].id];
+      if (!st || typeof st.hope !== 'number') return false;
+    }
+    if (!Array.isArray(s.log)) return false;
+    if (!s.variants || typeof s.variants !== 'object') return false;
+    return true;
+  }
+
   return {
     TURN_COUNT: TURN_COUNT,
     createGame: createGame, applyAction: applyAction,
     availableActions: availableActions, computeEnding: computeEnding,
-    ending: ending, endingConditions: endingConditions, cityPhase: cityPhase
+    ending: ending, endingConditions: endingConditions, cityPhase: cityPhase,
+    isValidState: isValidState
   };
 });
