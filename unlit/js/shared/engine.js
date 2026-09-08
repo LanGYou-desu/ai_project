@@ -141,10 +141,10 @@
         if (o.id === '__start__' || o.id === '__exit__') continue;
         if (e.collected[o.id]) continue;
         const dx = o.x + 0.5 - e.px, dy = o.y + 0.5 - e.py;
-        const d = Math.hypot(dx, dy);
+        const d = AS.dist(e.px, e.py, o.x + 0.5, o.y + 0.5);
         if (d > TOUCH_RANGE) continue;
         const a = AS.relAngle(e.px, e.py, e.facing, o.x + 0.5, o.y + 0.5);
-        if (d > 0.9 && Math.abs(a) > TOUCH_CONE) continue;
+        if (d > 0.9 && !AS.isFacing(e.px, e.py, e.facing, o.x + 0.5, o.y + 0.5, TOUCH_CONE)) continue;
         if (!best || d < best.d) best = { obj: o, d, angle: a };
       }
       return best;
@@ -162,7 +162,7 @@
       if (e.mode !== 'play') return { noop: true };
       const t = nearestTouchable();
       if (!t) { say('你伸出手，摸了个空。'); return { found: false }; }
-      const m = t.obj.meta || meta(t.obj.id) || {};
+      const m = meta(t.obj.id) || {};
       const it = m.interact;
       if (!it) { touch(); return { found: true, interacted: false }; }
       return doInteract(t.obj, m, it);
@@ -185,11 +185,18 @@
           if (res && res.text) say(res.text);
           return { ok: true };
         }
-        case 'puzzle':
+        case 'puzzle': {
           e.mode = 'puzzle'; e.puzzleId = it.id;
+          // 谜题若挂了 NPC（如收银员），先把他的台词念出来——否则这些台词永远听不到
+          const p = cur().puzzles[it.id];
+          if (p && p.npc) {
+            const lines = (cur().dialogue && cur().dialogue[p.npc]) || [];
+            if (lines.length) say(lines.map(l => l.text).join(''), lines[0].who);
+          }
           say(openPuzzleText(it.id));
           emit('puzzle', it.id);
           return { ok: true, puzzle: it.id };
+        }
         case 'dialogue':
           startDialogue(it.npc);
           return { ok: true };
@@ -233,7 +240,7 @@
     }
     function dialogueNext() {
       if (e.mode !== 'dialogue') return null;
-      const lines = cur().dialogue[e.dialogueNpc] || [];
+      const lines = (cur().dialogue || {})[e.dialogueNpc] || [];
       e.dialogueIndex++;
       if (e.dialogueIndex >= lines.length) {
         const npc = e.dialogueNpc;
@@ -297,20 +304,30 @@
     }
 
     // ---------- 试音（实时节奏） ----------
+    const AUDITION_LEAD = 0.9;        // 第一拍之前的准备时间（秒）
+    const AUDITION_INTERVAL = 0.7;    // 拍间距
+    const AUDITION_WINDOW = 0.35;     // 判定窗口（±秒）
+    function beatAt(a, i) { return a.lead + i * a.interval; }
     function startAudition() {
-      e.audition = { total: 4, idx: 0, t: 0, interval: 0.7, hits: 0, beats: [], done: false };
+      e.audition = {
+        total: 4, idx: 0, t: 0, lead: AUDITION_LEAD, interval: AUDITION_INTERVAL,
+        window: AUDITION_WINDOW, hits: 0, beats: [], done: false
+      };
       e.mode = 'puzzle'; e.puzzleId = 'audition';
     }
     function updateAudition(dt) {
       const a = e.audition;
       if (!a || a.done) return;
+      // 离开面板（Escape 等）即暂停：否则计时继续跑，失败后会自动把面板弹回来
+      if (e.mode !== 'puzzle' || e.puzzleId !== 'audition') return;
       a.t += dt;
-      while (a.t >= a.idx * a.interval) {
-        a.beats.push({ at: a.idx * a.interval, hit: false });
+      while (a.idx < a.total && a.t >= beatAt(a, a.idx)) {
+        const at = beatAt(a, a.idx);
+        a.beats.push({ at, hit: false });
+        emit('beat', { index: a.idx, at, accent: a.idx === 0 });  // 节拍器发声交给前端
         a.idx++;
-        if (a.idx >= a.total) break;
       }
-      if (a.idx >= a.total && a.t > a.total * a.interval + 0.4) {
+      if (a.idx >= a.total && a.t > beatAt(a, a.total - 1) + 0.5) {
         a.done = true;
         const ok = a.hits >= 3;
         if (ok) { e.flags.auditionDone = true; say(cur().puzzles.audition.successText); }
@@ -321,13 +338,23 @@
     }
     function auditionPress() {
       const a = e.audition;
-      if (!a || a.done) return;
+      if (!a || a.done || e.mode !== 'puzzle' || e.puzzleId !== 'audition') return { hit: false };
       const now = a.t;
       for (let i = 0; i < a.beats.length; i++) {
         const b = a.beats[i];
-        if (!b.hit && Math.abs(now - b.at) <= 0.35) { b.hit = true; a.hits++; say('笃。', '节拍器'); return; }
+        if (!b.hit && Math.abs(now - b.at) <= a.window) {
+          b.hit = true; a.hits++;
+          say('笃。', '节拍器');
+          return { hit: true, beat: i };
+        }
       }
       say('（你按得早了/晚了……）');
+      return { hit: false };
+    }
+    function cancelAudition() {
+      if (e.puzzleId !== 'audition') return false;
+      e.audition = null; e.mode = 'play'; e.puzzleId = null;
+      return true;
     }
 
     // ---------- 烹饪 ----------
@@ -340,6 +367,7 @@
       if (stepId === 'pan' && panIntensity() < 0.8) { say('锅还没热透，再等等那阵"滋啦"。'); return { ok: false }; }
       if (stepId === 'board') {
         e.boardHits++;
+        emit('chop', { hits: e.boardHits });
         say('笃。' + (e.boardHits < 4 ? '（再切几刀：' + e.boardHits + '/4）' : ''));
         if (e.boardHits < 4) return { ok: false };
       }
@@ -375,12 +403,10 @@
           const road = c.roads[car.lane];
           const span = [car.x, car.x + car.len];
           const inside = span[0] < road.stopLineOut && span[1] > road.stopLineIn;
-          car.clearing = inside;
-          if (!inside) {
-            if (car.dir > 0 && car.x + car.len > road.stopLineIn) car.x = road.stopLineIn - car.len;
-            if (car.dir < 0 && car.x < road.stopLineOut) car.x = road.stopLineOut;
-            car.stopped = true;
-          }
+          if (inside) { car.clearing = true; continue; }   // 已在路口中：继续驶离
+          // 尚未到达停止线的车停下等待；已经越过路口的车继续开走
+          const beforeLine = car.dir > 0 ? span[1] <= road.stopLineIn : span[0] >= road.stopLineOut;
+          if (beforeLine) car.stopped = true;
         }
       } else if (e.signal.phase === 'green' && e.signal.t >= green) {
         e.signal.phase = 'red'; e.signal.t = 0;
@@ -406,8 +432,9 @@
         if (car.stopped && !car.clearing) continue;
         car.x += car.dir * car.speed * dt;
         const road = c.roads[car.lane];
-        if (car.clearing && car.dir > 0 && car.x > road.stopLineOut) { car.clearing = false; car.stopped = true; car.x = road.stopLineOut; }
-        if (car.clearing && car.dir < 0 && car.x + car.len < road.stopLineIn) { car.clearing = false; car.stopped = true; car.x = road.stopLineIn - car.len; }
+        // 驶离路口后恢复正常行驶（不原地冻结，否则车辆会停在路口边缘）
+        if (car.clearing && car.dir > 0 && car.x > road.stopLineOut) car.clearing = false;
+        if (car.clearing && car.dir < 0 && car.x + car.len < road.stopLineIn) car.clearing = false;
       }
       e.cars = e.cars.filter(car => car.x > -4 && car.x < e.map.w + 4);
       e.immuneT -= dt;
@@ -470,7 +497,9 @@
           if (it && it.type === 'portal') {
             if (it.needFlag && !e.flags[it.needFlag]) {
               if (it.failText) say(it.failText);
-              e.px -= Math.cos(e.facing) * 0.3; e.py -= Math.sin(e.facing) * 0.3;
+              // 后退半步，但别把玩家推进墙里
+              const bx = e.px - Math.cos(e.facing) * 0.3, by = e.py - Math.sin(e.facing) * 0.3;
+              if (walkable(bx, by)) { e.px = bx; e.py = by; }
               continue;
             }
             loadMap(e.chapterId, it.map, it.x + 0.5, it.y + 0.5, it.facing);
@@ -551,9 +580,14 @@
         if (!nav.active(id, e)) continue;
         const objs = e.map.objects.filter(o => o.id === id);
         if (!objs.length) continue;
-        const o = objs[0];
+        // 同名对象可能有多份（如街口两个提示器）：永远指向最近的那一个
+        let o = objs[0], bestD = Infinity;
+        for (const cand of objs) {
+          const cd = AS.dist(e.px, e.py, cand.x + 0.5, cand.y + 0.5);
+          if (cd < bestD) { bestD = cd; o = cand; }
+        }
         const dx = o.x + 0.5 - e.px, dy = o.y + 0.5 - e.py;
-        const d = Math.hypot(dx, dy);
+        const d = AS.dist(e.px, e.py, o.x + 0.5, o.y + 0.5);
         const a = AS.relAngle(e.px, e.py, e.facing, o.x + 0.5, o.y + 0.5);
         const dirText = Math.abs(a) < 0.4 ? '正前方' : a > 0 ? '右前方' : '左前方';
         return { id, name: (meta(id) || {}).name || '出口', x: o.x, y: o.y, d, dirText };
@@ -590,6 +624,44 @@
       }
     }
 
+    // ---------- 存档（进度快照，供 localStorage 持久化） ----------
+    const SAVE_VERSION = 1;
+    function snapshot() {
+      return {
+        v: SAVE_VERSION,
+        chapterId: e.chapterId, mapId: e.mapId,
+        px: e.px, py: e.py, facing: e.facing,
+        flags: { ...e.flags }, inventory: e.inventory.slice(), bought: e.bought.slice(),
+        collected: { ...e.collected }, factsUnlocked: e.factsUnlocked.slice(),
+        memory: e.memory.map(m => ({ ...m })),
+        cookStep: e.cookStep, boardHits: e.boardHits, stoveT: e.stoveT, panT: e.panT,
+        letterOk: { ...e.letterOk }, gameOver: e.gameOver, nearMiss: e.nearMiss
+      };
+    }
+    function restore(snap) {
+      if (!snap || snap.v !== SAVE_VERSION) return false;
+      const ch = Chapters.get(snap.chapterId);
+      if (!ch || !ch.maps[snap.mapId]) return false;
+      const x = Number(snap.px), y = Number(snap.py);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+      loadMap(snap.chapterId, snap.mapId, x, y, Number(snap.facing) || 0);
+      e.chapterTime = 0;
+      e.flags = { ...(snap.flags || {}) };
+      e.inventory = (snap.inventory || []).slice();
+      e.bought = (snap.bought || []).slice();
+      e.collected = { ...(snap.collected || {}) };
+      e.factsUnlocked = (snap.factsUnlocked || []).slice();
+      e.memory = (snap.memory || []).map(m => ({ ...m }));
+      e.cookStep = snap.cookStep || 0;
+      e.boardHits = snap.boardHits || 0;
+      e.stoveT = snap.stoveT || 0;
+      e.panT = snap.panT || 0;
+      e.letterOk = { xx: false, shiyin: false, ...(snap.letterOk || {}) };
+      e.gameOver = !!snap.gameOver;
+      e.nearMiss = snap.nearMiss || 0;
+      return true;
+    }
+
     // ---------- API 装配 ----------
     e.loadChapter = loadChapter; e.loadMap = loadMap;
     e.move = move; e.turn = turn;
@@ -600,7 +672,9 @@
     };
     e.touch = touch; e.interact = interact;
     e.solvePuzzle = solvePuzzle;
-    e.startAudition = startAudition; e.auditionPress = auditionPress;
+    e.startAudition = startAudition; e.auditionPress = auditionPress; e.cancelAudition = cancelAudition;
+    e.startDialogue = startDialogue;
+    e.snapshot = snapshot; e.restore = restore; e.SAVE_VERSION = SAVE_VERSION;
     e.dialogueNext = dialogueNext;
     e.update = update;
     e.say = say;

@@ -122,9 +122,27 @@
     return mask;
   }
 
+  // 整行磨损：返回新单元格（保留真实字符 ch，只让凸点缺角），并记录缺掉的点号
+  // 前端据此把缺角画成虚线点——"有些凸点已经磨平了"。
+  function wearCells(cells, rng, maxWear) {
+    return cells.map(function (cell) {
+      if (!cell.mask) return Object.assign({}, cell, { worn: false, wornDots: [] });
+      const dots = maskDots(cell.mask);
+      const n = Math.min(dots.length - 1, rng ? rng.int(1, maxWear || 2) : 1);
+      const removed = rng ? rng.shuffle(dots).slice(0, n) : dots.slice(0, n);
+      let mask = cell.mask;
+      for (const d of removed) mask &= ~(1 << (d - 1));
+      return Object.assign({}, cell, {
+        mask,
+        worn: removed.length > 0,
+        wornDots: removed.slice().sort(function (a, b) { return a - b; })
+      });
+    });
+  }
+
   return {
     ALPHA, NUMBER_SIGN, PUNCT, DIGIT_LETTER, LETTER_DIGIT,
     dotMask, maskDots, charToCell, textToCells, cellsToText,
-    cellToChar, renderChar, cellGrid, wearMask
+    cellToChar, renderChar, cellGrid, wearMask, wearCells
   };
 });

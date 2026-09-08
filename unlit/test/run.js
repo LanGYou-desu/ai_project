@@ -71,6 +71,29 @@ test('磨损至少保留一个点', () => {
     assert(w !== 0, 'must keep at least one dot');
   }
 });
+test('整行磨损：保留真实字符、凸点只减不增、记录缺点点号', () => {
+  const cells = Braille.textToCells('shiyin');
+  const worn = Braille.wearCells(cells, RNG.create(99), 2);
+  assertEq(worn.length, cells.length, '长度不变');
+  let damaged = 0;
+  for (let i = 0; i < cells.length; i++) {
+    assertEq(worn[i].ch, cells[i].ch, '字符仍然是原文（只磨凸点）');
+    assert((worn[i].mask & cells[i].mask) === worn[i].mask, '磨损掩码必须是原掩码的子集');
+    if (cells[i].mask) assert(worn[i].mask !== 0, '至少保留一个凸点');
+    if (worn[i].worn) {
+      damaged++;
+      assert(worn[i].wornDots.length > 0, '缺角点号要记录（前端画虚线点）');
+      for (const d of worn[i].wornDots) assert(!(worn[i].mask & (1 << (d - 1))), '缺角点号不应还在掩码里');
+    }
+  }
+  assert(damaged > 0, '这封信确实被磨过');
+});
+test('整行磨损同种子可复现', () => {
+  const cells = Braille.textToCells('xing xing de mi ma');
+  const a = Braille.wearCells(cells, RNG.create(1234), 2);
+  const b = Braille.wearCells(cells, RNG.create(1234), 2);
+  assertEq(JSON.stringify(a), JSON.stringify(b), '同一封信每次打开都一样');
+});
 
 // ---------------- 听觉数学 ----------------
 console.log('听觉数学 audioscene');
@@ -135,6 +158,23 @@ test('房间开放度：小房间小、大房间大', () => {
   const big = ['##########', '#........#', '#........#', '#........#', '#........#', '##########'].map(r => r.split(''));
   assert(Cane.nearestWallDist(small, 2.0, 2.0) < Cane.nearestWallDist(big, 5.0, 3.0));
 });
+test('斜向回声距离精确到厘米级（不再量化到 8cm 步长）', () => {
+  const grid = ['##########', '#........#', '#........#', '#........#', '#........#', '##########'].map(r => r.split(''));
+  const r = Cane.tap(grid, 1.5, 1.5, -Math.PI / 4, []);
+  assert(r.hit, 'should hit the top wall');
+  assertNear(r.dist, 0.5 * Math.SQRT2, 0.02, '斜向墙距');
+  const r2 = Cane.tap(grid, 1.5, 1.5, Math.PI / 2, []);
+  assertNear(r2.dist, 3.5, 0.02, '正前方墙距');
+});
+test('回声方位区分左右，pan 与方位一致', () => {
+  const grid = ['##########', '#........#', '#........#', '#........#', '#........#', '##########'].map(r => r.split(''));
+  const right = Cane.tap(grid, 4.5, 3.5, 0, [{ x: 7.5, y: 4.3 }]);
+  const left = Cane.tap(grid, 4.5, 3.5, 0, [{ x: 7.5, y: 2.7 }]);
+  assert(right.hit && right.by === 'object', 'right object should echo');
+  assert(left.hit && left.by === 'object', 'left object should echo');
+  assert(right.angle > 0 && right.pan > 0, '右侧目标 angle/pan 为正: ' + right.angle);
+  assert(left.angle < 0 && left.pan < 0, '左侧目标 angle/pan 为负: ' + left.angle);
+});
 
 // ---------------- 钱币 ----------------
 console.log('钱币 money');
@@ -152,12 +192,27 @@ test('付款：足够找零 / 不足拒绝', () => {
   assert(r2.ok);
   assertEq(r2.change, 250);
 });
+test('付款边界：空钱包被拒、正好付清找零 0', () => {
+  const empty = Money.pay([], 2750);
+  assert(!empty.ok);
+  assertEq(empty.short, 2750);
+  const exact = Money.pay([{ name: '10元', value: 1000 }], 1000);
+  assert(exact.ok);
+  assertEq(exact.change, 0);
+});
 
 // ---------------- 世界数据 ----------------
 console.log('世界数据 world');
 test('所有地图行等长、图例齐全、边界完整', () => {
   const errors = World.validate();
   assertEq(errors.length, 0, errors.join(' | '));
+});
+test('校验器能发现没封口的地图', () => {
+  World.register({ id: '__tmp_bad__', maps: { bad: { raw: ['#####', '#...#', '####.'].join('\n'), legend: {} } } });
+  try {
+    const errors = World.validate();
+    assert(errors.some(x => x.indexOf('__tmp_bad__') >= 0), 'should flag the broken map: ' + JSON.stringify(errors));
+  } finally { delete World.CHAPTERS.__tmp_bad__; }
 });
 test('每章入口地图有出生点', () => {
   for (const id of ['ch0', 'ch1', 'ch2', 'ch3', 'ch4', 'ch5']) {
@@ -414,6 +469,19 @@ test('语音导航目标随进度变化', () => {
   touchObj(e, 'closet');
   assertEq(e.navTarget().id, 'door');
 });
+test('语音导航指向最近的同名目标（街口有两个提示器）', () => {
+  const e = makeEngine();
+  e.loadChapter('ch2');
+  const signs = e.map.objects.filter(o => o.id === 'crossSignA');
+  assert(signs.length === 2, 'street has two beepers: ' + signs.length);
+  // 站在南侧提示器旁：导航应该指向它，而不是地图上先出现的北侧那个
+  const south = signs.reduce((a, b) => (a.y > b.y ? a : b));
+  e.px = south.x + 0.5; e.py = south.y + 1.5; e.facing = 0;
+  const nav = e.navTarget();
+  assertEq(nav.id, 'crossSignA');
+  assertEq(nav.y, south.y, 'nearest beeper row');
+  assert(nav.d < 2, 'distance should be small: ' + nav.d);
+});
 
 // ---------------- 过街仿真 ----------------
 console.log('过街仿真 crossing');
@@ -467,6 +535,52 @@ test('被撞后推回安全行并记录', () => {
   e.update(0.1);
   assert(e.nearMiss >= 1, 'nearMiss recorded');
   assert(![3, 4, 7, 8].includes(Math.floor(e.py)), 'pushed off road: ' + e.py);
+});
+test('绿灯时已越过路口的车不会被拉回停止线', () => {
+  const e = makeEngine();
+  e.loadChapter('ch2');
+  e.cars.push({ lane: 0, row: 3, dir: 1, x: 20, y: 3.5, speed: 1.3, len: 2, stopped: false, clearing: false });
+  e.cars.push({ lane: 1, row: 7, dir: -1, x: -2, y: 7.5, speed: 1.3, len: 2, stopped: false, clearing: false });
+  e.signal = { phase: 'red', t: 4.99 };
+  e.update(0.05);
+  assertEq(e.signal.phase, 'green');
+  const gone = e.cars.find(c => c.dir > 0);
+  const leaving = e.cars.find(c => c.dir < 0);
+  assert(gone && gone.x >= 20, '已通过路口的车不能被倒着拉回来: x=' + (gone && gone.x));
+  assert(gone && !gone.stopped, '已通过路口的车不该被冻结');
+  assert(leaving && leaving.x < 11, '刚驶出左侧的车不能被瞬移到路口右侧: x=' + (leaving && leaving.x));
+});
+test('绿灯时已越过路口的车继续驶离（不冻结在路口边缘）', () => {
+  const e = makeEngine();
+  e.loadChapter('ch2');
+  e.cars.push({ lane: 0, row: 3, dir: 1, x: 20, y: 3.5, speed: 1.3, len: 2, stopped: false, clearing: false });
+  e.signal = { phase: 'red', t: 4.99 };
+  e.update(0.05);
+  const before = e.cars[0].x;
+  for (let i = 0; i < 40; i++) e.update(0.05);
+  assert(e.cars[0].x > before + 1, '车应该继续开走: ' + before + ' → ' + e.cars[0].x);
+});
+test('绿灯时未到停止线的车停在路口外等待', () => {
+  const e = makeEngine();
+  e.loadChapter('ch2');
+  e.cars.push({ lane: 0, row: 3, dir: 1, x: 5, y: 3.5, speed: 1.3, len: 2, stopped: false, clearing: false });
+  e.signal = { phase: 'red', t: 4.99 };
+  e.update(0.05);
+  const car = e.cars[0];
+  const road = e.crossing.roads[0];
+  assert(car.stopped, '未到停止线的车要停下');
+  assert(car.x + car.len <= road.stopLineIn, '不能占住斑马线: ' + (car.x + car.len));
+});
+test('红灯恢复后车辆重新行驶', () => {
+  const e = makeEngine();
+  e.loadChapter('ch2');
+  e.cars.push({ lane: 0, row: 3, dir: 1, x: 5, y: 3.5, speed: 1.3, len: 2, stopped: true, clearing: false });
+  e.signal = { phase: 'green', t: 7.99 };
+  e.update(0.05);
+  assertEq(e.signal.phase, 'red');
+  const x0 = e.cars[0].x;
+  for (let i = 0; i < 20; i++) e.update(0.05);
+  assert(e.cars[0].x > x0, '红灯时车流恢复: ' + x0 + ' → ' + e.cars[0].x);
 });
 test('陌生人事件在安全岛触发', () => {
   const e = makeEngine();
@@ -579,13 +693,143 @@ test('试音：跟上 4 拍通过', () => {
   }
   assertEq(e.flags.auditionDone, true, 'audition passed');
 });
-test('烹饪顺序：乱序被拒', () => {
+test('试音：第一拍前有准备时间，且每一拍都会发事件（前端据此发声）', () => {
   const e = makeEngine();
+  e.loadChapter('ch4');
+  e.loadMap('ch4', 'shop', 2, 10, 0);
+  const beats = [];
+  e.onEvent = (ev) => { if (ev.type === 'beat') beats.push(ev.data); };
+  e.startAudition();
+  assert(e.audition.lead >= 0.5, '第一拍不能一开场就响: ' + e.audition.lead);
+  assertEq(beats.length, 0, '还没到时间就不该有拍子');
+  pump(e, 4.2);
+  assertEq(beats.length, 4, '4 拍都发出了事件: ' + beats.length);
+  assert(beats[0].at >= 0.5, '第一拍在准备时间之后');
+  for (let i = 1; i < beats.length; i++) assert(beats[i].at > beats[i - 1].at, '拍子按时间递增');
+  assert(beats[0].accent, '第一拍是重音');
+});
+test('试音：窗口外按键不计入', () => {
+  const e = makeEngine();
+  e.loadChapter('ch4');
+  e.loadMap('ch4', 'shop', 2, 10, 0);
+  e.startAudition();
+  pump(e, 0.2);                 // 第一拍之前
+  const r = e.auditionPress();
+  assert(!r.hit, '太早按下不算');
+  assertEq(e.audition.hits, 0);
+});
+test('试音：离开面板即暂停，不会自动把面板弹回来', () => {
+  const e = makeEngine();
+  e.loadChapter('ch4');
+  e.loadMap('ch4', 'shop', 2, 10, 0);
+  e.startAudition();
+  assert(e.cancelAudition(), '取消成功');
+  assertEq(e.mode, 'play');
+  assertEq(e.audition, null);
+  pump(e, 20);
+  assertEq(e.mode, 'play', '不该自动重开谜题');
+  assert(!e.flags.auditionDone, '不该偷偷判定通过');
+});
+test('烹饪顺序：乱序被拒', () => {  const e = makeEngine();
   e.loadChapter('ch5');
   e.loadMap('ch5', 'kitchen', 13, 10, Math.PI);
   touchObj(e, 'stove');
   assert(e.cookStep === 0, 'stove before sink rejected');
   assert(!e.gameOver);
+});
+test('电梯未到时进门会被推回，且不会卡进墙里', () => {
+  const e = makeEngine();
+  e.loadChapter('ch1');
+  e.loadMap('ch1', 'corridor', 2, 6, 0);
+  e.px = 8.0; e.py = 2.5; e.facing = 0;      // 面朝电梯门
+  e.move(1, 0);
+  assertEq(e.mapId, 'corridor', '没呼梯就不该进电梯');
+  assertEq(e.px <= 8.0 + 1e-9, true, '被推回门外: ' + e.px);
+  const row = e.map.grid[Math.floor(e.py)];
+  assert(row && row[Math.floor(e.px)] !== '#', '不能被推进墙里');
+});
+test('切菜会发出落刀事件（前端据此播放"笃"声）', () => {
+  const e = makeEngine();
+  e.loadChapter('ch5');
+  e.loadMap('ch5', 'kitchen', 13, 10, Math.PI);
+  const events = [];
+  e.onEvent = (ev) => { if (ev.type === 'chop') events.push(ev.data); };
+  touchObj(e, 'sink');
+  e.stoveT = 10;
+  touchObj(e, 'stove');
+  for (let i = 0; i < 3; i++) touchObj(e, 'board');
+  assertEq(events.length, 3, '三刀三个事件');
+  assertEq(events[2].hits, 3, '事件里带刀数');
+});
+test('收银台会念出店员的无障碍支付提示（谜题挂 NPC 台词）', () => {
+  const e = makeEngine();
+  e.loadChapter('ch3');
+  e.loadMap('ch3', 'market', 1, 1, 0);
+  touchObj(e, 'cashier');
+  const spoken = e.log.map(m => m.text).join('');
+  assert(spoken.indexOf('纸币') >= 0, '店员的提示必须真的念出来: ' + spoken.slice(0, 60));
+});
+test('老板在试音结束后会说台词（不是只返回一句硬编码）', () => {
+  const e = makeEngine();
+  e.loadChapter('ch4');
+  e.loadMap('ch4', 'shop', 2, 10, 0);
+  e.flags.letterRead = true; e.flags.bookFound = true; e.flags.auditionDone = true;
+  const boss = e.map.objects.find(o => o.id === 'boss');
+  e.px = boss.x + 1.5; e.py = boss.y + 0.5; e.facing = Math.PI;
+  e.interact();
+  assertEq(e.mode, 'dialogue');
+  assertEq(e.dialogueNpc, 'boss');
+  const lines = [];
+  let guard = 0;
+  while (e.mode === 'dialogue' && guard++ < 10) { e.dialogueNext(); lines.push(e.currentMessage.text); }
+  assert(lines.join('').indexOf('无光电台') >= 0, '老板的台词里应有无光电台');
+});
+
+// ---------------- 存档 ----------------
+console.log('存档 save');
+test('存档：快照/恢复完整还原进度（可 JSON 往返）', () => {
+  const e = makeEngine();
+  e.loadChapter('ch3');
+  touchObj(e, 'shelfRice');
+  touchObj(e, 'shelfTomato');
+  e.addMarker('sound', 3, 3);
+  e.unlockFact('braille');
+  const snap = JSON.parse(JSON.stringify(e.snapshot()));
+  const e2 = makeEngine();
+  assert(e2.restore(snap), 'restore should succeed');
+  assertEq(e2.chapterId, 'ch3');
+  assertEq(e2.mapId, 'market');
+  assertEq(e2.bought.length, 2, 'bought');
+  assertEq(e2.collected.shelfRice, true, 'collected');
+  assert(e2.factsUnlocked.includes('braille'), 'facts');
+  assertEq(e2.memory.length, 1, 'memory');
+  assertNear(e2.px, e.px, 1e-9); assertNear(e2.py, e.py, 1e-9); assertNear(e2.facing, e.facing, 1e-9);
+  assertEq(e2.mode, 'play', 'restore always resumes in play mode');
+});
+test('存档：烹饪进度能续上并接着做', () => {
+  const e = makeEngine();
+  e.loadChapter('ch5');
+  touchObj(e, 'sink');
+  e.stoveT = 3.0;
+  const snap = JSON.parse(JSON.stringify(e.snapshot()));
+  const e2 = makeEngine();
+  assert(e2.restore(snap));
+  assertEq(e2.cookStep, 1);
+  assertNear(e2.stoveT, 3.0, 1e-9);
+  assert(waitFor(e2, () => e2.stoveIntensity() >= 0.85, 30), 'water can still boil after restore');
+  touchObj(e2, 'stove');
+  assertEq(e2.cookStep, 2, 'cook continues');
+});
+test('存档：版本不符/未知章节被拒绝且不破坏当前状态', () => {
+  const e = makeEngine();
+  e.loadChapter('ch0');
+  assert(!e.restore(null));
+  assert(!e.restore({ v: 999, chapterId: 'ch0', mapId: 'bedroom', px: 1, py: 1 }));
+  assert(!e.restore({ v: 1, chapterId: 'nope', mapId: 'bedroom', px: 1, py: 1 }));
+  assert(!e.restore({ v: 1, chapterId: 'ch0', mapId: 'nope', px: 1, py: 1 }));
+  assert(!e.restore({ v: 1, chapterId: 'ch0', mapId: 'bedroom', px: NaN, py: 1 }));
+  assertEq(e.chapterId, 'ch0', 'current state untouched');
+  assertEq(e.mapId, 'bedroom');
 });
 
 // ---------------- 全流程通关 ----------------

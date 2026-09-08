@@ -18,14 +18,27 @@
     return c === undefined || c === '#';
   }
 
+  // 沿朝向射线求到墙的精确距离：粗步进定位命中区间，再二分细化（误差 < 1cm）
+  function rayWallDist(grid, px, py, facing) {
+    const cx = Math.cos(facing), cy = Math.sin(facing);
+    let prev = 0;
+    for (let d = STEP; d <= RANGE; d += STEP) {
+      if (isWall(grid, px + cx * d, py + cy * d)) {
+        let lo = prev, hi = d;
+        for (let i = 0; i < 16; i++) {
+          const mid = (lo + hi) / 2;
+          if (isWall(grid, px + cx * mid, py + cy * mid)) hi = mid; else lo = mid;
+        }
+        return hi;
+      }
+      prev = d;
+    }
+    return null;
+  }
+
   // 敲击回声：返回 { hit, dist, angle(相对), pan, openness, by }
   function tap(grid, px, py, facing, obstacles) {
-    let wallDist = null;
-    for (let d = 0.3; d <= RANGE; d += STEP) {
-      const x = px + Math.cos(facing) * d;
-      const y = py + Math.sin(facing) * d;
-      if (isWall(grid, x, y)) { wallDist = d; break; }
-    }
+    const wallDist = rayWallDist(grid, px, py, facing);
     let best = null;
     for (const o of obstacles || []) {
       const dx = o.x - px, dy = o.y - py;
@@ -55,5 +68,5 @@
     return min;
   }
 
-  return { tap, nearestWallDist, isWall, CONE, RANGE };
+  return { tap, rayWallDist, nearestWallDist, isWall, CONE, RANGE };
 });

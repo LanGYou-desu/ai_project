@@ -58,7 +58,13 @@
         const rows = m.raw.split('\n').map(r => r.replace(/\r/g, ''));
         const len = rows[0].length;
         rows.forEach((r, i) => { if (r.length !== len) errors.push(cid + '/' + mid + ' row' + i + ' length ' + r.length + ' != ' + len); });
-        if (rows[0][0] !== '#' || rows[rows.length - 1][0] !== '#') errors.push(cid + '/' + mid + ' border?');
+        // 四面封闭：每一行首尾都是墙，首尾两行整行是墙
+        rows.forEach((r, i) => {
+          if (r[0] !== '#' || r[r.length - 1] !== '#') errors.push(cid + '/' + mid + ' row' + i + ' not closed: ' + JSON.stringify(r));
+        });
+        for (const i of [0, rows.length - 1]) {
+          if (/[^#]/.test(rows[i])) errors.push(cid + '/' + mid + ' row' + i + ' top/bottom must be all walls');
+        }
         for (const c of Object.keys(m.legend || {})) {
           if (!m.raw.includes(c)) errors.push(cid + '/' + mid + ' legend char ' + c + ' not in map');
         }

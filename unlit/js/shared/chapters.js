@@ -357,7 +357,8 @@
         if (!g.flags.letterRead) return { text: '老板温和地说："先读读那封信吧，在阅读桌上。"' };
         if (!g.flags.bookFound) return { text: '老板笑了笑："《星星的密码》还在书架上等你。"' };
         if (!g.flags.auditionDone) { g.startAudition(); return { text: '老板敲了敲桌面："来，跟着我的节拍试一句音——每一声之后，按 E。"' }; }
-        return { text: '老板点点头："明天下午三点，无光电台。别怕，黑屋子里的声音，才最真。"' };
+        g.startDialogue('boss');
+        return {};
       } } }
     }
   };
@@ -449,6 +450,7 @@
     pay: {
       title: '结账',
       desc: '店员说："一共 27 元 5 角。"你把手伸进钱包，摸到纸币和硬币。',
+      npc: 'clerk',
       items: [
         { id: 'm1', name: '大米', price: 1200 },
         { id: 'm2', name: '番茄', price: 450 },
@@ -530,8 +532,7 @@
   ch3.dialogue = {
     clerk: [
       { who: '店员', text: '您好，一共 27 元 5 角。' },
-      { who: '店员', text: '纸币角上有凸点，硬币呢，大的锯齿边是一元，小的是五角、一角——您慢慢摸，不着急。' },
-      { who: '店员', text: '谢谢惠顾！我帮您把东西装好。' }
+      { who: '店员', text: '纸币角上有凸点，硬币呢，大的锯齿边是一元，小的是五角、一角——您慢慢摸，不着急。' }
     ]
   };
   ch4.dialogue = {
@@ -541,7 +542,6 @@
       { who: '老板', text: '无光电台明天下午三点试音。别怕。黑屋子里的声音，才最真。' }
     ]
   };
-  ch5.dialogue = {};
 
   // ---------------- 注册 ----------------
   [ch0, ch1, ch2, ch3, ch4, ch5].forEach(c => world.register(c));

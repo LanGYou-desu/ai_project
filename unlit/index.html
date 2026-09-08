@@ -3,31 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="无光之城 UNLIT：用白杖回声、信号灯提示音和盲文，体验视障者的日常。纯前端零依赖，全程键盘可玩。">
 <title>无光之城 UNLIT · 盲者体验馆</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- 世界（纯黑画布） -->
-  <canvas id="world"></canvas>
+  <!-- 世界（纯黑画布，纯装饰：所有信息都能听到） -->
+  <canvas id="world" aria-hidden="true"></canvas>
 
   <!-- 标题屏 -->
-  <div id="title" class="overlay center">
+  <div id="title" class="overlay center" role="dialog" aria-modal="true" aria-labelledby="gameTitle">
     <div class="title-inner">
       <div class="braille-deco" aria-hidden="true">⠓⠑⠇⠇⠕</div>
-      <h1>无光之城</h1>
+      <h1 id="gameTitle">无光之城</h1>
       <p class="sub">UNLIT · 盲者体验馆</p>
       <p class="desc">三个月前，你失去了视力。<br>今天是你重学日常的第一天。<br><br>戴上耳机，用耳朵去看这个世界。</p>
       <div class="tips">
         <p>🎧 强烈建议佩戴耳机游玩 · 全程键盘操作</p>
-        <p>沉浸模式：屏幕几乎全黑，一切靠听<br>辅助模式：Tab 随时切换，显示微弱轮廓</p>
+        <p>沉浸模式（默认）：屏幕几乎全黑，一切靠听<br>辅助模式：Tab 或下方按钮随时切换，显示微弱轮廓</p>
       </div>
       <button id="btnStart" class="btn-main">开始 · 睁开眼睛去听</button>
-      <button id="btnVoiceToggle" class="btn-ghost">语音：开（点击切换）</button>
+      <button id="btnContinue" class="btn-ghost hidden">继续上次</button>
+      <button id="btnVoiceToggle" class="btn-ghost" aria-pressed="false">语音：开（点击切换）</button>
+      <button id="btnModeToggle" class="btn-ghost" aria-pressed="false">模式：沉浸（点击切换为辅助轮廓）</button>
     </div>
   </div>
 
   <!-- 章节引言 -->
-  <div id="intro" class="overlay center hidden">
+  <div id="intro" class="overlay center hidden" role="dialog" aria-modal="true" aria-labelledby="introChap">
     <div class="intro-inner">
       <div id="introChap" class="chap-name"></div>
       <div id="introLines" class="intro-lines"></div>
@@ -43,27 +46,27 @@
       <div id="hudMode" class="hud-mode">沉浸</div>
     </div>
     <div id="hudBottom" class="hud-bottom">
-      <div id="saybox" class="saybox">
+      <div id="saybox" class="saybox" role="status" aria-live="polite" aria-atomic="true">
         <div id="saySpeaker" class="say-speaker"></div>
         <div id="sayText" class="say-text"></div>
       </div>
       <div id="hudKeys" class="hud-keys">
-        W/S 前进后退 · ←→ 转身 · Space 白杖 · E 触摸 · M 心灵地图 · H 提示 · N 语音导航 · Tab 辅助
+        W/S 前进后退 · ←→ 转身 · Space 白杖 · E 触摸/互动 · M 心灵地图 · H 提示 · N 语音导航 · F 知识卡 · Tab 辅助
       </div>
     </div>
   </div>
 
   <!-- 心灵地图 -->
-  <div id="mapOverlay" class="overlay hidden">
+  <div id="mapOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-label="心灵地图">
     <div class="map-wrap">
       <div class="map-head">
         <span>心灵地图 —— 记下你听到的方位</span>
         <button id="btnMapClose" class="btn-ghost small">关闭 (M)</button>
       </div>
-      <canvas id="mapCanvas" width="720" height="480"></canvas>
+      <canvas id="mapCanvas" width="720" height="480" role="img" aria-label="心灵地图画布：用方向键移动光标，Enter 放置标记"></canvas>
       <div class="map-palette">
         <span>标记：</span>
-        <button class="mark" data-type="self">我</button>
+        <button class="mark active" data-type="self">我</button>
         <button class="mark" data-type="door">门</button>
         <button class="mark" data-type="item">物</button>
         <button class="mark" data-type="sound">声</button>
@@ -74,12 +77,12 @@
   </div>
 
   <!-- 谜题面板 -->
-  <div id="puzzle" class="overlay center hidden">
-    <div class="puzzle-inner" id="puzzleInner"></div>
+  <div id="puzzle" class="overlay center hidden" role="dialog" aria-modal="true" aria-label="谜题">
+    <div class="puzzle-inner" id="puzzleInner" tabindex="-1"></div>
   </div>
 
   <!-- 知识卡图鉴 -->
-  <div id="facts" class="overlay hidden">
+  <div id="facts" class="overlay hidden" role="dialog" aria-modal="true" aria-label="助盲知识卡">
     <div class="facts-wrap">
       <div class="map-head">
         <span>助盲知识卡（F 关闭）</span>
@@ -89,10 +92,10 @@
   </div>
 
   <!-- 提示 Toast -->
-  <div id="toast" class="toast hidden"></div>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <!-- 结局 -->
-  <div id="end" class="overlay center hidden">
+  <div id="end" class="overlay center hidden" role="dialog" aria-modal="true" aria-label="结局">
     <div class="end-inner">
       <h2>这一碗面，很好吃</h2>
       <p class="end-text">

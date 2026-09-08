@@ -11,7 +11,9 @@ start "" "%~dp0index.html"
 echo   已打开游戏页面（建议 Chrome / Edge，务必佩戴耳机）。
 echo.
 echo   操作：W/S 前进后退 · 左右方向键转身 · Space 白杖回声
-echo         E 触摸 · M 心灵地图 · H 提示 · N 语音导航 · Tab 辅助轮廓
+echo         E 触摸/互动 · M 心灵地图 · H 提示 · N 语音导航
+echo         F 知识卡 · Tab 沉浸/辅助轮廓 · 谜题内 1-9 选选项、Enter 确认
 echo.
-echo   运行测试：node test\run.js   （59 项）
+echo   运行测试：node test\run.js          （80 项单元测试）
+echo             node test\smoke-browser.js（43 项浏览器冒烟测试）
 pause

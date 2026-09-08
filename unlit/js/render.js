@@ -4,13 +4,17 @@
 (function (root) {
   'use strict';
   let cv, g, W, H;
+  let breathGrad = null, breathKey = '';   // 沉浸模式的呼吸微光：按尺寸缓存，不每帧新建
   function init(c) { cv = c; g = cv.getContext('2d'); resize(); window.addEventListener('resize', resize); }
-  function resize() { if (!cv) return; W = cv.width = window.innerWidth; H = cv.height = window.innerHeight; }
+  function resize() {
+    if (!cv) return;
+    W = cv.width = window.innerWidth; H = cv.height = window.innerHeight;
+    breathGrad = null; breathKey = '';
+  }
 
   function draw(engine, assist) {
     if (!g) return;
-    g.clearRect(0, 0, W, H);
-    g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, H);   // 不透明底：无需先 clearRect
     if (!engine || !engine.map) return;
     const m = engine.map;
     const scale = Math.min((W - 60) / m.w, (H - 160) / m.h);
@@ -66,19 +70,24 @@
         g.setLineDash([]);
       }
     } else {
-      // 沉浸：呼吸微光（几乎纯黑，仅给屏幕一点层次）
-      const grad = g.createRadialGradient(W / 2, H / 2, H * 0.15, W / 2, H / 2, H * 0.85);
-      grad.addColorStop(0, 'rgba(10,10,12,1)');
-      grad.addColorStop(1, 'rgba(0,0,0,1)');
-      g.fillStyle = grad; g.fillRect(0, 0, W, H);
+      // 沉浸：呼吸微光（几乎纯黑，仅给屏幕一点层次）——渐变按尺寸缓存
+      const key = W + 'x' + H;
+      if (!breathGrad || breathKey !== key) {
+        breathGrad = g.createRadialGradient(W / 2, H / 2, H * 0.15, W / 2, H / 2, H * 0.85);
+        breathGrad.addColorStop(0, 'rgba(10,10,12,1)');
+        breathGrad.addColorStop(1, 'rgba(0,0,0,1)');
+        breathKey = key;
+      }
+      g.fillStyle = breathGrad; g.fillRect(0, 0, W, H);
     }
   }
 
   // 心灵地图
+  const mapCtx = new Map();   // canvas → 2D context（不必每帧取一次）
   function drawMapCanvas(cv2, engine, cursor, selType) {
-    const g2 = cv2.getContext('2d');
+    let g2 = mapCtx.get(cv2);
+    if (!g2) { g2 = cv2.getContext('2d'); mapCtx.set(cv2, g2); }
     const W2 = cv2.width, H2 = cv2.height;
-    g2.clearRect(0, 0, W2, H2);
     g2.fillStyle = '#0a0a08'; g2.fillRect(0, 0, W2, H2);
     if (!engine || !engine.map) return;
     const m = engine.map;
