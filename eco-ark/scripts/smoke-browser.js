@@ -84,8 +84,8 @@ sandbox.self = sandbox;
 const root = path.resolve(__dirname, '..');
 const files = [
   'js/shared/rng.js', 'js/shared/species.js', 'js/shared/world.js', 'js/shared/sim.js',
-  'js/shared/chapters.js', 'js/shared/knowledge.js', 'js/audio.js', 'js/charts.js',
-  'js/view.js', 'js/main.js'
+  'js/shared/chapters.js', 'js/shared/knowledge.js', 'js/shared/timeflow.js',
+  'js/shared/savefile.js', 'js/audio.js', 'js/charts.js', 'js/view.js', 'js/main.js'
 ];
 for (const f of files) {
   const code = fs.readFileSync(path.join(root, f), 'utf8');

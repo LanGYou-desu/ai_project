@@ -5,31 +5,37 @@
   var colorCache = {};
   var visible = {}; // 当前显示哪些物种
 
+  var SPEC = window.ECOARK.species;
+  var canvas, ctx, cw, ch;
+
+  // 返回 false 表示 Canvas 2D 不可用，主控制器据此降级
   function init(c) {
+    if (!c) return false;
+    var context = c.getContext ? c.getContext('2d') : null;
+    if (!context) return false;
     canvas = c;
-    ctx = c.getContext('2d');
+    ctx = context;
     resize();
     window.addEventListener('resize', resize);
+    return true;
   }
 
   function resize() {
+    if (!canvas) return;
     var parent = canvas.parentElement;
-    if (!parent) return;
-    cw = parent.clientWidth;
-    ch = parent.clientHeight;
+    cw = (parent && parent.clientWidth) || canvas.width || 800;
+    ch = (parent && parent.clientHeight) || canvas.height || 600;
     canvas.width = cw;
     canvas.height = ch;
   }
 
   function speciesColor(id) {
-    var sp = window.ECOARK.species.byId(id);
+    var sp = SPEC.byId(id);
     return sp ? sp.color : '#888';
   }
 
-  function setVisible(map) { visible = map || {}; }
-
   function render(sim) {
-    if (!ctx) return;
+    if (!ctx || !sim) return;
     var hist = sim.getHistory();
     var W = cw, H = ch;
     ctx.clearRect(0, 0, W, H);
@@ -52,9 +58,11 @@
     for (var i = 0; i < seg.length; i++) {
       var row = seg[i];
       maxY = Math.max(maxY, row.biomass || 0, (row.plant || 0) * 1.2);
-      Object.keys(row.counts || {}).forEach(function (id) {
-        maxY = Math.max(maxY, (row.counts[id] || 0) * (window.ECOARK.species.byId(id) ? window.ECOARK.species.byId(id).M : 1) * 2);
-      });
+      var counts = row.counts || {};
+      for (var cid in counts) {
+        var csp = SPEC.byId(cid);
+        maxY = Math.max(maxY, (counts[cid] || 0) * (csp ? csp.M : 1) * 2);
+      }
     }
 
     var X = function (idx) { return 8 + (idx / Math.max(1, seg.length - 1)) * (W - 16); };
@@ -70,15 +78,16 @@
     ctx.fillStyle = 'rgba(110,180,90,0.16)';
     ctx.fill();
 
-    // 各物种曲线（按可见开关）
+    // 各物种曲线
     var speciesSeen = {};
-    seg.forEach(function (r) { Object.keys(r.counts || {}).forEach(function (id) { speciesSeen[id] = true; }); });
-    Object.keys(speciesSeen).forEach(function (id) {
-      if (visible[id] === false) return;
-      var sp = window.ECOARK.species.byId(id);
+    for (var q = 0; q < seg.length; q++) {
+      var cs = seg[q].counts || {};
+      for (var sid in cs) speciesSeen[sid] = true;
+    }
+    for (var id in speciesSeen) {
+      var sp = SPEC.byId(id);
       var mul = sp ? sp.M : 1;
-      var col = speciesColor(id);
-      ctx.strokeStyle = col;
+      ctx.strokeStyle = speciesColor(id);
       ctx.lineWidth = 1.6;
       ctx.beginPath();
       var started = false;
@@ -89,7 +98,7 @@
         else ctx.lineTo(X(k), Y(v));
       }
       ctx.stroke();
-    });
+    }
 
     // 坐标文字
     ctx.fillStyle = 'rgba(190,220,200,0.7)';
@@ -102,5 +111,5 @@
   }
 
   window.ECOARK = window.ECOARK || {};
-  window.ECOARK.charts = { init: init, render: render, setVisible: setVisible };
+  window.ECOARK.charts = { init: init, render: render };
 })();

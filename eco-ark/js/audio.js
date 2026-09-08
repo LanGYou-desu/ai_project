@@ -4,7 +4,6 @@
   var ctx = null;
   var master = null;
   var windGain = null, rainGain = null, waterGain = null;
-  var birdTimer = null;
   var muted = false;
   var lastBird = 0;
 

@@ -180,3 +180,92 @@ test('季节与年份推进正确', () => {
   years(s, 3);
   assert.strictEqual(s.year, 3);
 });
+
+test('数量为 0 的干预不生效（0 是有效参数，不是「未传」）', () => {
+  const s = mk('zero');
+  assert.strictEqual(s.place('grass', 0), 0, 'place(id, 0) 不应放置');
+  assert.strictEqual(s.place('rabbit', 0), 0);
+  const i = 5 * s.w + 5;
+  s.paintAt('grass', 5, 5, 0.3);
+  const cov = s.coverage[i * spec.PLANTS.length];
+  assert.strictEqual(s.paintAt('grass', 5, 5, 0), true);
+  assert.strictEqual(s.coverage[i * spec.PLANTS.length], cov, 'amount=0 不应改变覆盖');
+  s.place('rabbit', 3);
+  const n = s.animals.length;
+  s.removeAt(s.animals[0].x, s.animals[0].y, 0);
+  assert.strictEqual(s.animals.length, n, 'removeAt(r=0) 不应移除个体');
+  const before = s.nutrients[i];
+  s.fertilizeAt(5, 5, 0);
+  assert.strictEqual(s.nutrients[i], before, 'fertilizeAt(r=0) 不应改变养分');
+});
+
+test('getStats 结果缓存：状态未变时复用，状态改变后失效', () => {
+  const s = mk('cache');
+  s.place('grass', 100);
+  const a = s.getStats();
+  assert.strictEqual(s.getStats(), a, '未改动时应返回同一缓存对象');
+  s.step();
+  const b = s.getStats();
+  assert.notStrictEqual(b, a, '推进一个月后应重新计算');
+  assert.strictEqual(s.getStats(), b);
+  // 事件会改变气温/降水：必须让缓存失效（否则面板显示旧天气）
+  const rainBefore = b.rain;
+  s.triggerEvent('drought');
+  const c = s.getStats();
+  assert.notStrictEqual(c, b);
+  assert.ok(c.rain < rainBefore - 0.2, '干旱后降水应下降');
+  // 直接写地块数据（测试/调试）后由 place/remove 等入口标记脏，不依赖缓存一致性
+  s.place('moss', 10);
+  assert.notStrictEqual(s.getStats(), c);
+});
+
+test('增量存活计数与逐个体统计一致（长期不漂移）', () => {
+  const s = mk('counter');
+  s.place('grass', 200); s.place('rabbit', 40); s.place('fox', 8); s.place('insect', 60);
+  for (let m = 0; m < 180; m++) {
+    s.step();
+    const manual = {};
+    s.animals.forEach(a => { manual[a.sp] = (manual[a.sp] || 0) + 1; });
+    for (const id of ['rabbit', 'fox', 'insect', 'vole', 'deer']) {
+      assert.strictEqual(s.speciesCount(id), manual[id] || 0, '第 ' + s.month + ' 月 ' + id);
+    }
+  }
+});
+
+test('长期运行无 NaN 幽灵个体（坐标/能量始终有限）', () => {
+  const s = mk('nan', { eventChance: 0.03 });
+  s.place('grass', 250); s.place('shrub', 150); s.place('moss', 100); s.place('algae', 60);
+  s.place('insect', 80); s.place('vole', 40); s.place('rabbit', 30); s.place('fish', 30);
+  s.place('spider', 20); s.place('fox', 8); s.place('hawk', 6); s.place('monitor', 5);
+  for (let y = 0; y < 40; y++) {
+    years(s, 1);
+    for (const a of s.animals) {
+      assert.ok(Number.isFinite(a.x) && Number.isFinite(a.y), '坐标出现 NaN：' + a.sp);
+      assert.ok(Number.isFinite(a.energy) && a.energy > 0, '能量非法：' + a.sp + ' ' + a.energy);
+      assert.ok(Number.isFinite(a.age) && a.age >= 0, '年龄非法：' + a.sp + ' ' + a.age);
+    }
+  }
+});
+
+test('黄金轨迹：固定种子 + 固定操作序列的演化结果不可变（确定性回归）', () => {
+  // 该摘要是「同种子 + 同操作 → 完全相同演化」的硬回归：任何未预期的动力学改动都会让它失败。
+  // 若有意调整生态参数，请重新计算摘要并在此更新。
+  const s = mk('golden', { eventChance: 0.02 });
+  [['grass', 250], ['shrub', 150], ['moss', 120], ['insect', 80], ['vole', 40],
+   ['rabbit', 35], ['deer', 10], ['spider', 15], ['fox', 7], ['hawk', 6]]
+    .forEach(([id, n]) => s.place(id, n));
+  for (let m = 0; m < 480; m++) {
+    if (m === 120) s.place('algae', 60);
+    if (m === 180) s.paintAt('grass', 20, 20, 0.3);
+    if (m === 240) s.triggerEvent('drought');
+    if (m === 300) s.triggerEvent('meteor');
+    s.step();
+  }
+  const st = s.getStats();
+  const digest = [st.month, st.totalBiomass.toFixed(3), st.plantBiomass.toFixed(3),
+    st.animalBiomass.toFixed(3), st.aliveSpecies, st.animalsTotal,
+    JSON.stringify(st.counts)].join('|');
+  const hash = require('node:crypto').createHash('sha256').update(digest).digest('hex');
+  assert.strictEqual(hash, '08cc4b07d678efda958b5a1e22655f1fd9f4779b4667172ef804bb1aa4ebcae7',
+    '演化轨迹已改变：' + digest);
+});

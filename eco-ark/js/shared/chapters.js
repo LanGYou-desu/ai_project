@@ -28,7 +28,7 @@
       intro: '绿色回来了，但方舟传感器发出警告：植被疯长，养分被锁死在枯枝败叶里。没有消费者，能量流动就会停滞。是时候引入第一群食草者了。',
       briefing: '昆虫与田鼠繁殖极快，野兔与白鹿更稳重。小心：食草动物过多会啃光草原，过少则能量滞留。',
       unlockSpecies: ['insect', 'vole', 'rabbit', 'deer', 'tree', 'fern', 'reed'],
-      unlockKnowledge: ['consumer', 'population'],
+      unlockKnowledge: ['consumer', 'carrying'],
       objectives: [
         { id: 'o1', desc: '食草动物总量 ≥ 60 并保持 8 年', check: 'herb >= 60 for 8y' },
         { id: 'o2', desc: '期间植被覆盖率始终 > 8%（草原不被啃秃）', check: 'cover > 0.08 for 8y' }
@@ -41,7 +41,7 @@
       intro: '食草动物稳定了，但它们的种群开始周期性地暴涨暴跌——没有天敌的猎物种群总会冲破草原的承载极限。方舟议会决定：引入掠食者。',
       briefing: '蜘蛛吃昆虫，狐狸猎田鼠与野兔，灰狼追逐白鹿。顶级掠食者会让食物网形成稳定的三层结构。',
       unlockSpecies: ['spider', 'fox', 'wolf', 'hawk', 'cactus'],
-      unlockKnowledge: ['trophic', 'lotka'],
+      unlockKnowledge: ['trophic', 'lotka', 'cascade'],
       objectives: [
         { id: 'o1', desc: '建立完整食物网：植物 + 食草 + 捕食三层共存 10 年', check: '3 levels for 10y' },
         { id: 'o2', desc: '捕食者总量 ≥ 15 并保持 5 年', check: 'pred >= 15 for 5y' },
@@ -57,11 +57,11 @@
       unlockSpecies: ['mammoth', 'monitor', 'algae'],
       unlockKnowledge: ['resilience', 'strategy'],
       objectives: [
-        { id: 'o1', desc: '冰期期间（约 30 年低温）至少有 3 个物种存活', check: '>=3 species through ice' },
-        { id: 'o2', desc: '至少 1 个耐寒物种（苔藓/猛犸/灰狼）存活', check: 'cold species alive' },
+        { id: 'o1', desc: '冰期期间（约 2.5 年低温）每年至少 3 个物种存活', check: '>=3 species through ice' },
+        { id: 'o2', desc: '冰期期间至少 1 个耐寒物种（苔藓/猛犸/灰狼）存活', check: 'cold species alive' },
         { id: 'o3', desc: '冰期结束后生态系统恢复：生物量回到冰期前的 50%', check: 'recovery >= 50%' }
       ],
-      hint: '冰期将在第 2~3 年到来。多放些苔藓和猛犸，它们在 -30℃ 也能存活。'
+      hint: '冰期将在第 2 年到来，持续约 2.5 年（严冬最低约 -7℃）。多放些苔藓和猛犸——它们最耐寒。'
     },
     {
       no: 5, id: 'invasion', name: '入侵警报', years: 25,
@@ -83,7 +83,7 @@
       intro: '风暴过去，苔原星第一次迎来了真正的春天。方舟主计算机宣布：最终考验开始——在不干预的情况下，让生态系统自主运行一百二十年，证明它配得上「方舟」之名。',
       briefing: '最后的自由演化。你可以继续放置、清除或施肥，但评分将根据多样性、稳定性与生物量综合评定。',
       unlockSpecies: [],
-      unlockKnowledge: ['biodiversity', 'carrying', 'nutrient'],
+      unlockKnowledge: ['biodiversity', 'nutrient'],
       objectives: [
         { id: 'o1', desc: '生态系统自主运行 120 年', check: 'years >= 120' },
         { id: 'o2', desc: '物种多样性 ≥ 8', check: 'species >= 8' },
@@ -136,17 +136,18 @@
       no: no,
       placedSet: {},          // 放置过的物种
       consecutive: {},        // 各目标连续满足的年数
-      herbPeak: 0, herbValley: null,  // 食草动物历史峰值/低谷
-      herbAfterPred: 0,       // 引入捕食者后的食草峰值
-      iceStarted: false, iceSurviveStart: null,
-      iceBiomassBefore: null, iceMin: null, iceEnded: false,
+      herbPeak: 0,            // 食草动物历史峰值
+      iceStarted: false,      // 冰期是否已开始
+      iceObservations: 0,     // 冰期期间经过的年检次数
+      iceYearsOk: 0,          // 冰期年检中「≥3 物种存活」的次数
+      iceBiomassBefore: null, // 冰期前的生物量基线
+      iceMin: null,           // 冰期中的最低生物量
+      iceEnded: false,
       vineErupted: false,
-      extinctLog: {},         // 曾经存活过的物种
-      lastAlive: new Set(),
       cascadeObserved: false,
       recoveryDone: false,
-      yearsTracked: 0,
-      coldAlive: false
+      coldAlive: false,
+      prevBiomass: null       // 上一年生物量（用于取冰期前基线）
     };
   }
 
@@ -159,13 +160,26 @@
     var cover = plantCoverage(sim), vine = vineCoverage(sim);
     var alive = speciesAlive(sim);
 
-    // 记录曾存活的物种（用于"无灭绝"判断）
-    var nowAlive = new Set();
-    Object.keys(st.counts).forEach(function (id) { if (st.counts[id] > 0) nowAlive.add(id); });
-    state.lastAlive.forEach(function (id) {
-      if (!nowAlive.has(id)) state.extinctLog[id] = true;
-    });
-    state.lastAlive = nowAlive;
+    // 冰期状态必须在目标判定之前更新，否则同一年的 o2/o3 读不到 iceStarted
+    var iceActive = false;
+    if (no === 4) {
+      iceActive = st.activeEvents.some(function (e) { return e.name === '冰期'; });
+      if (iceActive && !state.iceStarted) {
+        state.iceStarted = true;
+        // 优先用「冰期前一年」的生物量作为基线（年检时冰期可能已持续数月）
+        state.iceBiomassBefore = state.prevBiomass != null ? state.prevBiomass : st.totalBiomass;
+        state.iceMin = null;
+        state.iceObservations = 0;
+        state.iceYearsOk = 0;
+      }
+      if (iceActive) {
+        state.iceObservations++;
+        if (state.iceMin == null || st.totalBiomass < state.iceMin) state.iceMin = st.totalBiomass;
+        state.iceEnded = false;
+      } else if (state.iceStarted && state.iceMin != null) {
+        state.iceEnded = true;
+      }
+    }
 
     var results = {};
     ch.objectives.forEach(function (o) {
@@ -184,12 +198,12 @@
           prog = Math.min(1, (three ? 1 : 0) * 0.7 + Math.min(1, st.years / 10) * 0.3);
           done = state.consecutive[key] >= 10;
         } else if (no === 4) {
-          // 冰期存活：需要 state.iceStarted（冰期已发生）
+          // 冰期期间每年都至少有 3 个物种存活（冰期结束后结算）
           if (!state.iceStarted) prog = 0;
           else {
-            state.consecutive[key] = (alive >= 3) ? (state.consecutive[key] || 0) + 1 : 0;
-            prog = state.iceStarted ? 0.4 + Math.min(1, (state.consecutive[key] || 0) / 30) * 0.6 : 0;
-            done = state.iceStarted && (state.consecutive[key] || 0) >= 30;
+            if (iceActive && alive >= 3) state.iceYearsOk++;
+            prog = state.iceObservations > 0 ? state.iceYearsOk / state.iceObservations : 0;
+            done = state.iceEnded && state.iceObservations > 0 && state.iceYearsOk >= state.iceObservations;
           }
         } else if (no === 5) {
           state.consecutive[key] = (vine >= 0.15) ? (state.consecutive[key] || 0) + 1 : 0;
@@ -215,8 +229,9 @@
           prog = Math.min(1, pred / 15);
           done = state.consecutive[key] >= 5;
         } else if (no === 4) {
-          var cold = ['moss', 'mammoth', 'wolf'].some(function (id) { return st.counts[id] > 0; });
-          if (cold) state.coldAlive = true;
+          // 耐寒物种：苔藓是植物（不在 counts 里，要看覆盖），猛犸/灰狼是动物
+          var cold = (st.plantCov.moss > 0.001) || (st.counts.mammoth > 0) || (st.counts.wolf > 0);
+          if (state.iceStarted && cold) state.coldAlive = true;
           done = state.coldAlive;
           prog = state.coldAlive ? 1 : 0;
         } else if (no === 5) {
@@ -228,23 +243,7 @@
           done = alive >= 8;
         }
       } else if (o.id === 'o3') {
-        if (no === 1) {
-          // 额外成就：任意 3 种植被覆盖同时 > 5%
-          var threeCov = 0;
-          Object.keys(st.plantCov).forEach(function (id) {
-            if (id !== 'vine' && st.plantCov[id] / (sim.w * sim.h) > 0.05) threeCov++;
-          });
-          prog = threeCov / 3; done = threeCov >= 3;
-        } else if (no === 2) {
-          // 观察种群波动：峰值 / 低谷 ≥ 2 倍
-          if (herb > 0) {
-            if (herb > (state.herbPeak || 0)) state.herbPeak = herb;
-            if (state.herbValley == null || herb < state.herbValley) state.herbValley = herb;
-          }
-          var ratio = (state.herbPeak || 0) / Math.max(state.herbValley || 1, 1);
-          done = (state.herbPeak || 0) >= 40 && ratio >= 2;
-          prog = done ? 1 : Math.min(1, (state.herbPeak || 0) / 40);
-        } else if (no === 3) {
+        if (no === 3) {
           if (!state.cascadeObserved && pred > 0 && herb > 0) {
             if (herb > state.herbPeak) state.herbPeak = herb;
             if (state.herbPeak > 0 && herb < state.herbPeak * 0.7 && state.herbPeak > 80) {
@@ -254,14 +253,6 @@
           prog = state.cascadeObserved ? 1 : (state.herbPeak > 0 ? 0.5 : 0.1);
           done = state.cascadeObserved;
         } else if (no === 4) {
-          var iceActive = st.activeEvents.some(function (e) { return e.name === '冰期'; });
-          if (iceActive) {
-            if (state.iceBiomassBefore == null) state.iceBiomassBefore = st.totalBiomass;
-            if (state.iceMin == null || st.totalBiomass < state.iceMin) state.iceMin = st.totalBiomass;
-            state.iceEnded = false;
-          } else if (state.iceMin != null && !state.iceEnded) {
-            state.iceEnded = true;
-          }
           if (state.iceEnded && state.iceBiomassBefore != null &&
               st.totalBiomass >= state.iceBiomassBefore * 0.5) {
             state.recoveryDone = true;
@@ -281,16 +272,8 @@
       results[key] = { done: !!done, prog: clamp01(prog), desc: o.desc };
     });
 
-    // 冰期专用状态
-    if (no === 4) {
-      var iceActive = st.activeEvents.some(function (e) { return e.name === '冰期'; });
-      if (iceActive && !state.iceStarted) {
-        state.iceStarted = true;
-        state.iceBiomassBefore = st.totalBiomass;
-        state.iceBiomassAfter = null;
-      }
-      if (state.iceStarted && state.iceBiomassBefore == null) state.iceBiomassBefore = st.totalBiomass;
-    }
+    // 供下一年取「冰期前基线」使用
+    state.prevBiomass = st.totalBiomass;
 
     return {
       chapter: ch,
@@ -310,7 +293,7 @@
     var base = doneCount / total;
     var bonus = 0;
     if (no === 1) bonus = st.plantBiomass > 50 ? 0.2 : 0;
-    if (no === 2) bonus = (state.cascadeObserved ? 0 : 0) + (st.animalBiomass > 0 ? 0.2 : 0);
+    if (no === 2) bonus = st.animalBiomass > 0 ? 0.2 : 0;
     if (no === 3) bonus = state.cascadeObserved ? 0.3 : 0;
     if (no === 4) bonus = state.coldAlive ? 0.25 : 0;
     if (no === 5) bonus = (vineCoverage(sim) < 0.1 ? 0.3 : 0.1);

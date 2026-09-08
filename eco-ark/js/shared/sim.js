@@ -2,6 +2,12 @@
  * 模型：生产者(植物) → 消费者(食草/捕食) → 分解者(腐殖质) 的能量流动；
  * 水分/养分/气温驱动的种群动力学；洛特卡-沃尔泰拉式的波动自然涌现。
  * 全确定性：同一种子 + 相同操作序列 → 完全相同的演化结果。
+ *
+ * 性能约定：
+ *  - 逐格植物生长使用静态地形适配查表 + 每步温度适配查表，避免逐格调用函数；
+ *  - 空间分桶每月重建一次，桶内维护「物种计数 / 食草计数」，邻域查询为 O(桶数)；
+ *  - 存活数量（全局与分桶）随出生/死亡增量维护，避免每次 O(n) 重扫；
+ *  - getStats() 结果按 dirty 标记缓存，同一模拟步内多次读取只计算一次。
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(root);
@@ -19,6 +25,7 @@
   var T = SPEC.TERRAIN;
   var MONTHS_PER_YEAR = 12;
   var SEASONS = ['春', '夏', '秋', '冬'];
+  var TERRAIN_CODES = 6;
 
   function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
@@ -34,10 +41,10 @@
     var tempBase = 16, rainBase = 0.62, tempAmp = 8, rainAmp = 0.15;
     var tempOffset = 0, rainOffset = 0;
     var activeEvents = [];   // {id, name, until(month), temp, rain, desc}
-    var manualEvents = [];   // 记录手动触发的自然事件（用于存档重放）
 
     // 植物覆盖：tile * nSpecies
-    var plants = SPEC.PLANTS.map(function (s) { return s.id; });
+    var plantSpecs = SPEC.PLANTS;
+    var plants = plantSpecs.map(function (s) { return s.id; });
     var NP = plants.length;
     var coverage = new Float32Array(w * h * NP);
     var carcass = new Float32Array(w * h); // 尸体/落叶 → 分解为养分
@@ -45,9 +52,49 @@
     var nutrients = Float32Array.from(world.nutrients);
     var terrain = world.terrain;
 
+    // 静态查表：物种下标 × 地形编码 → 地形适配度（地形不随季节变化）
+    // 用 Float64Array 保持与原实现完全一致的浮点精度（Float32 舍入会改变演化结果）
+    var terrainFitTable = new Float64Array(NP * TERRAIN_CODES);
+    for (var ps = 0; ps < NP; ps++) {
+      for (var tc = 0; tc < TERRAIN_CODES; tc++) {
+        terrainFitTable[ps * TERRAIN_CODES + tc] = SPEC.terrainFit(plantSpecs[ps], tc);
+      }
+    }
+    // 每步刷新：物种下标 → 温度适配度（温度对全图相同）
+    var tempFitStep = new Float64Array(NP);
+    // 湿度舒适区中点/半宽（内联 fit01，省去逐格函数调用；数值与 SPEC.moistFit 完全一致）
+    var moistMid = new Float64Array(NP), moistSpan = new Float64Array(NP);
+    for (var mi = 0; mi < NP; mi++) {
+      var msp = plantSpecs[mi];
+      moistMid[mi] = (msp.moistMin + msp.moistMax) / 2;
+      moistSpan[mi] = (msp.moistMax - msp.moistMin) / 2;
+    }
+
+    // 食性查表：动物 id → 可食植物的下标数组
+    var dietIdx = {};
+    SPEC.ANIMALS.forEach(function (sp) {
+      if (!sp.diet) return;
+      dietIdx[sp.id] = sp.diet.map(function (id) { return plants.indexOf(id); })
+        .filter(function (si) { return si >= 0; });
+    });
+
     // 动物实体
     var animals = []; // {id, sp, x, y, age, energy}
     var nextId = 1;
+    // 存活计数：增量维护，countAlive 与繁殖闸门不再重扫全表
+    var spAlive = {};
+    var herbTotal = 0, predTotal = 0;
+    // 空间分桶：整数桶号 + 类型化计数数组，邻域查询无字符串拼接
+    var spIdxAll = {};   // 物种 id → 紧凑下标
+    SPEC.ALL.forEach(function (s, i) { spIdxAll[s.id] = i; });
+    var NS = SPEC.ALL.length;
+    var BX = Math.ceil(w / 4) + 1, BY = Math.ceil(h / 4) + 1;
+    var NB = BX * BY;
+    var bucketList = new Array(NB);      // 桶号 → 动物数组（每月复用）
+    var bucketSp = new Int32Array(NB * NS); // 桶号 × 物种 → 个体数
+    var bucketHerb = new Int32Array(NB);    // 桶号 → 食草动物数
+    var bucketUsed = new Uint8Array(NB);    // 本月该桶是否已登记
+    var bucketKeys = [];                    // 本月使用的桶号（用于清空）
     // 种子库：植物只有被"引入"后才会生长与扩散（玩家放置 = 引入）
     var introduced = {};
 
@@ -74,7 +121,7 @@
 
     function climateNow() {
       var m = month % MONTHS_PER_YEAR;
-      var phase = ((m - 2) / MONTHS_PER_YEAR) * Math.PI * 2; // 冬(11月)最低
+      var phase = ((m - 2) / MONTHS_PER_YEAR) * Math.PI * 2; // 2 月最热、8 月最冷
       var temp = tempBase + tempAmp * Math.cos(phase) + tempOffset;
       var rain = rainBase + rainAmp * Math.cos(phase + 0.6) + rainOffset;
       return { temp: temp, rain: clamp(rain, 0, 1.2) };
@@ -88,6 +135,7 @@
       activeEvents.push({ id: id, name: ev.name, until: month + ev.len,
         temp: ev.temp, rain: ev.rain, desc: ev.desc });
       log.push({ month: month, text: '⚠️ 事件：' + ev.name + '——' + ev.desc, kind: 'event' });
+      dirty = true; // 气温/降水已改变，统计缓存必须失效
       if (id === 'meteor') meteorStrike();
       if (id === 'plague') plagueStrike();
       if (id === 'vine') vineStrike();
@@ -122,7 +170,7 @@
       var alive = [];
       for (var s = 0; s < animals.length; s++) {
         var sp = SPEC.byId(animals[s].sp);
-        if (sp.type === 'plant') continue;
+        if (!sp || sp.type === 'plant') continue;
         var found = false;
         for (var a = 0; a < alive.length; a++) if (alive[a] === animals[s].sp) { found = true; break; }
         if (!found) alive.push(animals[s].sp);
@@ -133,24 +181,22 @@
       for (var k = animals.length - 1; k >= 0; k--) {
         if (animals[k].sp === target && simRng.chance(0.62)) { killAnimal(k, 0.3); killed++; }
       }
-      var spName = SPEC.byId(target) ? SPEC.byId(target).name : target;
-      log.push({ month: month, text: '🦠 瘟疫袭击了「' + spName + '」，约 ' + killed + ' 只死亡。', kind: 'event' });
+      var targetSp = SPEC.byId(target);
+      log.push({ month: month, text: '🦠 瘟疫袭击了「' + (targetSp ? targetSp.name : target) + '」，约 ' + killed + ' 只死亡。', kind: 'event' });
       dirty = true;
     }
 
     function vineStrike() {
       introduced.vine = true;
       var spread = 0;
+      var vi = speciesIndex('vine');
       for (var i = 0; i < w * h; i++) {
         var t = terrain[i];
         if (t === T.WATER || t === T.ROCK) continue;
-        if (simRng.chance(0.06)) {
-          var vi = speciesIndex('vine');
-          if (vi >= 0) {
-            var cur = coverage[i * NP + vi];
-            coverage[i * NP + vi] = Math.min(0.9, cur + simRng.range(0.2, 0.5));
-            spread++;
-          }
+        if (simRng.chance(0.06) && vi >= 0) {
+          var cur = coverage[i * NP + vi];
+          coverage[i * NP + vi] = Math.min(0.9, cur + simRng.range(0.2, 0.5));
+          spread++;
         }
       }
       log.push({ month: month, text: '🪢 藤蔓在 ' + spread + ' 个格子扎根，疯狂扩张！', kind: 'event' });
@@ -159,17 +205,54 @@
 
     function speciesIndex(id) { return plants.indexOf(id); }
 
-    function countAlive(spId) {
-      var n = 0;
-      for (var i = 0; i < animals.length; i++) if (animals[i].sp === spId) n++;
-      return n;
+    function countAlive(spId) { return spAlive[spId] || 0; }
+
+    // ---------- 出生 / 死亡（存活计数的唯一入口） ----------
+    function spawn(spId, x, y, age, energy) {
+      var an = { id: nextId++, sp: spId, x: x, y: y, age: age, energy: energy };
+      animals.push(an);
+      spAlive[spId] = (spAlive[spId] || 0) + 1;
+      var sp = SPEC.byId(spId);
+      if (sp) {
+        if (sp.type === 'herbivore') herbTotal++;
+        else if (sp.type === 'predator') predTotal++;
+      }
+      return an;
+    }
+
+    function killAnimal(index, carcassFrac) {
+      var an = animals[index];
+      if (!an || an.dead) return;
+      an.dead = true;
+      var i = Math.floor(an.y) * w + Math.floor(an.x);
+      var sp = SPEC.byId(an.sp);
+      if (sp && i >= 0 && i < w * h) carcass[i] = Math.min(1, carcass[i] + 0.4 * sp.M * carcassFrac);
+      if (spAlive[an.sp]) spAlive[an.sp]--;
+      if (sp) {
+        if (sp.type === 'herbivore') herbTotal--;
+        else if (sp.type === 'predator') predTotal--;
+      }
+      // 同步本月分桶计数（分桶只在本月内被读取，下月重建会覆盖）
+      var bk = an._bk;
+      if (bk != null) {
+        var si = spIdxAll[an.sp];
+        if (si != null) {
+          var bi = bk * NS + si;
+          if (bucketSp[bi] > 0) bucketSp[bi]--;
+        }
+        if (sp && sp.type === 'herbivore' && bucketHerb[bk] > 0) bucketHerb[bk]--;
+      }
+      animals[index] = animals[animals.length - 1];
+      animals.pop();
+      dirty = true;
     }
 
     // ---------- 放置 / 干预 ----------
     function place(id, count) {
       var sp = SPEC.byId(id);
       if (!sp) return 0;
-      count = count || 1;
+      if (count == null) count = 1;
+      if (count <= 0) return 0;
       var placed = 0;
       if (sp.type === 'plant') {
         introduced[id] = true;
@@ -188,7 +271,7 @@
           var px = simRng.range(1, w - 1.1), py = simRng.range(1, h - 1.1);
           var ti = Math.floor(py) * w + Math.floor(px);
           if (SPEC.terrainFit(sp, terrain[ti]) <= 0) continue;
-          animals.push({ id: nextId++, sp: id, x: px, y: py, age: simRng.int(0, Math.floor(sp.lifespan * 0.3)), energy: sp.M * simRng.range(0.8, 1.1) });
+          spawn(id, px, py, simRng.int(0, Math.floor(sp.lifespan * 0.3)), sp.M * simRng.range(0.8, 1.1));
           placed++;
           if (placed >= count) break;
         }
@@ -208,20 +291,22 @@
         var si = speciesIndex(id);
         if (SPEC.terrainFit(sp, terrain[i]) <= 0.05) return false;
         if (coverage[i * NP + si] >= sp.cap) return false;
-        coverage[i * NP + si] = Math.min(sp.cap, coverage[i * NP + si] + (amount || 0.35));
+        if (amount == null) amount = 0.35;
+        coverage[i * NP + si] = Math.min(sp.cap, coverage[i * NP + si] + amount);
         dirty = true;
         return true;
       }
       if (SPEC.terrainFit(sp, terrain[i]) <= 0) return false;
       var px = x + simRng.range(-0.3, 0.3), py = y + simRng.range(-0.3, 0.3);
-      animals.push({ id: nextId++, sp: id, x: clamp(px, 0.5, w - 1.5), y: clamp(py, 0.5, h - 1.5),
-        age: simRng.int(0, Math.floor(sp.lifespan * 0.2)), energy: sp.M * simRng.range(0.85, 1.1) });
+      spawn(id, clamp(px, 0.5, w - 1.5), clamp(py, 0.5, h - 1.5),
+        simRng.int(0, Math.floor(sp.lifespan * 0.2)), sp.M * simRng.range(0.85, 1.1));
       dirty = true;
       return true;
     }
 
     function removeAt(x, y, r) {
-      r = r || 2;
+      if (r == null) r = 2;
+      if (r <= 0) return;
       for (var yy = Math.max(0, Math.floor(y - r)); yy <= Math.min(h - 1, Math.ceil(y + r)); yy++) {
         for (var xx = Math.max(0, Math.floor(x - r)); xx <= Math.min(w - 1, Math.ceil(x + r)); xx++) {
           var dx = xx - x, dy = yy - y;
@@ -239,7 +324,8 @@
     }
 
     function fertilizeAt(x, y, r) {
-      r = r || 3;
+      if (r == null) r = 3;
+      if (r <= 0) return;
       for (var yy = Math.max(0, Math.floor(y - r)); yy <= Math.min(h - 1, Math.ceil(y + r)); yy++) {
         for (var xx = Math.max(0, Math.floor(x - r)); xx <= Math.min(w - 1, Math.ceil(x + r)); xx++) {
           var dx = xx - x, dy = yy - y;
@@ -247,17 +333,6 @@
           nutrients[yy * w + xx] = Math.min(1, nutrients[yy * w + xx] + 0.5);
         }
       }
-      dirty = true;
-    }
-
-    function killAnimal(index, carcassFrac) {
-      var an = animals[index];
-      if (!an || an.dead) return;
-      an.dead = true;
-      var i = Math.floor(an.y) * w + Math.floor(an.x);
-      if (i >= 0 && i < w * h) carcass[i] = Math.min(1, carcass[i] + 0.4 * SPEC.byId(an.sp).M * carcassFrac);
-      animals[index] = animals[animals.length - 1];
-      animals.pop();
       dirty = true;
     }
 
@@ -284,9 +359,11 @@
       }
 
       // 3) 地块层：水分 / 养分 / 植物
-      for (var i = 0; i < w * h; i++) {
+      // 温度对全图一致：每步只计算一次每个物种的温度适配
+      for (var ts = 0; ts < NP; ts++) tempFitStep[ts] = SPEC.tempFit(plantSpecs[ts], temp);
+      var tiles = w * h;
+      for (var i = 0; i < tiles; i++) {
         var t = terrain[i];
-        var x = i % w, y = (i / w) | 0;
         var dist = world.waterDist[i];
         var waterIn = 0.50 * Math.max(0, 1 - Math.min(dist, 10) / 10);
         var evap = 0.05 + 0.004 * Math.max(0, temp - 16);
@@ -307,30 +384,35 @@
         nutrients[i] = clamp(nutrients[i] + (0.5 - nutrients[i]) * 0.006, 0, 1);
 
         // 植物生长
+        var base = i * NP;
+        var mm = moisture[i];
         var totalCov = 0;
-        for (var s = 0; s < NP; s++) {
-          totalCov += coverage[i * NP + s];
-        }
+        for (var s = 0; s < NP; s++) totalCov += coverage[base + s];
         var compet = clamp(1 - totalCov, 0, 1);
+        var nutr = 0.25 + 0.75 * nutrients[i];
+        var tileFit = t < TERRAIN_CODES ? t : 0;
         for (var s2 = 0; s2 < NP; s2++) {
-          var sp = SPEC.byId(plants[s2]);
-          var cov = coverage[i * NP + s2];
+          var sp = plantSpecs[s2];
+          var cov = coverage[base + s2];
           // 种子库机制：未引入的植物不生长（藤蔓由入侵事件引入）
           if (!introduced[plants[s2]]) {
-            if (cov > 0) coverage[i * NP + s2] = 0;
+            if (cov > 0) coverage[base + s2] = 0;
             continue;
           }
-          var tFit = SPEC.terrainFit(sp, t);
-          var tempF = SPEC.tempFit(sp, temp);
-          var moistF = SPEC.moistFit(sp, moisture[i]);
-          var fit = tFit * tempF * moistF;
-          var nutr = 0.25 + 0.75 * nutrients[i];
+          // 内联 fit01(mm, moistMin, moistMax)，数值与 SPEC.moistFit 完全一致
+          var mspan = moistSpan[s2], mfit;
+          if (mspan <= 0) mfit = 1;
+          else {
+            var md = Math.abs(mm - moistMid[s2]) / mspan;
+            mfit = md >= 1 ? 0 : 1 - md;
+          }
+          var fit = terrainFitTable[s2 * TERRAIN_CODES + tileFit] * tempFitStep[s2] * mfit;
           if (fit > 0.055) {
             var grow = sp.growth * fit * compet * nutr * (1 - cov / sp.cap);
-            coverage[i * NP + s2] = Math.min(sp.cap, cov + grow);
+            coverage[base + s2] = Math.min(sp.cap, cov + grow);
           } else if (cov > 0) {
             // 环境不适：缓慢枯萎
-            coverage[i * NP + s2] = Math.max(0, cov - sp.growth * 0.25 * (1 - fit));
+            coverage[base + s2] = Math.max(0, cov - sp.growth * 0.25 * (1 - fit));
           }
         }
       }
@@ -346,25 +428,46 @@
     }
 
     // ---------- 动物行为 ----------
+    // 桶号 = bx * BY + by（bx/by 为 4 格一桶的网格坐标）
     function buildBuckets() {
-      var buckets = {};
+      // 清空上个月的桶（数组与计数复用，避免每月重新分配）
+      for (var i = 0; i < bucketKeys.length; i++) {
+        var k = bucketKeys[i];
+        var list = bucketList[k];
+        if (list) list.length = 0;
+        bucketHerb[k] = 0;
+        bucketUsed[k] = 0;
+        var off = k * NS;
+        for (var s = 0; s < NS; s++) bucketSp[off + s] = 0;
+      }
+      bucketKeys.length = 0;
       for (var a = 0; a < animals.length; a++) {
         var an = animals[a];
         if (an.dead) continue;
-        var key = (Math.floor(an.x) >> 2) + ',' + (Math.floor(an.y) >> 2);
-        (buckets[key] = buckets[key] || []).push(an);
+        var bx = Math.floor(an.x) >> 2, by = Math.floor(an.y) >> 2;
+        if (bx < 0) bx = 0; else if (bx >= BX) bx = BX - 1;
+        if (by < 0) by = 0; else if (by >= BY) by = BY - 1;
+        var key = bx * BY + by;
+        var cell = bucketList[key];
+        if (!cell) cell = bucketList[key] = [];
+        if (!bucketUsed[key]) { bucketUsed[key] = 1; bucketKeys.push(key); }
+        cell.push(an);
+        an._bk = key;
+        var si = spIdxAll[an.sp];
+        if (si == null) si = 0;
+        bucketSp[key * NS + si]++;
+        var asp = SPEC.ALL[si];
+        if (asp.type === 'herbivore') bucketHerb[key]++;
       }
-      return buckets;
     }
 
     function stepAnimals(temp) {
-      var buckets = buildBuckets();
+      buildBuckets();
       for (var a = 0; a < animals.length; a++) {
         var an = animals[a];
         if (an.dead) continue;
         var sp = SPEC.byId(an.sp);
         if (!sp) continue;
-        an.killsThisMonth = 0; // 每月捕食次数重置
         if (an.energy <= 0 || an.age > sp.lifespan) {
           killAnimal(a, 0.5);
           a--; continue;
@@ -377,35 +480,29 @@
         an.energy -= sp.metab * stress;
 
         // 渴死/冻死/热死边缘
-        if (fit < 0.12 && simRng.chance(0.3)) { killAnimal(a, 0.4); a--; continue; }        if (sp.type === 'predator') predatorAct(a, an, sp, buckets, temp, fit);
-        else herbivoreAct(a, an, sp, buckets, temp, fit);
+        if (fit < 0.12 && simRng.chance(0.3)) { killAnimal(a, 0.4); a--; continue; }
+        if (sp.type === 'predator') predatorAct(a, an, sp, temp, fit);
+        else herbivoreAct(a, an, sp, temp, fit);
 
         // 繁殖（捕食者额外要求：视野内有足够猎物——功能响应，猎物稀缺时繁殖被抑制）
         if (an.energy > sp.reproE * sp.M && fit > 0.35) {
-          var pop = countAlive(sp.id);
+          var pop = spAlive[sp.id] || 0;
           var cap = speciesCap(sp);
-          var density = localDensity(an, sp.id, buckets, 5);
+          var density = localDensity(an, sp.id, 5);
           var densityCap = 14 + 40 / (1 + sp.M);
           var chance = sp.repro * clamp(1 - pop / cap, 0, 1) * clamp(1 - density / densityCap, 0, 1);
           if (sp.type === 'predator') {
-            var preyNear = countPreyNear(an, sp, buckets, Math.max(4, sp.vision));
+            var preyNear = countPreyNear(an, Math.max(4, sp.vision));
             if (preyNear < 3) chance = 0;
             else chance *= clamp(preyNear / 8, 0.3, 1);
             // 全局猎物/捕食者比例闸门：猎物总量不足以支撑捕食者时停止繁殖
-            var hTotal = 0, pTotal = 0;
-            for (var ai = 0; ai < animals.length; ai++) {
-              var aSp = SPEC.byId(animals[ai].sp);
-              if (!aSp) continue;
-              if (aSp.type === 'herbivore') hTotal++;
-              else if (aSp.type === 'predator') pTotal++;
-            }
-            if (hTotal < pTotal * 1.6) chance = 0;
+            if (herbTotal < predTotal * 1.6) chance = 0;
           }
           if (simRng.chance(chance)) {
             var nx = clamp(an.x + simRng.range(-2, 2), 1, w - 1.1);
             var ny = clamp(an.y + simRng.range(-2, 2), 1, h - 1.1);
             if (SPEC.terrainFit(sp, terrain[Math.floor(ny) * w + Math.floor(nx)]) > 0) {
-              animals.push({ id: nextId++, sp: sp.id, x: nx, y: ny, age: 0, energy: sp.M * 0.75 });
+              spawn(sp.id, nx, ny, 0, sp.M * 0.75);
               an.energy -= sp.reproE * sp.M * 0.55;
             }
           }
@@ -425,43 +522,32 @@
       return 60;
     }
 
-    function countPreyNear(an, sp, buckets, radius) {
+    // 邻域食草动物数量（功能响应）：桶内已维护食草计数，复杂度 O(桶数)
+    function countPreyNear(an, radius) {
       var count = 0;
-      var cx = Math.floor(an.x) >> 2, cy = Math.floor(an.y) >> 2;
+      var bx = Math.floor(an.x) >> 2, by = Math.floor(an.y) >> 2;
       var r = Math.ceil(radius / 4);
-      for (var dy = -r; dy <= r; dy++) {
-        for (var dx = -r; dx <= r; dx++) {
-          var key = (cx + dx) + ',' + (cy + dy);
-          var cell = buckets[key];
-          if (!cell) continue;
-          for (var k = 0; k < cell.length; k++) {
-            var other = cell[k];
-            if (other.dead) continue;
-            if (sp.prey && sp.prey.indexOf(other.sp) >= 0) count++;
-            else {
-              var os = SPEC.byId(other.sp);
-              if (os && os.type === 'herbivore') count++;
-            }
-          }
-        }
+      var y0 = Math.max(0, by - r), y1 = Math.min(BY - 1, by + r);
+      var x0 = Math.max(0, bx - r), x1 = Math.min(BX - 1, bx + r);
+      for (var xx = x0; xx <= x1; xx++) {
+        var row = xx * BY;
+        for (var yy = y0; yy <= y1; yy++) count += bucketHerb[row + yy];
       }
       return count;
     }
 
-    function localDensity(an, spId, buckets, radius) {
+    // 邻域同种个体数量：桶内已维护物种计数，复杂度 O(桶数)
+    function localDensity(an, spId, radius) {
       var count = 0;
-      var cx = Math.floor(an.x) >> 2, cy = Math.floor(an.y) >> 2;
+      var si = spIdxAll[spId];
+      if (si == null) return 0;
+      var bx = Math.floor(an.x) >> 2, by = Math.floor(an.y) >> 2;
       var r = Math.ceil(radius / 4);
-      for (var dy = -r; dy <= r; dy++) {
-        for (var dx = -r; dx <= r; dx++) {
-          var key = (cx + dx) + ',' + (cy + dy);
-          var cell = buckets[key];
-          if (!cell) continue;
-          for (var k = 0; k < cell.length; k++) {
-            var other = cell[k];
-            if (!other.dead && other.sp === spId) count++;
-          }
-        }
+      var y0 = Math.max(0, by - r), y1 = Math.min(BY - 1, by + r);
+      var x0 = Math.max(0, bx - r), x1 = Math.min(BX - 1, bx + r);
+      for (var xx = x0; xx <= x1; xx++) {
+        var row = xx * BY * NS + si;
+        for (var yy = y0; yy <= y1; yy++) count += bucketSp[row + yy * NS];
       }
       return count;
     }
@@ -471,20 +557,19 @@
       if (i < 0 || i >= w * h) return 0;
       var t = terrain[i];
       if (SPEC.terrainFit(sp, t) <= 0) return 0;
+      var idxs = dietIdx[sp.id];
+      if (!idxs) return 0;
       var best = 0;
-      var diet = sp.diet || [];
-      for (var d = 0; d < diet.length; d++) {
-        var si = speciesIndex(diet[d]);
-        if (si < 0) continue;
-        var cov = coverage[i * NP + si];
-        var pfood = SPEC.byId(diet[d]).food;
-        var gain = cov * pfood;
+      var base = i * NP;
+      for (var d = 0; d < idxs.length; d++) {
+        var si = idxs[d];
+        var gain = coverage[base + si] * plantSpecs[si].food;
         if (gain > best) best = gain;
       }
       return best;
     }
 
-    function herbivoreAct(a, an, sp, buckets, temp, fit) {
+    function herbivoreAct(a, an, sp, temp, fit) {
       // （逃逸机制已移除：猎物持续觅食保持体况，捕食者靠冲刺追击取胜）
       // 找附近食物最丰富的格子并移动过去
       var bestX = an.x, bestY = an.y, bestScore = tileFoodAt(sp, an.x, an.y) * (0.6 + simRng.range(0, 0.5));
@@ -506,17 +591,17 @@
       // 采食：按食欲吃到能量接近上限（必须超过繁殖阈值才能繁殖）
       var appetite = Math.max(0, sp.M * 2.2 - an.energy);
       var i = Math.floor(an.y) * w + Math.floor(an.x);
-      var diet = sp.diet || [];
-      for (var d2 = 0; d2 < diet.length && appetite > 0.01; d2++) {
-        var si = speciesIndex(diet[d2]);
-        if (si < 0) continue;
-        var psp = SPEC.byId(diet[d2]);
-        var cov = coverage[i * NP + si];
+      var base = i * NP;
+      var idxs = dietIdx[sp.id] || [];
+      for (var d2 = 0; d2 < idxs.length && appetite > 0.01; d2++) {
+        var si = idxs[d2];
+        var psp = plantSpecs[si];
+        var cov = coverage[base + si];
         if (cov <= 0.01) continue;
         var want = appetite / (psp.food * 0.55);
         var eat = Math.min(want, cov * 0.6);
         if (eat <= 0) continue;
-        coverage[i * NP + si] = Math.max(0, cov - eat);
+        coverage[base + si] = Math.max(0, cov - eat);
         var gain = eat * psp.food * 0.55;
         an.energy += gain;
         appetite -= gain;
@@ -524,14 +609,16 @@
       dirty = true;
     }
 
-    function predatorAct(a, an, sp, buckets, temp, fit) {
+    function predatorAct(a, an, sp, temp, fit) {
       var bestPrey = null, bestDist = 1e9;
-      var cx = Math.floor(an.x) >> 2, cy = Math.floor(an.y) >> 2;
+      var bx = Math.floor(an.x) >> 2, by = Math.floor(an.y) >> 2;
       var r = Math.ceil(sp.vision / 4);
-      for (var dy = -r; dy <= r; dy++) {
-        for (var dx = -r; dx <= r; dx++) {
-          var key = (cx + dx) + ',' + (cy + dy);
-          var cell = buckets[key];
+      var y0 = Math.max(0, by - r), y1 = Math.min(BY - 1, by + r);
+      var x0 = Math.max(0, bx - r), x1 = Math.min(BX - 1, bx + r);
+      // 遍历顺序与原实现一致（dy 外层、dx 内层），保证同距目标的取舍完全相同
+      for (var yy = y0; yy <= y1; yy++) {
+        for (var xx = x0; xx <= x1; xx++) {
+          var cell = bucketList[xx * BY + yy];
           if (!cell) continue;
           for (var k = 0; k < cell.length; k++) {
             var prey = cell[k];
@@ -543,15 +630,16 @@
             if (d2 < bestDist) { bestDist = d2; bestPrey = prey; }
           }
         }
-      }      if (bestPrey) {
+      }
+      if (bestPrey) {
         var dist = Math.sqrt(bestDist);
-        if (dist < 2.0 && an.killsThisMonth < 3) {
+        if (dist < 2.0) {
           // 攻击：体型决定成功率
           var ps2 = SPEC.byId(bestPrey.sp);
           var sizeRatio = (sp.M / 2) / ps2.M;
           var chance = clamp(0.9 * sizeRatio, 0.30, 0.95);
           // 功能响应：视野内猎物稀少时猎杀成功率下降（搜索成本上升）
-          var preyNear = countPreyNear(an, sp, buckets, Math.max(4, sp.vision));
+          var preyNear = countPreyNear(an, Math.max(4, sp.vision));
           chance *= clamp(preyNear / 6, 0.3, 1);
           // 地形庇护所：猎物藏在林地/湿地时更难被捕
           var cover = terrain[Math.floor(bestPrey.y) * w + Math.floor(bestPrey.x)];
@@ -565,7 +653,6 @@
             var pi = animals.indexOf(bestPrey);
             if (pi >= 0) killAnimal(pi, 0);
             an.energy += gained;
-            an.killsThisMonth++;
           } else {
             // 猎物逃脱，能量代价
             an.energy -= sp.metab * 0.6;
@@ -592,7 +679,7 @@
       var nutrSum = 0, moistSum = 0;
       var n = w * h;
       for (var s = 0; s < NP; s++) {
-        var sp = SPEC.byId(plants[s]);
+        var sp = plantSpecs[s];
         var covSum = 0;
         for (var i = 0; i < n; i++) covSum += coverage[i * NP + s];
         plantCov[plants[s]] = covSum;
@@ -650,12 +737,17 @@
       return clamp(1 - cv * 1.6, 0, 1);
     }
 
+    // 统计缓存：同一模拟步内（状态未改动时）多次读取只计算一次
     function getStats() {
+      if (!dirty && statsCache) return statsCache;
       var st = computeStats();
-      st.temp = climateNow().temp;
-      st.rain = climateNow().rain;
+      var cl = climateNow();
+      st.temp = cl.temp;
+      st.rain = cl.rain;
       st.stability = stability();
       st.activeEvents = activeEvents.map(function (e) { return { name: e.name, until: e.until, desc: e.desc }; });
+      statsCache = st;
+      dirty = false;
       return st;
     }
 

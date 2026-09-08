@@ -2,14 +2,14 @@
 (function () {
   'use strict';
   var SPEC = window.ECOARK.species;
-  var RNG = window.ECOARK.rng;
-  var WORLD = window.ECOARK.world;
   var SIM = window.ECOARK.sim;
   var CHAPTERS = window.ECOARK.chapters;
   var KNOW = window.ECOARK.knowledge;
   var View = window.ECOARK.view;
   var Charts = window.ECOARK.charts;
   var Audio = window.ECOARK.audio;
+  var Timeflow = window.ECOARK.timeflow;
+  var SaveFile = window.ECOARK.savefile;
 
   var SAVE_KEY = 'ecoark_save_v1';
   var ACH_KEY = 'ecoark_achievements_v1';
@@ -21,7 +21,7 @@
     chState: null,
     chResult: null,
     paused: true,
-    speed: 4,               // 1 2 4 8 16
+    speed: 4,               // 1 2 4 8 16（单位：年/秒）
     tool: 'plant',
     selected: 'grass',
     eventChance: 0.014,
@@ -30,17 +30,17 @@
     achievements: {},
     seed: 'ark-' + Date.now().toString(36),
     scripted: [],           // {m: month, ev: id}
-    yearAcc: 0,
-    monthAcc: 0,
+    clock: null,            // 时间步进器（固定步长累加器）
     lastFrame: 0,
     brushPos: null,
-    achievementsUnlocked: {}
+    vinePeak: 0
   };
 
   // ---------- DOM ----------
   var $ = function (id) { return document.getElementById(id); };
   var els = {};
   var speciesPanel, toolBar, objPanel, logPanel, metricPanel, chartCanvas, canvasWrap, hoverTip;
+  var pendingCompleteTimer = null;
 
   // ---------- 工具函数 ----------
   function fmt(v, d) { return v == null ? '—' : Number(v).toFixed(d == null ? 1 : d); }
@@ -50,11 +50,12 @@
     if (html != null) e.innerHTML = html;
     return e;
   }
-  function uid() { return Math.random().toString(36).slice(2, 8); }
+  function clearPendingComplete() {
+    if (pendingCompleteTimer) { clearTimeout(pendingCompleteTimer); pendingCompleteTimer = null; }
+  }
 
   // ---------- 初始化 ----------
   function boot() {
-    els.top = {};
     ['chapterPill', 'clock', 'btnPause', 'btnSpeed1', 'btnSpeed2', 'btnSpeed4', 'btnSpeed8', 'btnSpeed16',
       'btnBook', 'btnSave', 'btnSound', 'btnMenu'].forEach(function (id) { els[id] = $(id); });
     canvasWrap = $('canvasWrap');
@@ -66,8 +67,11 @@
     metricPanel = $('metrics');
     chartCanvas = $('chartCanvas');
 
-    View.init($('canvas'));
-    Charts.init(chartCanvas);
+    G.clock = Timeflow.createClock(G.speed);
+    var viewOk = View.init($('canvas'));
+    var chartOk = Charts.init(chartCanvas);
+    if (!viewOk) console.warn('ECO-ARK：Canvas 2D 不可用，画布渲染与涂抹已禁用。');
+    if (!chartOk) console.warn('ECO-ARK：曲线画布不可用，种群曲线已禁用。');
     loadPersist();
     bindUI();
     showMenu();
@@ -78,40 +82,32 @@
   function loadPersist() {
     try {
       var s = localStorage.getItem(ACH_KEY);
-      if (s) G.achievements = JSON.parse(s);
+      if (s) {
+        var a = JSON.parse(s);
+        if (a && typeof a === 'object' && !Array.isArray(a)) G.achievements = a;
+      }
+    } catch (e) { G.achievements = {}; }
+    try {
       var sv = localStorage.getItem(SAVE_KEY);
-      if (sv) G.saveData = JSON.parse(sv);
+      var d = sv ? JSON.parse(sv) : null;
+      G.saveData = SaveFile.validate(d) ? d : null;
     } catch (e) { G.saveData = null; }
   }
+
   function saveGame() {
-    if (!G.sim) return;
+    if (!G.sim) return false;
     var data = {
-      v: 1, mode: G.mode, chapter: G.chapter, seed: G.seed,
+      v: SaveFile.VERSION, mode: G.mode, chapter: G.chapter, seed: G.seed,
       eventChance: G.eventChance, actions: G.actions,
-      stars: G.stars, chState: serializeChState(G.chState),
+      stars: G.stars, chState: SaveFile.serializeState(G.chState),
       scripted: G.scripted, vinePeak: G.vinePeak || 0,
       month: G.sim.month
     };
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); return true; }
-    catch (e) { return false; }
-  }
-  function serializeChState(st) {
-    if (!st) return null;
-    var o = {};
-    for (var k in st) {
-      if (k === 'lastAlive') o[k] = Array.from(st[k]);
-      else o[k] = st[k];
-    }
-    return o;
-  }
-  function deserializeChState(o) {
-    if (!o) return null;
-    var st = CHAPTERS.createState(o.no);
-    for (var k in o) {
-      if (k === 'lastAlive') st[k] = new Set(o[k]);
-      else st[k] = o[k];
-    }
-    return st;
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+      G.saveData = data;   // 立刻生效：返回主菜单即可看到「继续上次的方舟」
+      return true;
+    } catch (e) { return false; }
   }
   function persistAchievements() {
     try { localStorage.setItem(ACH_KEY, JSON.stringify(G.achievements)); } catch (e) { /* ignore */ }
@@ -121,8 +117,10 @@
   function showMenu() {
     G.mode = 'menu';
     G.paused = true;
-    var starsTotal = Object.values(G.stars).reduce(function (a, b) { return a + b; }, 0);
-    var achCount = Object.keys(G.achievements).length;
+    clearPendingComplete();   // 防止延迟的章节结算弹窗盖在主菜单上
+    var starsTotal = 0;
+    Object.keys(G.stars || {}).forEach(function (k) { starsTotal += Number(G.stars[k]) || 0; });
+    var achCount = Object.keys(G.achievements || {}).length;
     var html = '<div class="menu-bg"></div><div class="menu-card">' +
       '<h1>🌱 ECO·ARK</h1>' +
       '<h2>生态方舟 · 星球重建模拟器</h2>' +
@@ -160,6 +158,7 @@
     G.chapter = 1;
     G.seed = 'campaign-' + Date.now().toString(36);
     G.stars = {};
+    G.vinePeak = 0;
     beginChapter();
   }
 
@@ -168,6 +167,7 @@
     G.chapter = 0;
     G.seed = 'sandbox-' + Date.now().toString(36);
     G.eventChance = 0.02;
+    G.vinePeak = 0;
     var wrap = el('div', 'modal-overlay', '<div class="menu-card small">' +
       '<h2>🔬 沙盒模式</h2>' +
       '<label>自然事件频率：</label><select id="sbEv"><option value="0.008">平静</option><option value="0.02" selected>正常</option><option value="0.045">激烈</option></select>' +
@@ -277,6 +277,7 @@
 
   // ---------- 模拟初始化 ----------
   function newSim(sandbox) {
+    clearPendingComplete();
     G.actions = [];
     G.scripted = sandbox ? [] : G.scripted || [];
     var opts = {
@@ -287,7 +288,7 @@
     G.sim = SIM.createSim(opts);
     G.chState = sandbox ? null : CHAPTERS.createState(G.chapter);
     G.chResult = null;
-    G.monthAcc = 0;
+    if (G.clock) G.clock.acc = 0;
     G.paused = true;
     els.btnPause.textContent = '▶';
     els.chapterPill.textContent = sandbox ? '🔬 沙盒模式' : CHAPTERS.byNo(G.chapter).title;
@@ -296,22 +297,18 @@
     renderObjectives();
     renderMetrics();
     renderLog();
-    // 教程章节预置少量物种（第 1 章从零开始，让玩家亲手种）
-    if (!sandbox && G.chapter === 1) {
-      // 给予三块样板田，引导玩家
-    }
   }
 
   // ---------- 主循环 ----------
   function loop(ts) {
     requestAnimationFrame(loop);
-    if (!G.sim) return;
+    if (!G.sim || G.mode === 'menu') { G.lastFrame = ts; return; }
     var dt = G.lastFrame ? (ts - G.lastFrame) : 16;
     G.lastFrame = ts;
     if (!G.paused) {
-      var monthsPerSec = G.speed * 12;
-      var months = Math.min(40, monthsPerSec * dt / 1000);
-      for (var i = 0; i < months; i++) stepOnce();
+      // 固定步长累加器：1×=12 月/秒、4×=48 月/秒……余数保留到下一帧
+      var steps = Timeflow.advance(G.clock, dt);
+      for (var i = 0; i < steps; i++) stepOnce();
     }
     renderFrame();
   }
@@ -324,12 +321,10 @@
         sim.triggerEvent(G.scripted[i].ev);
         G.actions.push({ m: sim.month, a: 'event', ev: G.scripted[i].ev });
         G.scripted.splice(i, 1);
-        renderLog();
       }
     }
     sim.step();
     if (sim.month % SIM.MONTHS_PER_YEAR === 0) {
-      G.yearAcc = sim.year;
       // 章节目标推进
       if (G.mode === 'campaign' && G.chState) {
         G.chResult = CHAPTERS.update(G.chapter, sim, G.chState);
@@ -337,8 +332,11 @@
         if (G.chResult.allDone) {
           G.paused = true;
           var rating = CHAPTERS.rate(G.chapter, sim, G.chState, G.chResult);
-          renderMetrics();
-          setTimeout(function () { showChapterComplete(CHAPTERS.byNo(G.chapter), rating); }, 400);
+          clearPendingComplete();
+          pendingCompleteTimer = setTimeout(function () {
+            pendingCompleteTimer = null;
+            showChapterComplete(CHAPTERS.byNo(G.chapter), rating);
+          }, 400);
         }
       }
       // 沙盒年份成就
@@ -352,9 +350,6 @@
       if (G.vinePeak > 0.15 && CHAPTERS.vineCoverage(sim) < 0.1) unlock('vine_defender');
       if (G.mode === 'campaign' && G.chapter === 3 && G.chState && G.chState.cascadeObserved) unlock('cascade');
     }
-    renderMetrics();
-    renderLog();
-    updateClock();
   }
 
   function updateClock() {
@@ -381,13 +376,18 @@
     });
     Charts.render(G.sim);
     Audio.setEnv(st);
+    // 面板每帧刷新一次即可（此前每个模拟月都重建一次 DOM）
+    renderMetrics();
+    renderLog();
+    updateClock();
     if (hoverTile) updateHoverTip(hoverTile);
     else if (hoverTip) hoverTip.style.display = 'none';
   }
 
   function updateHoverTip(tile) {
     var info = View.tileInfo(G.sim, tile.x, tile.y);
-    var rect = $('canvas').getBoundingClientRect();
+    var canvasEl = $('canvas');
+    var rect = canvasEl ? canvasEl.getBoundingClientRect() : { left: 0, top: 0 };
     var lines = ['<b>' + info.terrain + '</b>',
       '💧 ' + fmt(info.moisture, 2) + ' · 养分 ' + fmt(info.nutrients, 2),
       info.carcass > 0.02 ? '🪦 尸体 ' + fmt(info.carcass, 2) : null,
@@ -395,7 +395,6 @@
       info.animals.length ? info.animals.join(' ') : null].filter(Boolean);
     hoverTip.innerHTML = lines.join('<br>');
     hoverTip.style.display = 'block';
-    hoverTip.style.left = Math.min(tile.x, 1) * 0 + 'px';
     // 跟随鼠标
     var mx = G.brushPos ? G.brushPos.clientX - rect.left + 14 : 10;
     var my = G.brushPos ? G.brushPos.clientY - rect.top + 14 : 10;
@@ -406,6 +405,7 @@
   // ---------- 交互：画布 ----------
   function bindCanvas() {
     var canvas = $('canvas');
+    if (!canvas) return;   // Canvas 不可用时降级：仅保留面板玩法
     var painting = false;
     canvas.addEventListener('mousedown', function (e) {
       Audio.resume();
@@ -459,16 +459,13 @@
       if (sp.type === 'plant') {
         G.chState && (G.chState.placedSet[sp.id] = true);
         unlock('first_plant');
-        var st = sim.getStats();
         if (plantCoverage(sim) >= 0.5) unlock('green_50');
       } else {
         var hc = CHAPTERS.herbCount(sim);
         if (hc >= 100) unlock('herd');
         var pc = CHAPTERS.predCount(sim);
         if (pc >= 30) unlock('apex_boom');
-        var three = plantCoverage(sim) > 0.01 && hc > 0 && pc > 0;
-        if (three) unlock('web3');
-        if (pc >= 30) unlock('apex_boom');
+        if (plantCoverage(sim) > 0.01 && hc > 0 && pc > 0) unlock('web3');
       }
     } else {
       flashTip('该物种不适合在这里生长（地形/水分不适）');
@@ -492,6 +489,12 @@
     // 分解者为系统物种（腐殖质循环内建），不参与直接放置
     var unlocked = (G.mode === 'sandbox' ? SPEC.ALL : SPEC.unlocked(G.chapter))
       .filter(function (s) { return s.type !== 'decomposer'; });
+    // 换章 / 重开剧情后，当前选中物种可能尚未解锁：回退到第一个可用植物
+    var stillOk = unlocked.some(function (s) { return s.id === G.selected; });
+    if (!stillOk) {
+      var fallback = unlocked.filter(function (s) { return s.type === 'plant'; })[0] || unlocked[0];
+      if (fallback) G.selected = fallback.id;
+    }
     var plants = unlocked.filter(function (s) { return s.type === 'plant'; });
     var animals = unlocked.filter(function (s) { return s.type !== 'plant'; });
     speciesPanel.appendChild(el('div', 'panel-title', '🌿 植物（' + plants.length + '）'));
@@ -515,15 +518,28 @@
     return d;
   }
 
+  // 工具与物种选择共用一套高亮状态，避免「除草按钮亮着却在种植物」
+  function setTool(tool) {
+    G.tool = tool;
+    if (toolBar) {
+      toolBar.querySelectorAll('[data-tool]').forEach(function (x) {
+        x.classList.toggle('active', x.getAttribute('data-tool') === tool);
+      });
+    }
+  }
+
   function selectSpecies(id) {
-    G.selected = id;
-    G.tool = SPEC.byId(id).type === 'plant' ? 'plant' : 'animal';
-    speciesPanel.querySelectorAll('.species-card').forEach(function (c) {
-      c.classList.toggle('selected', c.getAttribute('data-id') === id);
-    });
     var sp = SPEC.byId(id);
+    if (!sp) return;
+    G.selected = id;
+    setTool(sp.type === 'plant' ? 'plant' : 'animal');
+    if (speciesPanel) {
+      speciesPanel.querySelectorAll('.species-card').forEach(function (c) {
+        c.classList.toggle('selected', c.getAttribute('data-id') === id);
+      });
+    }
     var detail = $('speciesDetail');
-    if (detail && sp) {
+    if (detail) {
       var terrainText = sp.type === 'plant'
         ? sp.terrain.map(function (v, t) { return v > 0.05 ? SPEC.TERRAIN_NAMES[t] : null; }).filter(Boolean).join('、')
         : sp.terrain.map(function (t) { return SPEC.TERRAIN_NAMES[t]; }).join('、');
@@ -542,13 +558,13 @@
 
   // ---------- 工具栏 ----------
   function bindToolbar() {
+    if (!toolBar) return;
     toolBar.querySelectorAll('[data-tool]').forEach(function (b) {
       b.addEventListener('click', function () {
-        toolBar.querySelectorAll('[data-tool]').forEach(function (x) { x.classList.remove('active'); });
-        b.classList.add('active');
-        G.tool = b.getAttribute('data-tool');
-        if (G.tool === 'remove') flashTip('拖动画笔清除植物与动物');
-        if (G.tool === 'fertilize') flashTip('施肥提升土壤养分');
+        var tool = b.getAttribute('data-tool');
+        setTool(tool);
+        if (tool === 'remove') flashTip('拖动画笔清除植物与动物');
+        if (tool === 'fertilize') flashTip('施肥提升土壤养分');
       });
     });
   }
@@ -556,10 +572,25 @@
   // ---------- 目标面板 ----------
   function renderObjectives() {
     if (!objPanel) return;
-    if (G.mode !== 'campaign' || !G.chResult) {
-      objPanel.innerHTML = G.mode === 'sandbox'
-        ? '<div class="obj-none">🔬 沙盒模式：自由放置物种，观察演化。目标：让 8 种以上物种共存并保持稳定。</div>'
-        : '<div class="obj-none">章节目标即将加载…</div>';
+    if (G.mode === 'sandbox') {
+      objPanel.innerHTML = '<div class="obj-none">🔬 沙盒模式：自由放置物种，观察演化。目标：让 8 种以上物种共存并保持稳定。</div>';
+      return;
+    }
+    if (G.mode !== 'campaign') {
+      objPanel.innerHTML = '<div class="obj-none">章节目标即将加载…</div>';
+      return;
+    }
+    // 尚未满一年时先展示章节目标清单（避免开局显示「即将加载」）
+    if (!G.chResult) {
+      var pending = CHAPTERS.byNo(G.chapter);
+      if (!pending) { objPanel.innerHTML = '<div class="obj-none">章节目标即将加载…</div>'; return; }
+      objPanel.innerHTML = '<div class="obj-head">📋 ' + pending.title + ' · 目标</div>' +
+        pending.objectives.map(function (o) {
+          return '<div class="obj-item"><span class="obj-ck">⏳</span>' +
+            '<span class="obj-desc">' + o.desc + '</span>' +
+            '<div class="obj-bar"><div class="obj-fill" style="width:0%"></div></div></div>';
+        }).join('') +
+        '<div class="obj-foot">演化满一年后开始结算进度…</div>';
       return;
     }
     var ch = G.chResult.chapter;
@@ -620,10 +651,10 @@
   };
 
   function unlock(id) {
-    if (G.achievements[id]) return;
+    var a = ACHIEVEMENTS[id];
+    if (!a || G.achievements[id]) return;
     G.achievements[id] = true;
     persistAchievements();
-    var a = ACHIEVEMENTS[id];
     var t = el('div', 'ach-toast', a.icon + ' 成就解锁：' + a.name);
     document.body.appendChild(t);
     setTimeout(function () { t.remove(); }, 2600);
@@ -639,10 +670,15 @@
     var body = wrap.querySelector('#bookBody');
     function renderSpecies() {
       body.innerHTML = '<div class="book-grid">' + SPEC.ALL.map(function (sp) {
+        var meta;
+        if (sp.type === 'plant') meta = '生产者 · 能量 ' + sp.food + (sp.growth ? ' · 生长 ' + fmt(sp.growth * 100, 0) + '%' : '');
+        else if (sp.type === 'herbivore') meta = '食草动物 · 体型 ' + fmt(sp.M, 1);
+        else if (sp.type === 'predator') meta = '捕食者 · 体型 ' + fmt(sp.M, 1);
+        else meta = '分解者 · 尸体 → 养分（系统自动运作）';
         return '<div class="book-species' + (sp.invasive ? ' invasive' : '') + '">' +
           '<div class="bs-head">' + sp.emoji + ' ' + sp.name + (sp.invasive ? ' ⚠️' : '') + '</div>' +
           '<div class="bs-desc">' + sp.desc + '</div>' +
-          '<div class="bs-meta">' + (sp.type === 'plant' ? '生产者 · 能量 ' + sp.food + (sp.growth ? ' · 生长 ' + fmt(sp.growth * 100, 0) + '%' : '') : (sp.type === 'herbivore' ? '食草动物 · 体型 ' + sp.M : '捕食者 · 体型 ' + sp.M)) +
+          '<div class="bs-meta">' + meta +
           (sp.unlock > 0 && sp.unlock <= 6 ? ' · 第 ' + sp.unlock + ' 章解锁' : '') + '</div></div>';
       }).join('') + '</div>';
     }
@@ -685,12 +721,12 @@
 
   // ---------- 读档 ----------
   function loadGame() {
-    if (!G.saveData) { showMenu(); return; }
+    if (!SaveFile.validate(G.saveData)) { G.saveData = null; showMenu(); return; }
     var d = G.saveData;
     G.mode = d.mode; G.chapter = d.chapter; G.seed = d.seed;
-    G.eventChance = d.eventChance || 0.014;
-    G.stars = d.stars || {};
-    G.actions = d.actions || [];
+    G.eventChance = typeof d.eventChance === 'number' ? d.eventChance : 0.014;
+    G.stars = (d.stars && typeof d.stars === 'object') ? d.stars : {};
+    G.actions = d.actions;
     newSimFromSave(d);
   }
 
@@ -698,19 +734,22 @@
     var opts = { seed: G.seed + (G.mode === 'campaign' ? ':ch' + G.chapter : ''), w: 84, h: 54, eventChance: G.eventChance };
     G.sim = SIM.createSim(opts);
     // 重放操作
+    var endMonth = typeof d.month === 'number' && isFinite(d.month) ? d.month : 0;
     var acts = G.actions.slice().sort(function (a, b) { return a.m - b.m; });
     for (var i = 0; i < acts.length; i++) {
       var a = acts[i];
-      while (G.sim.month < a.m && G.sim.month < (d.month || 999999)) G.sim.step();
+      if (!a || typeof a.m !== 'number') continue;
+      while (G.sim.month < a.m && G.sim.month < endMonth) G.sim.step();
       if (a.a === 'paint') G.sim.paintAt(a.id, a.x, a.y, 0.4);
       else if (a.a === 'remove') G.sim.removeAt(a.x, a.y, 1.6);
       else if (a.a === 'fertilize') G.sim.fertilizeAt(a.x, a.y, 2);
       else if (a.a === 'event') G.sim.triggerEvent(a.ev);
     }
-    while (G.sim.month < (d.month || 0)) G.sim.step();
-    G.chState = G.mode === 'campaign' ? deserializeChState(d.chState) : null;
-    G.scripted = d.scripted || [];
-    G.vinePeak = d.vinePeak || 0;
+    while (G.sim.month < endMonth) G.sim.step();
+    G.chState = G.mode === 'campaign' ? SaveFile.deserializeState(d.chState) : null;
+    G.scripted = Array.isArray(d.scripted) ? d.scripted : [];
+    G.vinePeak = typeof d.vinePeak === 'number' ? d.vinePeak : 0;
+    if (G.clock) G.clock.acc = 0;
     G.paused = false;
     els.btnPause.textContent = '⏸';
     els.chapterPill.textContent = G.mode === 'campaign' ? CHAPTERS.byNo(G.chapter).title : '🔬 沙盒模式';
@@ -734,8 +773,10 @@
     });
     [['btnSpeed1', 1], ['btnSpeed2', 2], ['btnSpeed4', 4], ['btnSpeed8', 8], ['btnSpeed16', 16]].forEach(function (pair) {
       var b = $(pair[0]);
+      if (!b) return;
       b.addEventListener('click', function () {
         G.speed = pair[1];
+        Timeflow.setSpeed(G.clock, pair[1]);
         document.querySelectorAll('.speed-btn').forEach(function (x) { x.classList.remove('active'); });
         b.classList.add('active');
       });

@@ -18,7 +18,7 @@
 | [sound-archaeology](./sound-archaeology/) | Web 解谜游戏 | 音频取证解谜：用变速 / 倒放 / 滤波 / 频谱图破译 6 段录音，揭开废弃广播塔沉睡四十年的秘密 | 原生 HTML/CSS/JS + Web Audio API（零依赖，素材内嵌） | 103 |
 | [lingua](./lingua/) | Web 语言演化模拟 | 造一门语言，看它在一千年里经历音变、语法演化、方言分裂、借词与文字诞生；106 词 / 24 条音变 / 7 分支 / 同源词对照 / 音系档案 / 现实语言学注释 / 种子可复现可分享可导出 | 原生 HTML/CSS/JS | 57 |
 | [last-broadcast](./last-broadcast/) | Web 叙事模拟 | 末日前的最后 24 小时，你是一座城市唯一还在播音的电台值班员：选歌、播报、接来电（含点歌联动）、回应神秘信号，15 位听众的命运与 9 种结局由你决定 | 原生 HTML/CSS/JS + Web Audio | 62 |
-| [eco-ark](./eco-ark/) | Web 生态模拟器 | 微观生态重建：从苔藓到狼群亲手重建完整食物网，应对干旱/冰期/陨石/入侵物种，让生态系统稳定繁衍 500 年；6 章剧情 + 沙盒 + 21 物种 + 生态学知识卡 + 成就 + 可复现种子存档（约 1 小时通关） | 原生 HTML/CSS/JS + Canvas + Web Audio | 38 |
+| [eco-ark](./eco-ark/) | Web 生态模拟器 | 微观生态重建：从苔藓到狼群亲手重建完整食物网，应对干旱/冰期/陨石/入侵物种，让生态系统长期自主演化；6 章剧情 + 沙盒 + 21 物种 + 生态学知识卡 + 成就 + 可复现种子存档（约 1 小时通关） | 原生 HTML/CSS/JS + Canvas + Web Audio | 59 |
 | [shell-quest](./shell-quest/) | 真实命令行冒险 | 生成一个**真实沙盒目录**（60+ 个真实 txt/log/hex/tar 文件），用真实命令（ls/cat/grep/base64/untar…）逐层破解，找回自我封存的 ECHO 核心；3 幕剧情 + 13 口令 + 管道/编码/归档谜题，40–60 分钟 | Node.js（零依赖）+ 原生 HTML/CSS/JS | 148 |
 | [the-vanished](./the-vanished/) | 实时桌面悬疑剧 | 同事深夜失踪，约 40 分钟内线索通过**真实 Windows 通知**、**真实磁盘证据文件**与模拟聊天陆续送达；3 个检查点 + 注意力计分 + 5 种结局 | Node.js（零依赖）+ PowerShell（真实系统通知） | 42 |
 | [desktop-siege](./desktop-siege/) | Canvas 防御射击 | 敌人由**你电脑上的真实文件名与系统进程**生成（每台机器独一无二）：exe 冲锋、pdf 重甲、zip 分裂、Boss 以你磁盘最大文件命名；20 波 + 4 Boss + 无尽模式 + 6 种道具，30–60 分钟 | Node.js（零依赖）+ 原生 Canvas/Web Audio | 52 |
@@ -119,7 +119,7 @@ ai_project/
     ├── js/shared/          # 引擎：RNG / 21 物种 / 地形 / 生态仿真 / 章节 / 知识卡
     ├── js/                 # 培养皿渲染 / 种群曲线 / Web Audio / 主逻辑
     ├── css/style.css       # 深绿实验室主题
-    ├── test/               # 单元测试（node test/run.js，38 项）
+    ├── test/               # 单元测试（node test/run.js，59 项）
     └── start.bat           # 一键打开
 ├── shell-quest/            # ARCHIVE-7 · 真实文件历险（真实命令行解谜冒险）
     ├── server.js           # 服务器：/api/exec 在真实沙盒目录上执行命令
@@ -272,7 +272,7 @@ node test/run.js          # 62 项单元测试
 ```bash
 cd eco-ark
 .\start.bat               # 或直接双击 index.html（Chrome / Edge）
-node test/run.js          # 38 项单元测试（含确定性 / 生态平衡 / 剧情目标回归）
+node test/run.js          # 59 项单元测试（含确定性 / 生态平衡 / 剧情目标回归）
 ```
 
 微观生态重建模拟器（约 1 小时通关）：在 84×54 的培养皿星球上涂抹物种、重建食物网，应对干旱 / 冰期 / 陨石 / 入侵藤蔓。6 章剧情 + 沙盒模式 + 21 种物种 + 13 条生态学知识卡 + 12 项成就 + 种子存档重放。纯前端零依赖，引擎全确定性（同种子同操作 → 相同演化）。

@@ -116,3 +116,77 @@ test('物种按章节解锁数量递增', () => {
   const n6 = spec.unlocked(6).length;
   assert.ok(n1 < n3 && n3 < n6);
 });
+
+test('每章解锁的知识卡 id 都存在于图鉴（无悬空引用）', () => {
+  chapters.CHAPTERS.forEach(c => {
+    c.unlockKnowledge.forEach(id => {
+      assert.ok(knowledge.byId(id), '第 ' + c.no + ' 章引用了不存在的知识卡 ' + id);
+    });
+  });
+  // 13 张卡都应在某一章的结算里出现，且不重复
+  const referenced = chapters.CHAPTERS.reduce((acc, c) => acc.concat(c.unlockKnowledge), []);
+  assert.strictEqual(new Set(referenced).size, referenced.length, '知识卡不应被重复引用');
+  assert.strictEqual(referenced.length, knowledge.CONCEPTS.length);
+});
+
+test('目标键与章节数据完全一致（无不可达分支）', () => {
+  const s = mk('objkeys');
+  for (const no of [1, 2, 3, 4, 5, 6]) {
+    const ch = chapters.byNo(no);
+    const r = chapters.update(no, s, chapters.createState(no));
+    assert.deepStrictEqual(
+      Object.keys(r.objectives).sort(),
+      ch.objectives.map(o => o.id).sort(),
+      '第 ' + no + ' 章目标键不一致'
+    );
+  }
+});
+
+test('第四章：冰期长度与描述一致（约 2.5 年）', () => {
+  const s = mk('c4len');
+  s.triggerEvent('iceage');
+  let months = 0;
+  while (s.getStats().activeEvents.some(e => e.name === '冰期') && months < 200) {
+    s.step(); months++;
+  }
+  assert.ok(months >= 24 && months <= 36, '冰期实测 ' + months + ' 个月，文案写「约 2.5 年」');
+});
+
+test('第四章：冰期前不判定耐寒物种，冰期期间苔藓（植物）即可满足 o2', () => {
+  const s = mk('c4cold');
+  const st = chapters.createState(4);
+  s.place('moss', 150); s.place('grass', 250); s.place('rabbit', 25); s.place('fox', 5);
+  years(s, 2);
+  let r = chapters.update(4, s, st);
+  assert.strictEqual(st.iceStarted, false);
+  assert.strictEqual(r.objectives.o2.done, false, '冰期还没来，o2 不应提前完成');
+  s.triggerEvent('iceage');
+  years(s, 1);
+  r = chapters.update(4, s, st);
+  assert.strictEqual(st.iceStarted, true);
+  assert.ok(s.getStats().plantCov.moss > 0.001, '苔藓应仍存活');
+  assert.strictEqual(r.objectives.o2.done, true, '苔藓是耐寒植物，冰期存活应满足 o2');
+  assert.strictEqual(r.objectives.o1.done, false, '冰期尚未结束，o1 不应完成');
+});
+
+test('第四章：冰期结束才结算 o1，且 o3 用冰期前基线判定恢复', () => {
+  const s = mk('c4rec');
+  const st = chapters.createState(4);
+  s.place('moss', 200); s.place('grass', 300); s.place('shrub', 150);
+  s.place('rabbit', 30); s.place('vole', 30); s.place('mammoth', 10);
+  s.place('fox', 6); s.place('wolf', 4);
+  let r, o1at = null, o3at = null;
+  for (let y = 1; y <= 45; y++) {
+    if (y === 2) s.triggerEvent('iceage');   // 与剧本一致：第 2 年冰期
+    years(s, 1);
+    r = chapters.update(4, s, st);
+    if (r.objectives.o1.done && o1at === null) o1at = y;
+    if (r.objectives.o3.done && o3at === null) o3at = y;
+    if (r.allDone) break;
+  }
+  assert.ok(o1at !== null && o1at <= 10, 'o1 应在冰期结束后不久完成（实测第 ' + o1at + ' 年）');
+  assert.ok(st.iceObservations >= 2, '冰期至少经过 2 次年检（实测 ' + st.iceObservations + '）');
+  assert.strictEqual(st.iceYearsOk, st.iceObservations, '冰期每年都应有 ≥3 物种存活');
+  assert.ok(o3at !== null, 'o3 恢复目标应能完成');
+  assert.ok(st.iceBiomassBefore > 0 && st.iceMin !== null);
+});

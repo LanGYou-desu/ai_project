@@ -10,7 +10,6 @@
     GRASS: 0, FOREST: 1, WATER: 2, SAND: 3, ROCK: 4, MARSH: 5
   };
   var TERRAIN_NAMES = ['草地', '林地', '水域', '沙地', '岩地', '湿地'];
-  var TERRAIN_COLORS = ['#4d7c3a', '#2f5d33', '#2b6ea8', '#c9b37a', '#7a7d85', '#3d6b4f'];
 
   function fit01(v, min, max) {
     // 舒适范围中间为 1，两端线性降到 0
@@ -137,7 +136,6 @@
   var ALL = PLANTS.concat(ANIMALS).concat(DECOMPOSERS);
   var BY_ID = {};
   ALL.forEach(function (s) { BY_ID[s.id] = s; });
-  BY_ID.terrainNames = TERRAIN_NAMES;
 
   function list(type) {
     if (!type) return ALL.slice();
@@ -156,7 +154,7 @@
   }
 
   return {
-    TERRAIN: TERRAIN, TERRAIN_NAMES: TERRAIN_NAMES, TERRAIN_COLORS: TERRAIN_COLORS,
+    TERRAIN: TERRAIN, TERRAIN_NAMES: TERRAIN_NAMES,
     PLANTS: PLANTS, ANIMALS: ANIMALS, DECOMPOSERS: DECOMPOSERS, ALL: ALL,
     byId: function (id) { return BY_ID[id]; },
     list: list, unlocked: unlocked,

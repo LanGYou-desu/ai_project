@@ -66,7 +66,6 @@
     }
 
     // 4) 湿地：紧邻水域的草地/沙地变为湿地
-    var marshSet = new Uint8Array(w * h);
     for (var y = 0; y < h; y++) {
       for (var x = 0; x < w; x++) {
         if (terrain[idx(x, y)] !== T.WATER) continue;
@@ -77,7 +76,7 @@
             if (!inB(nx, ny)) continue;
             var t = terrain[idx(nx, ny)];
             if ((t === T.GRASS || t === T.SAND) && rng.chance(0.55)) {
-              terrain[idx(nx, ny)] = T.MARSH; marshSet[idx(nx, ny)] = 1;
+              terrain[idx(nx, ny)] = T.MARSH;
             }
           }
         }

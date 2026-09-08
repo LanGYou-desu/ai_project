@@ -3,8 +3,6 @@
   'use strict';
   var SPEC = window.ECOARK.species;
   var canvas, ctx, cw, ch;
-  var tile = 8;
-  var hover = null;
 
   var TERRAIN_PALETTE = [
     '#4e7c3f', // 草地
@@ -14,19 +12,39 @@
     '#6e7078', // 岩地
     '#3f6a4e'  // 湿地
   ];
+  // 地形微差配色查表（每帧逐格构造 'rgb(...)' 字符串是纯浪费）
+  var SHADE_LEVELS = 17;
+  var shadeTable = null;
 
+  function buildShadeTable() {
+    shadeTable = [];
+    for (var t = 0; t < TERRAIN_PALETTE.length; t++) {
+      var row = [];
+      for (var i = 0; i < SHADE_LEVELS; i++) {
+        row.push(shade(TERRAIN_PALETTE[t], (i / (SHADE_LEVELS - 1) - 0.5) * 14));
+      }
+      shadeTable.push(row);
+    }
+  }
+
+  // 返回 false 表示 Canvas 2D 不可用，主控制器据此降级
   function init(c) {
+    if (!c) return false;
+    var context = c.getContext ? c.getContext('2d') : null;
+    if (!context) return false;
     canvas = c;
-    ctx = c.getContext('2d');
+    ctx = context;
+    if (!shadeTable) buildShadeTable();
     resize();
     window.addEventListener('resize', resize);
+    return true;
   }
 
   function resize() {
+    if (!canvas) return;
     var parent = canvas.parentElement;
-    if (!parent) return;
-    cw = parent.clientWidth;
-    ch = parent.clientHeight;
+    cw = (parent && parent.clientWidth) || canvas.width || 800;
+    ch = (parent && parent.clientHeight) || canvas.height || 600;
     canvas.width = cw;
     canvas.height = ch;
   }
@@ -52,12 +70,11 @@
   }
 
   function render(sim, opts) {
-    if (!ctx) return;
+    if (!ctx || !canvas) return;
     opts = opts || {};
     var s = fitScale(sim);
     var offX = (cw - sim.w * s) / 2, offY = (ch - sim.h * s) / 2;
     var NP = SPEC.PLANTS.length;
-    var idx = function (x, y) { return y * sim.w + x; };
 
     ctx.fillStyle = '#0b1210';
     ctx.fillRect(0, 0, cw, ch);
@@ -70,10 +87,10 @@
       var x = i % sim.w, y = (i / sim.w) | 0;
       var t = sim.terrain[i];
       var px = offX + x * s, py = offY + y * s;
-      var base = TERRAIN_PALETTE[t];
+      // 纹理微差：量化到 17 级后查表，避免每格每帧拼接颜色字符串
       var n = hash2(x, y);
-      // 纹理微差
-      ctx.fillStyle = shade(base, (n - 0.5) * 14);
+      var lvl = (n * (SHADE_LEVELS - 1)) | 0;
+      ctx.fillStyle = shadeTable[t] ? shadeTable[t][lvl] : '#000000';
       ctx.fillRect(px, py, s + 0.5, s + 0.5);
 
       // 植被叠加
@@ -171,11 +188,13 @@
   }
 
   function pick(sim, clientX, clientY) {
+    if (!canvas || !sim) return null;
     var rect = canvas.getBoundingClientRect();
     var mx = clientX - rect.left, my = clientY - rect.top;
     var s = fitScale(sim);
     var offX = (cw - sim.w * s) / 2, offY = (ch - sim.h * s) / 2;
     var tx = Math.floor((mx - offX) / s), ty = Math.floor((my - offY) / s);
+    if (!isFinite(tx) || !isFinite(ty)) return null;
     if (tx < 0 || ty < 0 || tx >= sim.w || ty >= sim.h) return null;
     return { x: tx, y: ty };
   }
