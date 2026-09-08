@@ -214,6 +214,123 @@
     return g;
   }
 
+  // ---------- 石路：贴合地形的带状路面（单一网格，替代逐段方块） ----------
+  // 每段方块都是水平的，遇到坡地四角会扎进地形（实测最深 -1.86）；
+  // 这里改为沿路径逐点采样地形高度的三角带，路面永远贴着地面。
+  function buildRoadRibbon(points, width) {
+    var pts = [], i;
+    for (i = 0; i < points.length; i++) pts.push(new THREE.Vector3(points[i][0], 0, points[i][1]));
+    var curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.25);
+    var len = curve.getLength();
+    var N = Math.max(4, Math.ceil(len / 1.1));
+    var positions = new Float32Array((N + 1) * 2 * 3);
+    var uvs = new Float32Array((N + 1) * 2 * 2);
+    var indices = [];
+    for (i = 0; i <= N; i++) {
+      var s = i / N;
+      var p = curve.getPoint(s);
+      var t = curve.getTangent(s);
+      var nx = -t.z, nz = t.x;
+      var nl = Math.hypot(nx, nz) || 1;
+      nx /= nl; nz /= nl;
+      var hw = width / 2;
+      var ax = p.x + nx * hw, az = p.z + nz * hw;
+      var bx = p.x - nx * hw, bz = p.z - nz * hw;
+      var o = i * 6;
+      positions[o] = ax; positions[o + 1] = H.groundHeight(ax, az) + 0.085; positions[o + 2] = az;
+      positions[o + 3] = bx; positions[o + 4] = H.groundHeight(bx, bz) + 0.085; positions[o + 5] = bz;
+      var uo = i * 4;
+      uvs[uo] = 0; uvs[uo + 1] = s * len / 2.4;
+      uvs[uo + 2] = 1; uvs[uo + 3] = s * len / 2.4;
+      if (i < N) {
+        var a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3;
+        indices.push(a, b, c, b, d, c);
+      }
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    g.setIndex(indices);
+    g.computeVertexNormals();
+    return g;
+  }
+
+  // 所有道路共用一份材质，并在 buildTerrain 里合并为单个网格
+  H.buildRoads = function (paths) {
+    var geos = [], i;
+    for (i = 0; i < paths.length; i++) {
+      geos.push(buildRoadRibbon(paths[i].pts, paths[i].width));
+    }
+    var merged = mergeGeometries(geos);
+    var mat = H.mat('#8f8a80', { roughness: 0.98 });
+    if (!mat.map) mat.map = H.texCobble();
+    var mesh = new THREE.Mesh(merged, mat);
+    mesh.receiveShadow = true;
+    mesh.name = 'roads';
+    return mesh;
+  };
+
+  // 简易几何合并（只处理 position/uv/index，够道路使用；不依赖 BufferGeometryUtils）
+  function mergeGeometries(geos) {
+    var vCount = 0, iCount = 0, i, g;
+    for (i = 0; i < geos.length; i++) {
+      vCount += geos[i].attributes.position.count;
+      iCount += geos[i].index.count;
+    }
+    var pos = new Float32Array(vCount * 3);
+    var uv = new Float32Array(vCount * 2);
+    var idx = vCount > 65535 ? new Uint32Array(iCount) : new Uint16Array(iCount);
+    var vo = 0, io = 0;
+    for (i = 0; i < geos.length; i++) {
+      g = geos[i];
+      pos.set(g.attributes.position.array, vo * 3);
+      uv.set(g.attributes.uv.array, vo * 2);
+      var gi = g.index.array;
+      for (var k = 0; k < gi.length; k++) idx[io + k] = gi[k] + vo;
+      io += gi.length;
+      vo += g.attributes.position.count;
+      g.dispose();
+    }
+    var out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    out.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    out.setIndex(new THREE.BufferAttribute(idx, 1));
+    out.computeVertexNormals();
+    return out;
+  }
+
+  // ---------- 石阶：台阶底面贴合坡地（按四角最大高度落位，避免埋进地形） ----------
+  H.buildStairs = function (x0, z0, x1, z1, n, width) {
+    var g = new THREE.Group();
+    g.name = 'stairs';
+    var y0 = H.groundHeight(x0, z0), y1 = H.groundHeight(x1, z1);
+    var ry = Math.atan2(x1 - x0, z1 - z0);
+    var cos = Math.cos(ry), sin = Math.sin(ry);
+    var w = width || 3.0, depth = 0.6, thick = 0.3;
+    for (var i = 0; i < n; i++) {
+      var f = (i + 0.5) / n;
+      var x = H.lerp(x0, x1, f), z = H.lerp(z0, z1, f);
+      var y = H.lerp(y0, y1, f);
+      // 台阶四角的地形高度取最大值，保证整块台阶都在地面之上
+      var hi = y;
+      for (var cx = -1; cx <= 1; cx += 2) {
+        for (var cz = -1; cz <= 1; cz += 2) {
+          var lx = cx * w / 2, lz = cz * depth / 2;
+          var wx = x + lx * cos + lz * sin;
+          var wz = z - lx * sin + lz * cos;
+          var hh = H.groundHeight(wx, wz);
+          if (hh > hi) hi = hh;
+        }
+      }
+      var st = new THREE.Mesh(H.boxGeo(w, thick, depth), H.mat('#b7b2a7'));
+      st.position.set(x, hi + thick / 2, z);
+      st.rotation.y = ry;
+      st.castShadow = true; st.receiveShadow = true;
+      g.add(st);
+    }
+    return g;
+  };
+
   // ---------- 地形网格 ----------
   function buildTerrainMesh() {
     var size = 196, seg = 220;

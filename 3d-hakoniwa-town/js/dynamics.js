@@ -69,7 +69,7 @@
         '}'
       ].join('\n')
     });
-    var sky = new THREE.Mesh(new THREE.SphereGeometry(430, 40, 20), mat);
+    var sky = new THREE.Mesh(H.sphGeo(430, 40, 20), mat);
     scene.add(sky);
     return mat;
   }
@@ -108,7 +108,7 @@
     sun.scale.set(52, 52, 1);
     scene.add(sun);
     var sunCore = new THREE.Mesh(
-      new THREE.SphereGeometry(7, 20, 16),
+      H.sphGeo(7, 20, 16),
       new THREE.MeshBasicMaterial({ color: 0xfff2c4, fog: false })
     );
     scene.add(sunCore);
@@ -120,7 +120,7 @@
     moon.scale.set(34, 34, 1);
     scene.add(moon);
     var moonCore = new THREE.Mesh(
-      new THREE.SphereGeometry(4.2, 20, 16),
+      H.sphGeo(4.2, 20, 16),
       new THREE.MeshBasicMaterial({ color: 0xe8f0ff, fog: false })
     );
     moonCore.visible = false;
@@ -158,12 +158,12 @@
     var birds = [];
     for (var i = 0; i < 10; i++) {
       var g = new THREE.Group();
-      var body = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.0, 6),
+      var body = new THREE.Mesh(H.coneGeo(0.18, 1.0, 6),
         new THREE.MeshStandardMaterial({ color: 0x3a3f4a, roughness: 0.8 }));
       body.rotation.x = Math.PI / 2;
       body.castShadow = true;
       g.add(body);
-      var wingGeo = new THREE.PlaneGeometry(0.85, 0.32);
+      var wingGeo = H.planeGeo(0.85, 0.32);
       var wingMat = new THREE.MeshStandardMaterial({ color: 0x4a4f5a, side: THREE.DoubleSide, roughness: 0.8 });
       var wlP = new THREE.Group();
       var wl = new THREE.Mesh(wingGeo, wingMat);
@@ -190,26 +190,26 @@
   // ---------- 小船（沿河往返） ----------
   function buildBoat() {
     var g = new THREE.Group();
-    var hull = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 1.1), H.mat('#e2685f'));
+    var hull = new THREE.Mesh(H.boxGeo(2.6, 0.5, 1.1), H.mat('#e2685f'));
     hull.position.y = 0.15;
     hull.castShadow = true;
     g.add(hull);
-    var bow = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.0, 4), H.mat('#e2685f'));
+    var bow = new THREE.Mesh(H.coneGeo(0.9, 1.0, 4), H.mat('#e2685f'));
     bow.rotation.x = Math.PI / 2;
     bow.rotation.y = Math.PI / 4;
     bow.position.set(0, 0.15, 1.6);
     g.add(bow);
-    var rim = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.12, 1.2), H.mat('#f5f1e8'));
+    var rim = new THREE.Mesh(H.boxGeo(2.7, 0.12, 1.2), H.mat('#f5f1e8'));
     rim.position.y = 0.42;
     g.add(rim);
-    var cabin = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.6, 0.8), H.mat('#f6efe2'));
+    var cabin = new THREE.Mesh(H.boxGeo(1.1, 0.6, 0.8), H.mat('#f6efe2'));
     cabin.position.set(-0.5, 0.75, 0);
     cabin.castShadow = true;
     g.add(cabin);
-    var mast = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.0, 6), H.mat('#7a5a3e'));
+    var mast = new THREE.Mesh(H.cylGeo(0.05, 0.05, 2.0, 6), H.mat('#7a5a3e'));
     mast.position.set(0.4, 1.1, 0);
     g.add(mast);
-    var flag = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.4),
+    var flag = new THREE.Mesh(H.planeGeo(0.6, 0.4),
       new THREE.MeshStandardMaterial({ color: 0xc9403a, side: THREE.DoubleSide }));
     flag.position.set(0.7, 2.0, 0);
     g.add(flag);
@@ -241,31 +241,33 @@
     var npcs = [];
     for (var i = 0; i < loops.length; i++) {
       var g = new THREE.Group();
-      var body = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.3, 0.85, 8), H.mat(colors[i % colors.length]));
+      var body = new THREE.Mesh(H.cylGeo(0.24, 0.3, 0.85, 8), H.mat(colors[i % colors.length]));
       body.position.y = 0.9;
       body.castShadow = true;
       g.add(body);
-      var head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), H.mat('#f2c9a8'));
+      var head = new THREE.Mesh(H.sphGeo(0.2, 10, 8), H.mat('#f2c9a8'));
       head.position.y = 1.55;
       head.castShadow = true;
       g.add(head);
-      var hair = new THREE.Mesh(new THREE.SphereGeometry(0.21, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), H.mat('#5a4636'));
+      var hair = new THREE.Mesh(H.geo('hair', function () { return new THREE.SphereGeometry(0.21, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.6); }), H.mat('#5a4636'));
       hair.position.y = 1.58;
       g.add(hair);
+      // 腿以髋部为轴摆动：几何体沿自身 Y 轴下移半长（原代码对同一份几何体 translate 了两次，
+      // 摆动轴心被推到 -0.4 而不是 -0.2）
       var legGeo = new THREE.BoxGeometry(0.12, 0.5, 0.12);
+      legGeo.translate(0, -0.2, 0);
       var legMat = H.mat('#3a3f4a');
       var legL = new THREE.Mesh(legGeo, legMat);
       legL.position.set(-0.12, 0.4, 0);
-      legL.geometry.translate(0, -0.2, 0);
       g.add(legL);
       var legR = new THREE.Mesh(legGeo, legMat);
       legR.position.set(0.12, 0.4, 0);
-      legR.geometry.translate(0, -0.2, 0);
       g.add(legR);
       scene.add(g);
       npcs.push({
         g: g, path: loops[i], idx: 0, t: H.rng() * 4, pause: 0,
-        speed: H.rand(1.1, 1.7), legL: legL, legR: legR, phase: H.rng() * 6.28
+        speed: H.rand(1.1, 1.7), legL: legL, legR: legR, phase: H.rng() * 6.28,
+        gy: H.groundHeight(loops[i][0][0], loops[i][0][1])
       });
     }
     return npcs;
@@ -320,13 +322,13 @@
     var lanterns = [];
     for (var i = 0; i < 5; i++) {
       var g = new THREE.Group();
-      var body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 0.5), H.mat('#f5d76e'));
+      var body = new THREE.Mesh(H.boxGeo(0.5, 0.45, 0.5), H.mat('#f5d76e'));
       body.castShadow = true;
       g.add(body);
-      var glow = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), H.lanternGlowMat);
+      var glow = new THREE.Mesh(H.sphGeo(0.16, 8, 6), H.lanternGlowMat);
       glow.position.y = 0.1;
       g.add(glow);
-      var top = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.22, 4), H.mat('#c9403a'));
+      var top = new THREE.Mesh(H.coneGeo(0.34, 0.22, 4), H.mat('#c9403a'));
       top.position.y = 0.34;
       g.add(top);
       var a = H.rng() * Math.PI * 2;
@@ -440,15 +442,37 @@
     // 雾
     scene.fog = new THREE.FogExp2(0xbfd9e8, 0.0028);
 
+    // ---- 每帧复用的临时对象（避免逐帧 new Vector3/Color 造成 GC 抖动） ----
+    var TMP = {
+      sunDir: new THREE.Vector3(),
+      moonDir: new THREE.Vector3(),
+      top: new THREE.Color(), bot: new THREE.Color(),
+      sky: new THREE.Color(), deep: new THREE.Color(), shallow: new THREE.Color(),
+      a: new THREE.Color(), b: new THREE.Color(), c: new THREE.Color(), d: new THREE.Color()
+    };
+    var PAL = {
+      topN: H.col('#0b1026'), topD: H.col('#3d7fd0'), topK: H.col('#4a3f7d'),
+      botN: H.col('#1c2547'), botD: H.col('#cfe8f5'), botK: H.col('#ff9a63'),
+      glowWarm: H.col('#fff2c4'), glowDusk: H.col('#ff9a63'),
+      deepN: H.col('#0e2f4e'), deepD: H.col('#2c6a9e'),
+      shalN: H.col('#2b5d80'), shalD: H.col('#6fc0dc'),
+      skyDay: H.col('#cfe8f5'), hemiDay: H.col('#bfe3f5'),
+      dirDusk: H.col('#ff9d5c'), dirDay: H.col('#fff2df'),
+      cloudN: H.col('#b0bdd2'), cloudD: H.col('#ffffff')
+    };
+
     // 循环更新
     H.updateCycle = function (dt) {
       var env = H.env;
-      if (env.playing) env.t = (env.t + dt * env.speed / 60) % 1;
+      if (env.playing) {
+        env.t = (env.t + dt * env.speed / 60) % 1;
+        if (env.t < 0) env.t += 1;   // 防御：负向速度/外部写入越界
+      }
       var t = env.t;
       var ang = (t - 0.25) * Math.PI * 2;
       var el = Math.sin(ang);
       var az = ang;
-      var sunDir = new THREE.Vector3(
+      var sunDir = TMP.sunDir.set(
         Math.cos(az) * Math.cos(el),
         Math.sin(el),
         Math.sin(az) * Math.cos(el)
@@ -460,15 +484,13 @@
       env.sunDir = sunDir;
 
       // 天空颜色
-      var topN = H.col('#0b1026'), topD = H.col('#3d7fd0'), topK = H.col('#4a3f7d');
-      var botN = H.col('#1c2547'), botD = H.col('#cfe8f5'), botK = H.col('#ff9a63');
-      var top = topN.clone().lerp(topD, dayF).lerp(topK, duskF * 0.75);
-      var bot = botN.clone().lerp(botD, dayF).lerp(botK, duskF * 0.8);
+      var top = TMP.top.copy(PAL.topN).lerp(PAL.topD, dayF).lerp(PAL.topK, duskF * 0.75);
+      var bot = TMP.bot.copy(PAL.botN).lerp(PAL.botD, dayF).lerp(PAL.botK, duskF * 0.8);
       skyMat.uniforms.uTop.value.copy(top);
       skyMat.uniforms.uBottom.value.copy(bot);
       skyMat.uniforms.uSunDir.value.copy(sunDir);
       skyMat.uniforms.uSunGlow.value.copy(
-        H.col('#fff2c4').lerp(H.col('#ff9a63'), duskF * 0.9)
+        TMP.a.copy(PAL.glowWarm).lerp(PAL.glowDusk, duskF * 0.9)
       );
       skyMat.uniforms.uSunAmount.value = 0.35 * dayF + duskF * 1.1;
       skyMat.uniforms.uMoonDir.value.copy(sunDir).multiplyScalar(-1);
@@ -479,9 +501,9 @@
       scene.fog.density = 0.0052 - 0.0024 * dayF + duskF * 0.0006;
 
       // 水面颜色随时间变化（夜晚海面不再反光发亮）
-      var skyC = bot.clone().lerp(H.col('#cfe8f5'), 0.3);
-      var deepC = H.col('#0e2f4e').lerp(H.col('#2c6a9e'), dayF);
-      var shalC = H.col('#2b5d80').lerp(H.col('#6fc0dc'), dayF);
+      var skyC = TMP.sky.copy(bot).lerp(PAL.skyDay, 0.3);
+      var deepC = TMP.deep.copy(PAL.deepN).lerp(PAL.deepD, dayF);
+      var shalC = TMP.shallow.copy(PAL.shalN).lerp(PAL.shalD, dayF);
       for (var w = 0; w < H.waterMats.length; w++) {
         H.waterMats[w].uniforms.uSky.value.copy(skyC);
         H.waterMats[w].uniforms.uDeep.value.copy(deepC);
@@ -490,11 +512,11 @@
 
       // 灯光（黄昏保留金色余晖；降低环境光提高明暗对比）
       hemi.intensity = 0.15 + 0.42 * dayF + 0.26 * duskF;
-      hemi.color.copy(bot).lerp(H.col('#bfe3f5'), 0.5);
+      hemi.color.copy(bot).lerp(PAL.hemiDay, 0.5);
       fill.intensity = 0.05 + 0.16 * dayF;
       if (el > 0.02) {
         dir.position.copy(sunDir).multiplyScalar(150);
-        dir.color.copy(H.col('#ff9d5c').lerp(H.col('#fff2df'), H.smoothstep(0, 0.38, el)));
+        dir.color.copy(TMP.b.copy(PAL.dirDusk).lerp(PAL.dirDay, H.smoothstep(0, 0.38, el)));
         dir.intensity = 0.3 + 1.4 * dayF + 0.8 * duskF;
       } else {
         dir.position.copy(sunDir).multiplyScalar(-150);
@@ -508,7 +530,7 @@
       sunMoon.sun.material.opacity = 0.25 + 0.75 * dayF + duskF * 0.4;
       sunMoon.sun.scale.setScalar(46 + duskF * 30);
       sunMoon.sunCore.visible = el > -0.05;
-      var moonDir = sunDir.clone().multiplyScalar(-1);
+      var moonDir = TMP.moonDir.copy(sunDir).multiplyScalar(-1);
       sunMoon.moon.position.copy(moonDir).multiplyScalar(400);
       sunMoon.moonCore.position.copy(moonDir).multiplyScalar(400);
       sunMoon.moon.material.opacity = nightF * 0.9;
@@ -538,10 +560,12 @@
         H.ferrisLights[f].emissiveIntensity = 0.1 + 1.7 * nightF * flicker;
       }
       H.beamMat.opacity = nightF * 0.45;
+      // 溪流水面与主循环共享时间（H.elapsed 由 main.js 每帧写入，
+      // 这样关闭“动态元素”时水面依然流动）
       H.waterfallMat.uniforms.uTime.value = H.elapsed || 0;
 
       // 云的颜色
-      H.cloudMat.color.copy(H.col('#b0bdd2').lerp(H.col('#ffffff'), dayF + duskF * 0.15));
+      H.cloudMat.color.copy(TMP.d.copy(PAL.cloudN).lerp(PAL.cloudD, dayF + duskF * 0.15));
     };
 
     // 更新 HUD 时钟
@@ -549,8 +573,10 @@
       var el = document.getElementById('clock');
       var ph = document.getElementById('phase');
       if (!el) return;
-      var h24 = H.env.t * 24;
-      var hh = Math.floor(h24), mm = Math.floor((h24 - hh) * 60);
+      // 先按分钟取整再拆分：直接 floor((h24-hh)*60) 会因为浮点误差
+      // 把 07:12 显示成 07:11
+      var totalMin = Math.round(H.env.t * 24 * 60) % 1440;
+      var hh = Math.floor(totalMin / 60), mm = totalMin % 60;
       el.textContent = (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
       if (ph) ph.textContent = phaseName(H.env.t);
       var dot = document.getElementById('sunDot');
@@ -559,7 +585,6 @@
 
     // 动态元素总更新
     H.updateDynamics = function (dt, t) {
-      H.elapsed = t;
       var i, j;
       // 云
       for (i = 0; i < clouds.length; i++) {
@@ -588,10 +613,13 @@
       if (H.windmillBlades) H.windmillBlades.rotation.z += dt * 1.3;
       if (H.wheel) {
         H.wheel.rotation.z -= dt * 0.4;
-        // 吊舱反向旋转保持直立
-        if (H.wheelCabins) {
+        // 吊舱不在轮盘里，按轮盘当前角度重算位置，保持直立（不会跟着轮盘翻转）
+        if (H.wheelCabins && H.wheelR !== undefined) {
+          var hubY = H.wheelHubY, wr = H.wheelR, wAng = H.wheel.rotation.z;
           for (var ci = 0; ci < H.wheelCabins.length; ci++) {
-            H.wheelCabins[ci].rotation.z = -H.wheel.rotation.z;
+            var cb = H.wheelCabins[ci];
+            var ca = cb.userData.a + wAng;
+            cb.position.set(Math.sin(ca) * wr, hubY + Math.cos(ca) * wr, 0.3);
           }
         }
       }
@@ -609,6 +637,9 @@
       // 行人
       for (i = 0; i < npcs.length; i++) {
         var np = npcs[i];
+        // 步行上下起伏的基准高度单独记录：直接 += 到 position.y 会逐帧累积，
+        // 行人会慢慢飘到天上
+        var gy = np.gy;
         if (np.pause > 0) {
           np.pause -= dt;
         } else {
@@ -624,13 +655,15 @@
           }
           var nx = H.lerp(a[0], b2[0], np.t);
           var nz = H.lerp(a[1], b2[1], np.t);
-          np.g.position.set(nx, H.groundHeight(nx, nz), nz);
+          gy = H.groundHeight(nx, nz);
+          np.gy = gy;
+          np.g.position.set(nx, gy, nz);
           np.g.rotation.y = Math.atan2(dx, dz);
         }
         var walk = Math.sin(t * 7 + np.phase) * 0.5;
         np.legL.rotation.x = walk;
         np.legR.rotation.x = -walk;
-        np.g.position.y += Math.abs(Math.sin(t * 7 + np.phase)) * 0.03;
+        np.g.position.y = gy + Math.abs(Math.sin(t * 7 + np.phase)) * 0.03;
       }
       // 炊烟
       var sp = smoke.points.geometry.attributes.position;
@@ -702,8 +735,10 @@
       // 时钟指针（四面同步）
       if (H.clockHands && H.clockHands.hour.length) {
         var h24 = H.env.t * 24;
-        var hourAng = (h24 % 12) / 12 * Math.PI * 2;
-        var minAng = (h24 % 1) * Math.PI * 2;
+        var hFrac = h24 % 1;                       // 分钟占一小时的比重（0..1）
+        // 时针跟随分钟连续走动：03:30 时针应指向 105°（原先只看整点，仍是 120°）
+        var hourAng = ((h24 % 12) + hFrac / 60) / 12 * Math.PI * 2;
+        var minAng = hFrac * Math.PI * 2;
         for (var hI = 0; hI < H.clockHands.hour.length; hI++) {
           H.clockHands.hour[hI].rotation.z = -hourAng;
           H.clockHands.minute[hI].rotation.z = -minAng;

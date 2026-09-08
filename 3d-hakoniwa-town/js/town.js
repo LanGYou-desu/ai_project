@@ -9,8 +9,8 @@
   var scene = null;
 
   // ---------- 共享几何与发光材质 ----------
-  var winGeo = new THREE.PlaneGeometry(0.55, 0.66);
-  var winGeoSmall = new THREE.PlaneGeometry(0.42, 0.5);
+  var winGeo = H.planeGeo(0.55, 0.66);
+  var winGeoSmall = H.planeGeo(0.42, 0.5);
   H.winMats = [];
   H.signMats = [];
   H.lampLights = [];
@@ -41,29 +41,29 @@
     side: THREE.DoubleSide, depthWrite: false, fog: false
   });
 
-  // ---------- 基础构件 ----------
+  // ---------- 基础构件（几何体走 H.*Geo 缓存，避免同尺寸重复创建） ----------
   function box(w, h, d, color, opts) {
-    var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), H.mat(color, opts));
+    var m = new THREE.Mesh(H.boxGeo(w, h, d), H.mat(color, opts));
     m.castShadow = true; m.receiveShadow = true;
     return m;
   }
   function cyl(rt, rb, h, color, seg, opts) {
-    var m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg || 12), H.mat(color, opts));
+    var m = new THREE.Mesh(H.cylGeo(rt, rb, h, seg || 12), H.mat(color, opts));
     m.castShadow = true; m.receiveShadow = true;
     return m;
   }
   function cone(r, h, color, seg, opts) {
-    var m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg || 4), H.mat(color, opts));
+    var m = new THREE.Mesh(H.coneGeo(r, h, seg || 4), H.mat(color, opts));
     m.castShadow = true; m.receiveShadow = true;
     return m;
   }
   function sph(r, color, opts) {
-    var m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 12), H.mat(color, opts));
+    var m = new THREE.Mesh(H.sphGeo(r, 14, 12), H.mat(color, opts));
     m.castShadow = true; m.receiveShadow = true;
     return m;
   }
-  var winFrameGeo = new THREE.PlaneGeometry(0.68, 0.8);
-  var winFrameGeoSmall = new THREE.PlaneGeometry(0.53, 0.62);
+  var winFrameGeo = H.planeGeo(0.68, 0.8);
+  var winFrameGeoSmall = H.planeGeo(0.53, 0.62);
   function addWin(group, x, y, z, ry, mat, small, shut) {
     // 窗框（贴墙内衬，白色饰边）
     var fr = new THREE.Mesh(small ? winFrameGeoSmall : winFrameGeo, H.mat('#efe6d2'));
@@ -78,12 +78,12 @@
     group.add(m);
     // 窗棂（横竖条，夜间透光成剪影）
     var barMat = H.mat('#4a3f33');
-    var hb = new THREE.Mesh(new THREE.PlaneGeometry(small ? 0.53 : 0.68, 0.045), barMat);
+    var hb = new THREE.Mesh(H.planeGeo(small ? 0.53 : 0.68, 0.045), barMat);
     hb.position.set(x, y, z);
     hb.rotation.y = ry;
     hb.translateZ(0.03);
     group.add(hb);
-    var vb = new THREE.Mesh(new THREE.PlaneGeometry(0.045, small ? 0.62 : 0.8), barMat);
+    var vb = new THREE.Mesh(H.planeGeo(0.045, small ? 0.62 : 0.8), barMat);
     vb.position.set(x, y, z);
     vb.rotation.y = ry;
     vb.translateZ(0.03);
@@ -94,7 +94,7 @@
       var sw2 = small ? 0.42 : 0.55;
       var off = sw2 / 2 + 0.1;
       for (var sI = -1; sI <= 1; sI += 2) {
-        var sh = new THREE.Mesh(new THREE.PlaneGeometry(0.17, small ? 0.52 : 0.7), H.mat('#8a6a4a'));
+        var sh = new THREE.Mesh(H.planeGeo(0.17, small ? 0.52 : 0.7), H.mat('#8a6a4a'));
         sh.position.set(x + dirX * off * sI, y, z + dirZ * off * sI);
         sh.rotation.y = ry;
         sh.translateZ(0.012);
@@ -222,7 +222,7 @@
       map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0, roughness: 0.6
     });
     H.signMats.push(signMat);
-    var sign = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.72, 0.12), signMat);
+    var sign = new THREE.Mesh(H.boxGeo(2.6, 0.72, 0.12), signMat);
     sign.position.set(0, ft + h - 0.55, d / 2 + 0.1);
     g.add(sign);
     var signFrame = box(2.9, 0.12, 0.18, '#5a4636');
@@ -246,7 +246,7 @@
     // 遮阳篷（条纹）
     var stripes = H.stripesTexture('#e2685f', '#f6efe2', 8);
     var awnMat = new THREE.MeshStandardMaterial({ map: stripes, roughness: 0.9, side: THREE.DoubleSide });
-    var awn = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.1), awnMat);
+    var awn = new THREE.Mesh(H.planeGeo(3.4, 1.1), awnMat);
     awn.position.set(0, ft + 2.35, d / 2 + 0.55);
     awn.rotation.x = -0.5;
     awn.castShadow = true;
@@ -285,7 +285,7 @@
     g.add(top);
     H.addShadowDisc(scene, x, z, 3.0, 0.38);
     // 四面钟面
-    var faceGeo = new THREE.CircleGeometry(0.95, 24);
+    var faceGeo = H.circleGeo(0.95, 24);
     var faceMat = new THREE.MeshStandardMaterial({ color: 0xfdf6e3, emissive: 0xfff3c9, emissiveIntensity: 0, roughness: 0.5 });
     H.winMats.push(faceMat);
     var hands = { hour: [], minute: [] };
@@ -299,11 +299,19 @@
       var hg = new THREE.Group();
       hg.position.set(Math.sin(ang) * 1.41, ft + 8.9, Math.cos(ang) * 1.41);
       hg.rotation.y = ang;
-      var hh = box(0.09, 0.5, 0.03, '#3a3a44');
-      hh.geometry.translate(0, 0.2, 0);
+      // 指针绕根部旋转：几何体只创建一次并沿自身 Y 轴偏移半长
+      // （不能用共享缓存的几何体做 translate，否则每面钟都会把同一份几何再推一次）
+      var hh = new THREE.Mesh(H.geo('handHour', function () {
+        var gh = new THREE.BoxGeometry(0.09, 0.5, 0.03);
+        gh.translate(0, 0.2, 0);
+        return gh;
+      }), H.mat('#3a3a44'));
       hg.add(hh);
-      var mm = box(0.06, 0.7, 0.03, '#3a3a44');
-      mm.geometry.translate(0, 0.28, 0);
+      var mm = new THREE.Mesh(H.geo('handMin', function () {
+        var gm = new THREE.BoxGeometry(0.06, 0.7, 0.03);
+        gm.translate(0, 0.28, 0);
+        return gm;
+      }), H.mat('#3a3a44'));
       hg.add(mm);
       g.add(hg);
       hands.hour.push(hh); hands.minute.push(mm);
@@ -361,7 +369,7 @@
     roof.position.y = 13.4;
     g.add(roof);
     // 灯室观景台护栏
-    var gallery = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.07, 8, 24), H.mat('#b7b2a7'));
+    var gallery = new THREE.Mesh(H.torusGeo(1.55, 0.07, 8, 24), H.mat('#b7b2a7'));
     gallery.rotation.x = Math.PI / 2;
     gallery.position.y = 12.78;
     g.add(gallery);
@@ -370,7 +378,7 @@
     g.add(lamp);
     H.winMats.push(lamp.material);
     // 旋转光束
-    var beam = new THREE.Mesh(new THREE.ConeGeometry(1.7, 24, 20, 1, true), H.beamMat);
+    var beam = new THREE.Mesh(H.geo('beamcone', function () { return new THREE.ConeGeometry(1.7, 24, 20, 1, true); }), H.beamMat);
     beam.rotation.x = Math.PI / 2;
     beam.position.set(0, 11.9, 14);
     g.add(beam);
@@ -454,12 +462,12 @@
     // 轮盘
     var wheel = new THREE.Group();
     wheel.position.set(0, R + 0.4, 0.3);
-    var ring1 = new THREE.Mesh(new THREE.TorusGeometry(R, 0.22, 8, 40), H.mat('#e2685f'));
+    var ring1 = new THREE.Mesh(H.torusGeo(R, 0.22, 8, 40), H.mat('#e2685f'));
     ring1.castShadow = true;
     wheel.add(ring1);
-    var ring2 = new THREE.Mesh(new THREE.TorusGeometry(R * 0.55, 0.16, 8, 30), H.mat('#5b7080'));
+    var ring2 = new THREE.Mesh(H.torusGeo(R * 0.55, 0.16, 8, 30), H.mat('#5b7080'));
     wheel.add(ring2);
-    var spokeGeo = new THREE.CylinderGeometry(0.09, 0.09, R, 6);
+    var spokeGeo = H.cylGeo(0.09, 0.09, R, 6);
     for (var i = 0; i < 8; i++) {
       var sp = new THREE.Mesh(spokeGeo, H.mat('#4a4a55'));
       var a = i * Math.PI / 4;
@@ -478,20 +486,27 @@
     var cabinColors = ['#e2685f', '#5b8f8b', '#e8c66a', '#8f7fb8', '#6fa3d8'];
     for (var j = 0; j < 8; j++) {
       var b = j * Math.PI / 4;
-      var bx = Math.sin(b) * R, by = Math.cos(b) * R;
-      var cab = box(1.0, 0.9, 0.9, cabinColors[j % cabinColors.length]);
-      cab.position.set(bx, by - 0.55, 0.55);
-      wheel.add(cab);
-      H.wheelCabins.push(cab);
+      // 吊舱挂在支架（g）上、而不是轮盘（wheel）里：
+      // 轮盘只负责转自己，吊舱每帧按轮盘角度重算位置，因此永远保持直立。
+      var cab = new THREE.Group();
+      cab.userData.a = b;
+      var cabBody = box(1.0, 0.9, 0.9, cabinColors[j % cabinColors.length]);
+      cabBody.position.y = -0.55;
+      cab.add(cabBody);
       var cabTop = box(1.1, 0.1, 1.0, '#4a4a55');
-      cabTop.position.set(bx, by - 0.08, 0.55);
-      wheel.add(cabTop);
-      var light = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), lightMats[j % 3]);
-      light.position.set(bx, by + 0.1, 0.55);
-      wheel.add(light);
+      cabTop.position.y = -0.08;
+      cab.add(cabTop);
+      var light = new THREE.Mesh(H.sphGeo(0.13, 8, 6), lightMats[j % 3]);
+      light.position.y = 0.1;
+      cab.add(light);
+      cab.position.set(Math.sin(b) * R, R + 0.4 + Math.cos(b) * R, 0.3);  // 与轮盘同一平面
+      g.add(cab);
+      H.wheelCabins.push(cab);
     }
     g.add(wheel);
     H.wheel = wheel;
+    H.wheelR = R;              // 吊舱环绕半径
+    H.wheelHubY = R + 0.4;     // 轮心在支架组内的局部高度
     scene.add(g);
     return g;
   }
@@ -499,10 +514,18 @@
   // ---------- 神社 ----------
   function shrine(x, z) {
     var g = new THREE.Group();
-    g.position.set(x, H.groundHeight(x, z), z);
+    // 台基底面按占地范围的最低地形落位，四角不会悬空
+    var sbi = H.baseInfo(x, z, 6.4, 6.4, -0.88);
+    // 台面固定为局部 0.9（社殿墙体/台阶都以此为基准），
+    // 台基向下加深到占地范围内的最低地形，四角不会悬空
+    var platTop = 0.9;
+    var platH = platTop - (sbi.min - (sbi.max + platTop)) + 0.4;
+    platH = platTop - (sbi.min - sbi.max - platTop) + 0.4;
+    platH = 2 * platTop + (sbi.max - sbi.min) + 0.4;
+    g.position.set(x, sbi.max + platTop - platH, z);
     g.rotation.y = -0.88;
-    var plat = box(6.4, 3.4, 6.4, '#b7b2a7');
-    plat.position.y = -0.8;
+    var plat = box(6.4, platH, 6.4, '#b7b2a7');
+    plat.position.y = platH / 2;
     g.add(plat);
     var steps = box(3.4, 0.45, 0.9, '#cfc8bb');
     steps.position.set(0, 0.22, 3.65);
@@ -554,7 +577,7 @@
     var g = new THREE.Group();
     g.position.set(x, H.groundHeight(x, z), z);
     g.rotation.y = ry;
-    var pillarGeo = new THREE.CylinderGeometry(0.22, 0.28, 3.4, 10);
+    var pillarGeo = H.cylGeo(0.22, 0.28, 3.4, 10);
     var p1 = new THREE.Mesh(pillarGeo, H.mat('#c9403a'));
     p1.castShadow = true; p1.position.set(-1.5, 1.7, 0);
     g.add(p1);
@@ -588,7 +611,7 @@
     var boxPart = box(0.5, 0.4, 0.5, '#9a968c');
     boxPart.position.y = 1.4;
     g.add(boxPart);
-    var light = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.24), H.lanternGlowMat);
+    var light = new THREE.Mesh(H.planeGeo(0.26, 0.24), H.lanternGlowMat);
     light.position.set(0, 1.4, 0.26);
     g.add(light);
     var cap = cone(0.55, 0.35, '#8b877c', 4);
@@ -604,7 +627,7 @@
     g.position.set(x, H.groundHeight(x, z), z);
     g.rotation.y = ry;
     // 斜面石裙座 + 石板平台（向下加深贴合山坡）
-    var skirt = new THREE.Mesh(new THREE.CylinderGeometry(6.4, 8.4, 3.2, 4), H.mat('#9a958f'));
+    var skirt = new THREE.Mesh(H.cylGeo(6.4, 8.4, 3.2, 4), H.mat('#9a958f'));
     skirt.rotation.y = Math.PI / 4;
     skirt.position.y = -0.9;
     skirt.castShadow = true;
@@ -701,7 +724,7 @@
     var pole = cyl(0.06, 0.06, 2.2, '#4a4a55', 6);
     pole.position.y = 9.6 + 1.0;
     g.add(pole);
-    var flag = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.85), new THREE.MeshStandardMaterial({ color: 0xc9403a, side: THREE.DoubleSide }));
+    var flag = new THREE.Mesh(H.planeGeo(1.4, 0.85), new THREE.MeshStandardMaterial({ color: 0xc9403a, side: THREE.DoubleSide }));
     flag.position.set(0.72, 9.6 + 1.85, 0);
     flag.castShadow = true;
     g.add(flag);
@@ -714,10 +737,15 @@
   // ---------- 五重塔 ----------
   function pagoda(x, z) {
     var g = new THREE.Group();
-    g.position.set(x, H.groundHeight(x, z), z);
+    // 台基同样按占地范围最低点落位
+    var pbi = H.baseInfo(x, z, 4.2, 4.2, -0.4);
+    // 台面固定为局部 0.7（塔身以此为基准），台基向下加深到最低地形
+    var pPlatTop = 0.7;
+    var pPlatH = 2 * pPlatTop + (pbi.max - pbi.min) + 0.4;
+    g.position.set(x, pbi.max + pPlatTop - pPlatH, z);
     g.rotation.y = -0.4;
-    var plat = box(4.2, 0.7, 4.2, '#b7b2a7');
-    plat.position.y = 0.35;
+    var plat = box(4.2, pPlatH, 4.2, '#b7b2a7');
+    plat.position.y = pPlatH / 2;
     g.add(plat);
     var bodyCols = ['#f2ede4', '#f6efe2', '#f2ede4', '#f6efe2', '#e8dcc6'];
     var roofCol = '#4f7d8a';
@@ -753,11 +781,11 @@
     var basin = cyl(2.4, 2.6, 0.8, '#b7b2a7', 24);
     basin.position.y = 0.4;
     g.add(basin);
-    var rim = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.16, 8, 32), H.mat('#cfc8bb'));
+    var rim = new THREE.Mesh(H.torusGeo(2.4, 0.16, 8, 32), H.mat('#cfc8bb'));
     rim.rotation.x = Math.PI / 2;
     rim.position.y = 0.8;
     g.add(rim);
-    var water = new THREE.Mesh(new THREE.CircleGeometry(2.25, 24),
+    var water = new THREE.Mesh(H.circleGeo(2.25, 24),
       new THREE.MeshStandardMaterial({ color: 0x6fc0dc, transparent: true, opacity: 0.8, roughness: 0.15, metalness: 0.1 }));
     water.rotation.x = -Math.PI / 2;
     water.position.y = 0.75;
@@ -768,7 +796,7 @@
     var bowl = cyl(0.95, 0.4, 0.35, '#cfc8bb', 14);
     bowl.position.y = 2.2;
     g.add(bowl);
-    var bowlWater = new THREE.Mesh(new THREE.CircleGeometry(0.85, 16),
+    var bowlWater = new THREE.Mesh(H.circleGeo(0.85, 16),
       new THREE.MeshStandardMaterial({ color: 0x7fd4f0, transparent: true, opacity: 0.85, roughness: 0.1 }));
     bowlWater.rotation.x = -Math.PI / 2;
     bowlWater.position.y = 2.4;
@@ -860,7 +888,7 @@
     var arm = box(0.06, 0.06, 0.7, '#3a3f4a');
     arm.position.set(0, 2.86, 0.3);
     g.add(arm);
-    var bulb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), H.lampBulbMat);
+    var bulb = new THREE.Mesh(H.sphGeo(0.22, 10, 8), H.lampBulbMat);
     bulb.position.set(0, 2.8, 0.62);
     g.add(bulb);
     var cap = cone(0.3, 0.24, '#3a3f4a', 8);
@@ -926,7 +954,7 @@
     var mast = cyl(0.06, 0.06, 1.8, '#7a5a3e', 6);
     mast.position.y = 1.2;
     g.add(mast);
-    var sail = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.1), new THREE.MeshStandardMaterial({ color: 0xf6efe2, side: THREE.DoubleSide }));
+    var sail = new THREE.Mesh(H.planeGeo(1.0, 1.1), new THREE.MeshStandardMaterial({ color: 0xf6efe2, side: THREE.DoubleSide }));
     sail.position.set(0, 1.6, 0.1);
     g.add(sail);
     scene.add(g);
@@ -934,39 +962,15 @@
   }
 
   // ---------- 石路 ----------
+  // 道路统一交给 terrain.js 的 H.buildRoads 生成单个贴合地形的带状网格，
+  // 这里只负责收集路径（见 H.buildTown 末尾）。
+  var roadPaths = [];
   function road(points, width) {
-    width = width || 2.6;
-    var n = points.length;
-    var pos = [];
-    for (var i = 0; i < n - 1; i++) {
-      var ax = points[i][0], az = points[i][1];
-      var bx = points[i + 1][0], bz = points[i + 1][1];
-      var segLen = Math.hypot(bx - ax, bz - az);
-      var steps = Math.max(1, Math.ceil(segLen / 1.1));
-      for (var s = 0; s < steps; s++) {
-        var f0 = s / steps, f1 = (s + 1) / steps;
-        var mx = H.lerp(ax, bx, (f0 + f1) / 2), mz = H.lerp(az, bz, (f0 + f1) / 2);
-        var nx = H.lerp(ax, bx, f1), nz = H.lerp(az, bz, f1);
-        var my = H.groundHeight(mx, mz);
-        var m = box(width, 0.22, segLen / steps + 0.12, '#8f8a80');
-        m.position.set(mx, my + 0.1, mz);
-        m.lookAt(nx, H.groundHeight(nx, nz) + 0.1, nz);
-        scene.add(m);
-      }
-    }
+    roadPaths.push({ pts: points, width: width || 2.6 });
   }
 
   function stairs(x0, z0, x1, z1, n, width) {
-    var y0 = H.groundHeight(x0, z0), y1 = H.groundHeight(x1, z1);
-    for (var i = 0; i < n; i++) {
-      var f = (i + 0.5) / n;
-      var x = H.lerp(x0, x1, f), z = H.lerp(z0, z1, f);
-      var y = H.lerp(y0, y1, f);
-      var st = box(width || 3.0, 0.3, 0.6, '#b7b2a7');
-      st.position.set(x, y + 0.1, z);
-      st.rotation.y = Math.atan2(x1 - x0, z1 - z0);
-      scene.add(st);
-    }
+    scene.add(H.buildStairs(x0, z0, x1, z1, n, width));
   }
 
   // ---------- 木栅栏 ----------
@@ -1077,10 +1081,8 @@
       spots.push([x, y, z]);
     }
     var N = spots.length;
-    var stemGeo = new THREE.CylinderGeometry(0.03, 0.04, 0.36, 5);
-    var headGeo = new THREE.SphereGeometry(0.12, 7, 6);
-    var stems = new THREE.InstancedMesh(stemGeo, H.mat('#4c7a3a'), N);
-    var heads = new THREE.InstancedMesh(headGeo, new THREE.MeshStandardMaterial({ roughness: 0.8 }), N);
+    var stems = new THREE.InstancedMesh(H.cylGeo(0.03, 0.04, 0.36, 5), H.mat('#4c7a3a'), N);
+    var heads = new THREE.InstancedMesh(H.sphGeo(0.12, 7, 6), new THREE.MeshStandardMaterial({ roughness: 0.8 }), N);
     var dummy = new THREE.Object3D();
     var palette = [0xe78ab8, 0xf5d76e, 0xffffff, 0xe2685f, 0xb892e0, 0xf0a8c4];
     for (i = 0; i < N; i++) {
@@ -1100,8 +1102,7 @@
     scene.add(stems); scene.add(heads);
 
     // 草丛（给草地增加层次感）
-    var grassGeo = new THREE.ConeGeometry(0.09, 0.42, 5);
-    var grass = new THREE.InstancedMesh(grassGeo, new THREE.MeshStandardMaterial({ roughness: 0.95 }), N);
+    var grass = new THREE.InstancedMesh(H.coneGeo(0.09, 0.42, 5), new THREE.MeshStandardMaterial({ roughness: 0.95 }), N);
     for (i = 0; i < N; i++) {
       dummy.position.set(
         spots[i][0] + H.rand(-0.7, 0.7),
@@ -1131,7 +1132,7 @@
       if (ry < 1.2 || slr > 0.9 || H.rng() < 0.35) rocks.push([x, ry, z]);
     }
     var RN = rocks.length;
-    var rockGeo = new THREE.DodecahedronGeometry(1, 0);
+    var rockGeo = H.geo('rock', function () { return new THREE.DodecahedronGeometry(1, 0); });
     var rockMesh = new THREE.InstancedMesh(rockGeo, new THREE.MeshStandardMaterial({ roughness: 0.95 }), RN);
     for (i = 0; i < RN; i++) {
       dummy.position.set(rocks[i][0], rocks[i][1] + 0.15, rocks[i][2]);
@@ -1170,14 +1171,15 @@
   // ---------- 布局 ----------
   H.buildTown = function (sceneRef) {
     scene = sceneRef;
+    roadPaths.length = 0;
 
     // 广场地面
-    var plaza = new THREE.Mesh(new THREE.CircleGeometry(7.6, 48), H.mat('#b9b4a9'));
+    var plaza = new THREE.Mesh(H.circleGeo(7.6, 48), H.mat('#b9b4a9'));
     plaza.rotation.x = -Math.PI / 2;
     plaza.position.set(0, H.groundHeight(0, 0) + 0.06, 0);
     plaza.receiveShadow = true;
     scene.add(plaza);
-    var plazaInner = new THREE.Mesh(new THREE.CircleGeometry(5.6, 40), H.mat('#aaa599'));
+    var plazaInner = new THREE.Mesh(H.circleGeo(5.6, 40), H.mat('#aaa599'));
     plazaInner.rotation.x = -Math.PI / 2;
     plazaInner.position.set(0, H.groundHeight(0, 0) + 0.08, 0);
     plazaInner.receiveShadow = true;
@@ -1317,6 +1319,9 @@
     bush(0, 13.2); bush(-10, -13); bush(7, -15);
     bush(25, 40); bush(21, 41); bush(16, 35);
     bush(37, -14); bush(39, -18);
+
+    // ---- 道路：合并为单个贴合地形的网格（原先每段一个水平方块，会扎进坡地） ----
+    scene.add(H.buildRoads(roadPaths));
 
     flowersAndRocks();
   };

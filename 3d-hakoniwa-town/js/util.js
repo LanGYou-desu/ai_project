@@ -24,7 +24,13 @@
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   };
-  H.rng = H.mulberry32(20260821);
+  H.SEED = 20260821;            // 默认世界种子
+  H.resetRandom = function (seed) {
+    H.SEED = seed === undefined ? H.SEED : seed;
+    H.rng = H.mulberry32(H.SEED);
+    return H.rng;
+  };
+  H.rng = H.resetRandom(H.SEED);
   H.rand = function (a, b) {
     if (b === undefined) { b = a; a = 0; }
     return a + H.rng() * (b - a);
@@ -190,11 +196,72 @@
     return m;
   };
 
+  // ---------- 几何体缓存：相同尺寸只创建一份，显著降低显存与 draw call 准备开销 ----------
+  var geoCache = {};
+  function geoCacheGet(key, make) {
+    var g = geoCache[key];
+    if (!g) { g = geoCache[key] = make(); }
+    return g;
+  }
+  function fnum(v) { return Math.round(v * 1000) / 1000; }
+  H.boxGeo = function (w, h, d) {
+    return geoCacheGet('box|' + fnum(w) + '|' + fnum(h) + '|' + fnum(d), function () {
+      return new THREE.BoxGeometry(w, h, d);
+    });
+  };
+  H.cylGeo = function (rt, rb, h, seg) {
+    seg = seg || 12;
+    return geoCacheGet('cyl|' + fnum(rt) + '|' + fnum(rb) + '|' + fnum(h) + '|' + seg, function () {
+      return new THREE.CylinderGeometry(rt, rb, h, seg);
+    });
+  };
+  H.coneGeo = function (r, h, seg) {
+    seg = seg || 4;
+    return geoCacheGet('cone|' + fnum(r) + '|' + fnum(h) + '|' + seg, function () {
+      return new THREE.ConeGeometry(r, h, seg);
+    });
+  };
+  H.sphGeo = function (r, wSeg, hSeg) {
+    wSeg = wSeg || 14; hSeg = hSeg || 12;
+    return geoCacheGet('sph|' + fnum(r) + '|' + wSeg + '|' + hSeg, function () {
+      return new THREE.SphereGeometry(r, wSeg, hSeg);
+    });
+  };
+  H.circleGeo = function (r, seg) {
+    seg = seg || 24;
+    return geoCacheGet('circle|' + fnum(r) + '|' + seg, function () {
+      return new THREE.CircleGeometry(r, seg);
+    });
+  };
+  H.planeGeo = function (w, h) {
+    return geoCacheGet('plane|' + fnum(w) + '|' + fnum(h), function () {
+      return new THREE.PlaneGeometry(w, h);
+    });
+  };
+  H.torusGeo = function (r, tube, radSeg, tubSeg) {
+    return geoCacheGet('torus|' + fnum(r) + '|' + fnum(tube) + '|' + radSeg + '|' + tubSeg, function () {
+      return new THREE.TorusGeometry(r, tube, radSeg, tubSeg);
+    });
+  };
+  H.geo = function (key, make) { return geoCacheGet(key, make); };
+
   // 局部坐标 -> 世界坐标（仅绕 Y 旋转的分组使用）
+  var scratchVec = null, axisY = null;
   H.worldPos = function (group, lx, ly, lz) {
-    var v = new THREE.Vector3(lx, ly, lz);
-    v.applyAxisAngle(new THREE.Vector3(0, 1, 0), group.rotation.y);
-    return v.add(group.position);
+    if (!scratchVec) { scratchVec = new THREE.Vector3(); axisY = new THREE.Vector3(0, 1, 0); }
+    scratchVec.set(lx, ly, lz);
+    scratchVec.applyAxisAngle(axisY, group.rotation.y);
+    return scratchVec.add(group.position).clone();
+  };
+
+  // 释放所有缓存资源（页面卸载/热重载时调用，避免 GPU 资源泄漏）
+  H.disposeCaches = function () {
+    var k;
+    for (k in geoCache) if (geoCache[k]) geoCache[k].dispose();
+    for (k in matCache) if (matCache[k]) matCache[k].dispose();
+    for (k in texByColor) if (texByColor[k]) texByColor[k].dispose();
+    geoCache = {}; matCache = {}; texByColor = {};
+    if (shadowTexCache) { shadowTexCache.dispose(); shadowTexCache = null; }
   };
 
   // 圆角矩形 canvas 贴图（用于招牌文字等）
@@ -259,32 +326,42 @@
     return shadowTexCache;
   };
 
-  // 接触阴影圆盘（让物体“落地”）
+  // 接触阴影圆盘（让物体“落地”）；几何体与材质按半径/透明度缓存复用
+  var discMatCache = {};
   H.addShadowDisc = function (scene, x, z, r, opacity) {
-    var m = new THREE.Mesh(
-      new THREE.CircleGeometry(r, 24),
-      new THREE.MeshBasicMaterial({
-        map: H.shadowTexture(), transparent: true, opacity: opacity || 0.4, depthWrite: false
-      })
-    );
-    m.rotation.x = -Math.PI / 2;
-    m.position.set(x, H.groundHeight(x, z) + 0.035, z);
-    scene.add(m);
-    return m;
+    var op = opacity === undefined ? 0.4 : opacity;
+    var key = op.toFixed(2);
+    var m = discMatCache[key];
+    if (!m) {
+      m = discMatCache[key] = new THREE.MeshBasicMaterial({
+        map: H.shadowTexture(), transparent: true, opacity: op, depthWrite: false
+      });
+    }
+    var disc = new THREE.Mesh(H.circleGeo(r, 24), m);
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.set(x, H.groundHeight(x, z) + 0.035, z);
+    scene.add(disc);
+    return disc;
   };
 
-  // 建筑地基：采样四角+中心的地形高差（供自适应石基使用）
+  // 建筑地基：采样整个占地范围内的地形（含边中点与内部网格），
+  // 返回 { min, max }。仅采样四角会漏掉相邻整平平台抬高的中心区域，
+  // 导致建筑被地形埋住，因此这里用 5x5 网格。
   H.baseInfo = function (x, z, w, d, ry) {
     ry = ry || 0;
     var cos = Math.cos(ry), sin = Math.sin(ry);
-    var corners = [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]];
-    var mn = H.groundHeight(x, z), mx = mn, i;
-    for (i = 0; i < corners.length; i++) {
-      var wx = x + corners[i][0] * cos + corners[i][1] * sin;
-      var wz = z - corners[i][0] * sin + corners[i][1] * cos;
-      var h = H.groundHeight(wx, wz);
-      if (h < mn) mn = h;
-      if (h > mx) mx = h;
+    var mn = Infinity, mx = -Infinity;
+    var N = 5, i, j;
+    for (i = 0; i < N; i++) {
+      for (j = 0; j < N; j++) {
+        var lx = (i / (N - 1) - 0.5) * w;
+        var lz = (j / (N - 1) - 0.5) * d;
+        var wx = x + lx * cos + lz * sin;
+        var wz = z - lx * sin + lz * cos;
+        var h = H.groundHeight(wx, wz);
+        if (h < mn) mn = h;
+        if (h > mx) mx = h;
+      }
     }
     return { min: mn, max: mx };
   };

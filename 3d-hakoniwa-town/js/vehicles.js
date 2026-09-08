@@ -11,33 +11,34 @@
   var airship = null;
   H.carLightMats = [];
   H.carTailMats = [];
+  H.airshipWindowMats = [];
 
   // ---------- 小车模型 ----------
   function makeCar(color, isTruck) {
     var g = new THREE.Group();
-    var body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.52, 3.1), H.mat(color));
+    var body = new THREE.Mesh(H.boxGeo(1.5, 0.52, 3.1), H.mat(color));
     body.position.y = 0.62;
     body.castShadow = true;
     g.add(body);
-    var hood = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.22, 0.9), H.mat(color));
+    var hood = new THREE.Mesh(H.boxGeo(1.4, 0.22, 0.9), H.mat(color));
     hood.position.set(0, 0.98, 1.15);
     hood.castShadow = true;
     g.add(hood);
-    var cabin = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.5, 1.5), H.mat('#9fd8e8'));
+    var cabin = new THREE.Mesh(H.boxGeo(1.25, 0.5, 1.5), H.mat('#9fd8e8'));
     cabin.position.set(0, 1.12, -0.25);
     cabin.castShadow = true;
     g.add(cabin);
     if (isTruck) {
-      var cargo = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.05, 1.9), H.mat('#e8dcc6'));
+      var cargo = new THREE.Mesh(H.boxGeo(1.6, 1.05, 1.9), H.mat('#e8dcc6'));
       cargo.position.set(0, 1.28, -0.6);
       cargo.castShadow = true;
       g.add(cargo);
-      var cargoBand = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.18, 1.92), H.mat('#8a6a4a'));
+      var cargoBand = new THREE.Mesh(H.boxGeo(1.62, 0.18, 1.92), H.mat('#8a6a4a'));
       cargoBand.position.set(0, 0.85, -0.6);
       g.add(cargoBand);
     }
     // 车轮（组旋转出轴向，内圈自转）
-    var wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.22, 12);
+    var wheelGeo = H.cylGeo(0.3, 0.3, 0.22, 12);
     var wheelMat = H.mat('#2a2d35', { roughness: 0.6 });
     var wheels = [];
     var offs = [[-0.72, 1.05], [0.72, 1.05], [-0.72, -1.05], [0.72, -1.05]];
@@ -56,21 +57,21 @@
     var tlMat = new THREE.MeshStandardMaterial({ color: 0xaa2a2a, emissive: 0xff3030, emissiveIntensity: 0.2, roughness: 0.4 });
     H.carLightMats.push(hlMat);
     H.carTailMats.push(tlMat);
-    var hl1 = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), hlMat);
+    var hl1 = new THREE.Mesh(H.sphGeo(0.09, 8, 6), hlMat);
     hl1.position.set(-0.48, 0.66, 1.56);
     g.add(hl1);
-    var hl2 = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), hlMat);
+    var hl2 = new THREE.Mesh(H.sphGeo(0.09, 8, 6), hlMat);
     hl2.position.set(0.48, 0.66, 1.56);
     g.add(hl2);
-    var tl1 = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), tlMat);
+    var tl1 = new THREE.Mesh(H.sphGeo(0.07, 8, 6), tlMat);
     tl1.position.set(-0.48, 0.66, -1.56);
     g.add(tl1);
-    var tl2 = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), tlMat);
+    var tl2 = new THREE.Mesh(H.sphGeo(0.07, 8, 6), tlMat);
     tl2.position.set(0.48, 0.66, -1.56);
     g.add(tl2);
     // 接触阴影（随车移动）
     var shadow = new THREE.Mesh(
-      new THREE.CircleGeometry(1.5, 20),
+      H.circleGeo(1.9, 20),
       new THREE.MeshBasicMaterial({ map: H.shadowTexture(), transparent: true, opacity: 0.42, depthWrite: false })
     );
     shadow.rotation.x = -Math.PI / 2;
@@ -82,37 +83,38 @@
   // ---------- 飞艇 ----------
   function makeAirship() {
     var g = new THREE.Group();
-    var envelope = new THREE.Mesh(new THREE.SphereGeometry(1.7, 18, 12), H.mat('#f5f1e8'));
+    var envelope = new THREE.Mesh(H.sphGeo(1.7, 18, 12), H.mat('#f5f1e8'));
     envelope.scale.set(1, 0.62, 2.5);
     envelope.castShadow = true;
     g.add(envelope);
-    var stripe = new THREE.Mesh(new THREE.SphereGeometry(1.72, 18, 12), H.mat('#c9564e'));
+    var stripe = new THREE.Mesh(H.sphGeo(1.72, 18, 12), H.mat('#c9564e'));
     stripe.scale.set(1.01, 0.62, 2.52);
     stripe.position.y = 0;
     stripe.scale.y = 0.16;
     g.add(stripe);
     // 尾翼
-    var finV = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.1, 0.9), H.mat('#c9564e'));
+    var finV = new THREE.Mesh(H.boxGeo(0.12, 1.1, 0.9), H.mat('#c9564e'));
     finV.position.set(0, 0.4, -3.8);
     g.add(finV);
-    var finL = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.12, 0.9), H.mat('#c9564e'));
+    var finL = new THREE.Mesh(H.boxGeo(1.1, 0.12, 0.9), H.mat('#c9564e'));
     finL.position.set(-0.5, 0, -3.8);
     g.add(finL);
-    var finR = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.12, 0.9), H.mat('#c9564e'));
+    var finR = new THREE.Mesh(H.boxGeo(1.1, 0.12, 0.9), H.mat('#c9564e'));
     finR.position.set(0.5, 0, -3.8);
     g.add(finR);
     // 吊舱
-    var gondola = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 1.7), H.mat('#8a5a3b'));
+    var gondola = new THREE.Mesh(H.boxGeo(0.9, 0.55, 1.7), H.mat('#8a5a3b'));
     gondola.position.set(0, -1.25, -0.2);
     gondola.castShadow = true;
     g.add(gondola);
     var winMat = new THREE.MeshStandardMaterial({ color: 0xfff1cf, emissive: 0xffd27a, emissiveIntensity: 0.3 });
-    var win = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 1.4), winMat);
+    var win = new THREE.Mesh(H.boxGeo(0.7, 0.18, 1.4), winMat);
     win.position.set(0, -1.1, -0.2);
     g.add(win);
-    H.carLightMats.push(winMat);
+    // 吊舱窗光跟随昼夜但不受车灯闪烁影响，单独记录
+    H.airshipWindowMats.push(winMat);
     // 螺旋桨
-    var prop = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.06, 3), H.mat('#8a5a3b'));
+    var prop = new THREE.Mesh(H.cylGeo(1.1, 1.1, 0.06, 3), H.mat('#8a5a3b'));
     prop.rotation.x = Math.PI / 2;
     prop.position.set(0, 0, -4.6);
     g.add(prop);
@@ -196,6 +198,9 @@
     }
     for (i = 0; i < H.carTailMats.length; i++) {
       H.carTailMats[i].emissiveIntensity = 0.2 + 1.6 * nf;
+    }
+    for (i = 0; i < H.airshipWindowMats.length; i++) {
+      H.airshipWindowMats[i].emissiveIntensity = 0.25 + 1.6 * nf;
     }
     // 飞艇
     if (airship) {

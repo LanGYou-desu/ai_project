@@ -7,22 +7,60 @@
   var H = window.H;
 
   var canvas = document.getElementById('scene');
-  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xbfd9e8);
+  H.scene = scene;
+
+  var camera = new THREE.PerspectiveCamera(55, 1, 0.1, 1200);
+  H.camera = camera;
+  camera.position.set(0, 6, 0);
+
+  // 视口尺寸：窗口被最小化/隐藏时 innerWidth/Height 可能为 0，
+  // 直接喂给相机与渲染器会产生 NaN 投影矩阵，这里统一兜底。
+  function viewSize() {
+    var w = window.innerWidth || document.documentElement.clientWidth || 1280;
+    var h = window.innerHeight || document.documentElement.clientHeight || 720;
+    return { w: Math.max(1, w), h: Math.max(1, h) };
+  }
+
+  // WebGL 不可用/初始化失败时的兜底提示（避免只有加载层永远转圈）
+  function showFatal(msg) {
+    var loading = document.getElementById('loading');
+    if (loading) {
+      loading.classList.remove('hidden');
+      loading.style.whiteSpace = 'pre-line';
+      loading.textContent = msg;
+    } else if (document.body) {
+      var d = document.createElement('div');
+      d.className = 'fatal';
+      d.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
+        'padding:24px;text-align:center;white-space:pre-line;z-index:50;background:rgba(11,16,38,.92);';
+      d.textContent = msg;
+      document.body.appendChild(d);
+    }
+  }
+
+  // ---------- 渲染器（WebGL 不可用时给出提示而不是白屏） ----------
+  var renderer = null;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: 'high-performance' });
+  } catch (err) {
+    console.error('WebGL 初始化失败：', err);
+  }
+  if (!renderer || !renderer.getContext || !renderer.getContext()) {
+    showFatal('你的浏览器或设备不支持 WebGL，无法运行箱庭小镇。\n请更新浏览器或开启硬件加速后重试。');
+    return;
+  }
+  H.renderer = renderer;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(viewSize().w, viewSize().h);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.18;
-
-  var scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xbfd9e8);
-  H.scene = scene;
-
-  var camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1200);
-  H.camera = camera;
-  H.camera.position.set(0, 6, 0);
+  camera.aspect = viewSize().w / viewSize().h;
+  camera.updateProjectionMatrix();
 
   // ---------- 构建世界 ----------
   H.buildTerrain(scene);
@@ -90,20 +128,27 @@
   var timeSlider = document.getElementById('timeSlider');
   var timeVal = document.getElementById('timeVal');
   function fmtT(t) {
-    var h = t * 24;
-    var hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
+    // 先取整到分钟再拆分，避免浮点误差把 07:12 显示成 07:11
+    var totalMin = Math.round(t * 24 * 60) % 1440;
+    var hh = Math.floor(totalMin / 60), mm = totalMin % 60;
     return (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
   }
   function syncTimeUI() {
     if (timeSlider && !timeSlider._scrub) timeSlider.value = Math.round(H.env.t * 1000);
     if (timeVal) timeVal.textContent = fmtT(H.env.t);
   }
-  timeSlider.addEventListener('input', function () {
-    H.env.t = this.value / 1000;
-    syncTimeUI();
-  });
-  timeSlider.addEventListener('pointerdown', function () { timeSlider._scrub = true; });
-  window.addEventListener('pointerup', function () { timeSlider._scrub = false; });
+  function on(id) { return document.getElementById(id); }
+  if (timeSlider) {
+    timeSlider.addEventListener('input', function () {
+      H.env.t = this.value / 1000;
+      syncTimeUI();
+    });
+    timeSlider.addEventListener('pointerdown', function () { timeSlider._scrub = true; });
+    // pointerup 挂在 window 上，指针移出窗口时用 pointercancel 兜底，
+    // 否则 _scrub 会一直为真，时钟滑杆再也不跟随时间更新
+    window.addEventListener('pointerup', function () { timeSlider._scrub = false; });
+    window.addEventListener('pointercancel', function () { timeSlider._scrub = false; });
+  }
 
   var speedBtns = document.querySelectorAll('[data-speed]');
   speedBtns.forEach(function (btn) {
@@ -121,56 +166,74 @@
       syncTimeUI();
     });
   });
-  var btnRotate = document.getElementById('btnRotate');
-  btnRotate.addEventListener('click', function () {
+  var btnRotate = on('btnRotate');
+  if (btnRotate) btnRotate.addEventListener('click', function () {
     H.state.autoRotate = !H.state.autoRotate;
     btnRotate.classList.toggle('active', H.state.autoRotate);
   });
-  var btnDyn = document.getElementById('btnDyn');
-  btnDyn.addEventListener('click', function () {
+  var btnDyn = on('btnDyn');
+  if (btnDyn) btnDyn.addEventListener('click', function () {
     H.state.dynamics = !H.state.dynamics;
     btnDyn.classList.toggle('active', H.state.dynamics);
   });
-  var btnFx = document.getElementById('btnFx');
-  btnFx.addEventListener('click', function () {
+  var btnFx = on('btnFx');
+  if (btnFx) btnFx.addEventListener('click', function () {
     H.state.fireworks = !H.state.fireworks;
     btnFx.classList.toggle('active', H.state.fireworks);
   });
-  document.getElementById('btnShot').addEventListener('click', function () {
+  var btnShot = on('btnShot');
+  if (btnShot) btnShot.addEventListener('click', function () {
     renderer.render(scene, camera);
     var a = document.createElement('a');
     a.download = 'hakoniwa-town-' + fmtT(H.env.t).replace(':', '-') + '.png';
     a.href = canvas.toDataURL('image/png');
     a.click();
   });
-  document.getElementById('btnFull').addEventListener('click', function () {
+  var btnFull = on('btnFull');
+  if (btnFull) btnFull.addEventListener('click', function () {
     if (document.fullscreenElement) document.exitFullscreen();
-    else document.documentElement.requestFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
   });
+  // 时间/速度按钮的激活态：以当前速度为准，避免空格暂停后出现两个高亮
+  function syncSpeedUI() {
+    speedBtns.forEach(function (b) {
+      b.classList.toggle('active', H.env.playing && parseFloat(b.getAttribute('data-speed')) === H.env.speed);
+    });
+  }
   document.addEventListener('keydown', function (e) {
     if (e.code === 'Space') {
       e.preventDefault();
       H.env.playing = !H.env.playing;
-      speedBtns.forEach(function (b) {
-        b.classList.toggle('active', b.getAttribute('data-speed') === '0' ? !H.env.playing : b.classList.contains('active') && H.env.playing);
-      });
+      syncSpeedUI();
     }
   });
 
   // ---------- 窗口大小 ----------
-  window.addEventListener('resize', function () {
-    camera.aspect = window.innerWidth / window.innerHeight;
+  var resizeRaf = 0;
+  function applyViewSize() {
+    resizeRaf = 0;
+    var v = viewSize();
+    camera.aspect = v.w / v.h;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(v.w, v.h);
+  }
+  window.addEventListener('resize', function () {
+    // 合并同一帧内的多次 resize，避免布局抖动时重复重建绘制缓冲
+    if (resizeRaf) return;
+    resizeRaf = (typeof requestAnimationFrame === 'function')
+      ? requestAnimationFrame(applyViewSize)
+      : (applyViewSize(), 0);
   });
 
   // ---------- 主循环 ----------
   var clock = new THREE.Clock();
   var hudTimer = 0;
+  var rafId = 0;
   function animate() {
-    requestAnimationFrame(animate);
+    rafId = requestAnimationFrame(animate);
     var dt = Math.min(clock.getDelta(), 0.05);
     var t = clock.elapsedTime;
+    H.elapsed = t;              // 供水面/溪流着色器共享时间
     H.updateCycle(dt);
     if (H.state.dynamics) H.updateDynamics(dt, t);
     // 水面/瀑布着色器时间与相机
@@ -191,10 +254,30 @@
   }
 
   // 首帧后淡出加载层
+  var loadTimer = 0;
   requestAnimationFrame(function () {
     var loading = document.getElementById('loading');
     if (loading) loading.classList.add('hidden');
-    setTimeout(function () { if (loading) loading.remove(); }, 900);
+    loadTimer = setTimeout(function () { if (loading) loading.remove(); }, 900);
   });
+
+  // 供测试脚本驱动（真实浏览器下不会用到）
+  H.__loop = {
+    animate: animate, syncSpeedUI: syncSpeedUI, applyViewSize: applyViewSize,
+    showFatal: showFatal, viewSize: viewSize
+  };
+
+  // Node 测试环境：不自动启动 rAF 循环，由 test/run.js 手动驱动帧
+  if (window.__HAKONIWA_TEST__) return;
+
   animate();
+
+  // ---------- 页面卸载时清理动画循环/定时器与 GPU 缓存 ----------
+  window.addEventListener('pagehide', function () {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0;
+    if (loadTimer) clearTimeout(loadTimer);
+    if (resizeRaf) cancelAnimationFrame(resizeRaf);
+    H.disposeCaches();
+  });
 })();
