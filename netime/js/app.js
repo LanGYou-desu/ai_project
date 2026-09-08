@@ -14,7 +14,7 @@
     var wrap = $('toastWrap');
     var t = document.createElement('div');
     t.className = 'toast ' + (type || 'info');
-    t.innerHTML = msg;
+    t.innerHTML = E.escapeHtml(msg);
     wrap.appendChild(t);
     setTimeout(function () { t.classList.add('out'); }, 3800);
     setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4300);
@@ -104,7 +104,7 @@
     var tabEl = $('tabTitle');
     if (tabEl) tabEl.textContent = page.title;
     $('pageTitle').textContent = page.title;
-    $('urlBar').value = page.url + (query ? '?q=' + query : '');
+    $('urlBar').value = page.url + (query ? '?q=' + encodeURIComponent(query) : '');
     document.title = page.title + ' - NETIME';
 
     // 页面内容
@@ -145,10 +145,6 @@
       }
     }
 
-    // 成就检查
-    if (!P.hasAchievement('start')) { /* start 在开场白关闭时发放 */ }
-    if (page.id === 'e2025_final' && !P.hasAchievement('final')) { /* final 由口令解锁发放 */ }
-
     // 更新各面板
     refreshNavButtons();
     refreshKeyHint();
@@ -166,15 +162,18 @@
     $('btnFwd').disabled = !E.canForward();
   }
 
+  var loadingToken = 0;
+
   function showLoading(steps, done) {
     var ov = $('loadingOverlay');
     var txt = $('loadingText');
+    var token = ++loadingToken;   // 快速连点年代时，旧的拨号动画不得再结束遮罩
     ov.classList.remove('hidden');
     txt.innerHTML = '';
     var fast = window.__NETIME_FAST === true; // 测试快速模式
     var finished = false;
     function finish() {
-      if (finished) return;
+      if (finished || token !== loadingToken) return;
       finished = true;
       ov.classList.add('hidden');
       done();
@@ -194,6 +193,13 @@
 
   /* ==================== 导航 ==================== */
   function go(input) {
+    // 先探测目标页面属于哪个年代：未解锁的年代不允许通过手输网址进入（否则可跳过全部谜题）
+    var probe = E.resolve(input);
+    if (probe.page && !P.isEraUnlocked(probe.page.era)) {
+      showToast('🔒 ' + probe.page.era + ' 年的网络还没有解锁，先按时间顺序找回时间密钥。', 'warn');
+      $('statusBar').textContent = '无法访问 ' + probe.page.era + ' 年 · 该年代尚未解锁';
+      return;
+    }
     var res = E.navigate(input);
     if (res.notFound) {
       $('pageTitle').textContent = '404';
@@ -221,7 +227,7 @@
     var ov = $('viewSourceOverlay');
     if (ov.classList.contains('hidden')) {
       var page = E.current();
-      if (!page) return;
+      if (!page) { showToast('当前页面不存在，没有源代码可以看。', 'warn'); return; }
       $('sourceTitle').textContent = 'view-source: ' + page.url;
       $('sourceCode').textContent = page.html;
       ov.classList.remove('hidden');
@@ -306,15 +312,15 @@
   function refreshKeyProgress() {
     var wrap = $('keyProgress');
     wrap.innerHTML = '';
-    ['网', '络', '之', '声'].forEach(function (ch, i) {
-      var era = ['1995', '2000', '2005', '2010'][i];
-      var found = P.isEraSolved(era);
-      var el = document.createElement('span');
-      el.className = 'kp' + (found ? ' found' : '');
-      el.textContent = found ? ch : '？';
-      el.title = (found ? '已找到' : '未找到') + '第 ' + (i + 1) + ' 枚密钥（' + era + ' 年）';
-      wrap.appendChild(el);
-    });
+    Object.keys(S.KEYS).sort(function (a, b) { return S.KEYS[a].index - S.KEYS[b].index; })
+      .forEach(function (era) {
+        var found = P.isEraSolved(era);
+        var el = document.createElement('span');
+        el.className = 'kp' + (found ? ' found' : '');
+        el.textContent = found ? S.KEYS[era].char : '？';
+        el.title = (found ? '已找到' : '未找到') + '第 ' + S.KEYS[era].index + ' 枚密钥（' + era + ' 年）';
+        wrap.appendChild(el);
+      });
     var pw = document.createElement('span');
     pw.className = 'kp pw' + (P.state.passwordUnlocked ? ' found' : '');
     pw.textContent = P.state.passwordUnlocked ? '✓' : '锁';
@@ -333,9 +339,6 @@
       refreshKeyHint();
       refreshKeyProgress();
       renderEraNav();
-      if (P.hasAchievement('era5')) {
-        // 已解锁全部
-      }
       // 检查是否全部解锁
       var allUnlocked = S.ERAS.every(function (e) { return P.isEraUnlocked(e.id); });
       if (allUnlocked && !P.hasAchievement('era5')) {
@@ -393,7 +396,7 @@
       var idx = P.state.notes.length - 1 - rev;
       var item = document.createElement('div');
       item.className = 'note-item';
-      item.innerHTML = '<div class="note-text">' + n.text.replace(/</g, '&lt;') + '</div>' +
+      item.innerHTML = '<div class="note-text">' + E.escapeHtml(n.text) + '</div>' +
         '<div class="note-foot"><span>' + n.time + '</span> <button data-idx="' + idx + '" class="note-del">删除</button></div>';
       list.appendChild(item);
     });
@@ -435,7 +438,7 @@
       '把密钥填进右侧「时间密钥」输入框 → 下一个年代解锁。</p>' +
       '<ul>' +
       '<li>🖱️ 点击页面里的链接浏览（1995 年的网站链接真的会跳转）；</li>' +
-      '<li>⌨️ 地址栏可以<b>手动输入网址</b>——隐藏页面只能靠猜/靠解码得到；</li>' +
+      '<li>⌨️ 地址栏可以<b>手动输入网址</b>——隐藏页面只能靠猜/靠解码得到（未解锁的年代进不去）；</li>' +
       '<li>🔍 每个年代都有搜索引擎，线索里的关键词可以搜；</li>' +
       '<li>📄 <b>查看源代码</b>：老站长喜欢把话写进 HTML 注释里；</li>' +
       '<li>🧰 右侧「解码工具箱」：ROT13 / Base64 / 摩斯 / 藏头 / 字符统计；</li>' +

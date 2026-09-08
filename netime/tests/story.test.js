@@ -192,3 +192,32 @@ test('剧情：clue 定义齐全（每个谜题页都有线索）', function () 
     assert(found, '线索 ' + cid + ' 应被某个页面定义');
   });
 });
+
+/* ---------- 时间线自洽（内容 vs 真实日历） ---------- */
+
+test('剧情：档案馆「在线天数」与 1995→2025 三十年一致', function () {
+  const days = Math.round((Date.UTC(2025, 11, 31) - Date.UTC(1995, 11, 31)) / 86400000);
+  assertEq(days, 10958, '1995-12-31 到 2025-12-31 应为 10958 天');
+  assertContains(SITES['e2025_archive'].html, '10,958', '档案馆应写 10,958 天');
+});
+
+test('剧情：1995-12-31 与页面标注的星期一致', function () {
+  assertEq(new Date(Date.UTC(1995, 11, 31)).getUTCDay(), 0, '1995-12-31 应为星期日');
+  assertContains(SITES['e1995_portal'].html, '星期日');
+});
+
+test('剧情：各年代「X 年」的表述与年份差一致', function () {
+  const cn = { 5: '五', 10: '十', 15: '十五', 30: '三十' };
+  assertContains(SITES['e2000_lab_guestbook'].html, cn[2000 - 1995] + '年了', '2000 年应说五年');
+  assertContains(SITES['e2000_lab_radio'].html, cn[2000 - 1995] + '年', '2000 年隐藏页应说五年');
+  assertContains(SITES['e2010_forum'].html, cn[2010 - 1995] + '年整', '2010 年应说十五年');
+  assertContains(SITES['e2025_guide'].html, (2025 - 1995) + ' 年', '2025 年应说三十年');
+});
+
+test('剧情：每个年代首页的 URL 与其年代一致（无跨年代串台）', function () {
+  Story.ERAS.forEach(function (era) {
+    const home = SITES[E.eraHome(era.id)];
+    assertEq(home.era, era.id, era.id + ' 首页的 era 字段应为自身');
+    assertEq(E.resolve(home.url).page.id, home.id, era.id + ' 首页 URL 应解析回自己');
+  });
+});

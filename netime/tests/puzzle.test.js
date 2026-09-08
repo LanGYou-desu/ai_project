@@ -114,3 +114,94 @@ test('笔记：添加与删除', function () {
   P.removeNote(0);
   assertEq(P.state.notes.length, 0);
 });
+
+/* ---------- 存档健壮性：损坏 / 不可用的 localStorage ---------- */
+
+function withStore(store, fn) {
+  const prev = global.localStorage;
+  global.localStorage = store;
+  try { fn(); } finally { global.localStorage = prev; }
+}
+
+function fakeStore(raw) {
+  return {
+    getItem: function () { return raw; },
+    setItem: function () {},
+    removeItem: function () {}
+  };
+}
+
+test('存档：字段类型损坏时被清洗，游戏仍可玩', function () {
+  ['{"clues":null}', '{"clues":{"a":1}}', '{"eraUnlocked":null}', '{"keysFound":"网"}',
+   '{"achievements":"key1"}', '{"notes":null}', '{"hintsUsed":null}', '{"visitedPages":null}'
+  ].forEach(function (raw) {
+    withStore(fakeStore(raw), function () {
+      const st = P.init();
+      assert(Array.isArray(st.clues), 'clues 应被清洗成数组: ' + raw);
+      assert(Array.isArray(st.achievements), 'achievements 应被清洗成数组: ' + raw);
+      assert(Array.isArray(st.notes), 'notes 应被清洗成数组: ' + raw);
+      assert(st.eraUnlocked && st.eraUnlocked['1995'] === true, '第一段年代应始终解锁: ' + raw);
+      P.addClue({ id: 'x', era: '1995', clue: { id: 'cx', title: 'T', text: 'X' } });
+      P.addNote('仍然能写笔记');
+      P.useHint('1995');
+      assert(P.submitKey('1995', '网').ok, '密钥校验仍应可用: ' + raw);
+    });
+  });
+});
+
+test('存档：非法 JSON / 非对象内容回退默认进度', function () {
+  ['{not json', '[1,2,3]', 'null', '"text"', '123'].forEach(function (raw) {
+    withStore(fakeStore(raw), function () {
+      const st = P.init();
+      assertEq(st.version, 1);
+      assertEq(JSON.stringify(st.achievements), '[]');
+      assert(!P.isEraUnlocked('2000'));
+      assertEq(st.clues.length, 0);
+    });
+  });
+});
+
+test('存档：localStorage 抛错（隐私模式/配额）时不影响游戏', function () {
+  withStore({
+    getItem: function () { throw new Error('SecurityError'); },
+    setItem: function () { throw new Error('QuotaExceededError'); },
+    removeItem: function () { throw new Error('SecurityError'); }
+  }, function () {
+    P.init();
+    P.save();
+    P.addNote('内存里也能记');
+    assertEq(P.state.notes.length, 1);
+    P.reset();
+    assertEq(P.state.notes.length, 0);
+  });
+});
+
+test('存档：localStorage 完全不存在时降级为内存态', function () {
+  const prev = global.localStorage;
+  delete global.localStorage;
+  try {
+    P.init();
+    P.addNote('内存态');
+    assertEq(P.state.notes.length, 1);
+    P.save();
+  } finally { global.localStorage = prev; }
+});
+
+test('存档：未知字段被丢弃，合法字段保留', function () {
+  withStore(fakeStore(JSON.stringify({
+    version: 1, eraUnlocked: { '1995': true, '2000': true }, achievements: ['source'], 注入字段: 'x'
+  })), function () {
+    const st = P.init();
+    assertEq(st.注入字段, undefined);
+    assert(P.isEraUnlocked('2000'), '合法解锁状态应保留');
+    assert(P.hasAchievement('source'), '合法成就应保留');
+  });
+});
+
+test('密钥：未解锁的年代不能提交密钥', function () {
+  P.reset();
+  const res = P.submitKey('2005', '之');
+  assert(!res.ok, '未解锁年代应拒绝');
+  assert(!P.isEraUnlocked('2010'), '不应解锁后续年代');
+  assert(!P.hasAchievement('key3'), '不应发放成就');
+});

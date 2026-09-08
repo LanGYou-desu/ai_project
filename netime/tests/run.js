@@ -34,6 +34,10 @@ global.assertEq = function (a, b, msg) {
 global.assertContains = function (hay, needle, msg) {
   if (String(hay).indexOf(needle) < 0) throw new Error((msg || 'assertContains') + ': missing ' + JSON.stringify(needle));
 };
+global.assertThrows = function (fn, msg) {
+  try { fn(); } catch (e) { return e; }
+  throw new Error((msg || 'assertThrows') + ': 预期抛错但没有');
+};
 
 // ---------- 注册测试模块 ----------
 require('./tools.test.js');

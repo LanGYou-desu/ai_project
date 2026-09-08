@@ -103,3 +103,40 @@ test('前端启动：非拨号年代（2010）切换不弹拨号动画', async f
   // 无论解锁与否，都不应抛异常，页面应有内容
   assert(getEl('page').innerHTML.length > 0, '页面应有内容');
 });
+
+test('前端启动：搜索页地址栏回填时对关键词编码', async function () {
+  const app = win.NETimeApp;
+  app.go('http://www.chinanet-news.com/search?q=' + encodeURIComponent('a&b'));
+  await new Promise(function (resolve) { setTimeout(resolve, 200); });
+  assertEq(getEl('urlBar').value, 'http://www.chinanet-news.com/search?q=a%26b',
+    '含 & 的关键词应原样往返');
+  assertContains(getEl('page').innerHTML, '狐 搜');
+});
+
+test('前端启动：未解锁年代不能用地址栏直接进入（防止跳过谜题）', async function () {
+  const app = win.NETimeApp;
+  const P = global.NetPuzzle;
+  P.reset();                                    // 只解锁 1995
+  app.go('http://www.chinanet-news.com/');
+  await new Promise(function (resolve) { setTimeout(resolve, 200); });
+  const before = getEl('page').innerHTML;
+  assertContains(before, '东方资讯台', '1995 首页应正常渲染');
+
+  app.go('http://archive.netvoice.cn/');        // 2025 的档案馆，尚未解锁
+  await new Promise(function (resolve) { setTimeout(resolve, 200); });
+  assertEq(getEl('page').innerHTML, before, '锁定年代的页面不应被渲染');
+  assertEq(global.NetEngine.state.era, '1995', '年代不应被切换');
+  assertContains(getEl('statusBar').textContent, '尚未解锁');
+});
+
+test('前端启动：按顺序解锁 2025 后地址栏可以进入档案馆', async function () {
+  const P = global.NetPuzzle;
+  ['1995', '2000', '2005', '2010'].forEach(function (era) {
+    assert(P.submitKey(era, global.Story.KEYS[era].char).ok, era + ' 密钥应通过');
+  });
+  assert(P.isEraUnlocked('2025'), '2025 应已解锁');
+  win.NETimeApp.go('http://archive.netvoice.cn/');
+  await new Promise(function (resolve) { setTimeout(resolve, 200); });
+  assertContains(getEl('page').innerHTML, '网络之声档案馆');
+  assertEq(global.NetEngine.state.era, '2025');
+});

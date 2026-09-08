@@ -668,15 +668,9 @@
     <center><font size="2" color="#808080">` + cnt(313) + ` · 本页不设追踪，不设广告，不设意义</font></center>`
   });
 
-  /* ============================ 工具函数 ============================ */
+  /* ============================ 导出 ============================ */
 
-  function getSite(id) { return SITES[id] || null; }
-
-  function listEraPages(era) {
-    return Object.keys(SITES).filter(function (k) { return SITES[k].era === era; }).map(function (k) { return SITES[k]; });
-  }
-
-  var NetSites = { SITES: SITES, getSite: getSite, listEraPages: listEraPages };
+  var NetSites = { SITES: SITES };
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = NetSites;

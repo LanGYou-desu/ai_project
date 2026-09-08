@@ -135,3 +135,69 @@ test('404 页面生成', function () {
   assertContains(h, '404');
   assertContains(h, 'http://x.cn/y');
 });
+
+/* ---------- 规范化 / 历史 / 转义 / 索引 ---------- */
+
+test('URL 解析：大小写与锚点无关', function () {
+  assertEq(E.resolve('HTTP://WWW.CHINANET-NEWS.COM/').page.id, 'e1995_portal');
+  assertEq(E.resolve('http://BBS.Yemaomao.cn/Thread/1024').page.id, 'e1995_bbs_thread');
+  assertEq(E.resolve('E2000_LAB').page.id, 'e2000_lab');
+  assertEq(E.resolve('http://weiyu.cn/#top').page.id, 'e2010_weibo');
+});
+
+test('历史：后退/前进保留搜索查询串', function () {
+  E.switchEra('2010');
+  E.navigate('http://weiyu.cn/');
+  E.navigate('http://search.weiyu.cn/?q=oblivion_keeper');
+  assertEq(E.state.currentQuery, 'oblivion_keeper');
+  assertEq(E.back().id, 'e2010_weibo');
+  assertEq(E.state.currentQuery, null);
+  assertEq(E.forward().id, 'e2010_search');
+  assertEq(E.state.currentQuery, 'oblivion_keeper', '前进应恢复查询串');
+  assertContains(E.resultsHtml(E.state.era, E.state.currentQuery), 'oblivion_keeper 的主页');
+});
+
+test('历史：同一页面换查询串也会入栈', function () {
+  E.switchEra('2010');                       // 首页 e2010_weibo 入栈 1 次
+  E.navigate('http://search.weiyu.cn/?q=aaa');
+  E.navigate('http://search.weiyu.cn/?q=bbb');
+  assertEq(E.state.history.length, 2, '换查询串应产生一条历史');
+  assertEq(E.back().id, 'e2010_search');
+  assertEq(E.state.currentQuery, 'aaa', '后退应回到上一个查询串');
+});
+
+test('404：当前页面引用被清空，再次导航可恢复', function () {
+  E.switchEra('2010');
+  E.navigate('http://weiyu.cn/');
+  assert(E.current(), '应有当前页面');
+  const r = E.navigate('http://nope.cn/x');
+  assert(r.notFound, '应返回 404');
+  assertEq(E.current(), null, '404 后不应再有当前页面（否则查看源代码会显示上一页）');
+  E.navigate('http://weiyu.cn/');
+  assertEq(E.current().id, 'e2010_weibo');
+  assertEq(E.state.notFound, null);
+});
+
+test('搜索/404 页面转义 HTML（手输关键词不能注入标签）', function () {
+  const html = E.resultsHtml('2010', '<img src=x onerror=alert(1)>');
+  assert(html.indexOf('<img') < 0, '不应出现原始标签');
+  assertContains(html, '&lt;img');
+  const nf = E.notFoundHtml('2010', '<script>alert(1)</script>');
+  assert(nf.indexOf('<script>') < 0);
+  assertContains(nf, '&lt;script&gt;');
+});
+
+test('搜索索引：重建后结果不变', function () {
+  const before = E.search('1995', '网络之声').map(function (p) { return p.id; }).join(',');
+  E.buildIndexes();
+  const after = E.search('1995', '网络之声').map(function (p) { return p.id; }).join(',');
+  assertEq(after, before);
+  assert(before.length > 0);
+});
+
+test('搜索引擎：1995-2010 各有一台，2025 年没有', function () {
+  ['1995', '2000', '2005', '2010'].forEach(function (era) {
+    assert(E.eraSearchPage(era), era + ' 应有搜索引擎');
+  });
+  assertEq(E.eraSearchPage('2025'), null, '2025 年没有搜索引擎');
+});

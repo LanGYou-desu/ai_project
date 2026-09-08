@@ -62,3 +62,81 @@ test('字符统计：频次排序', function () {
   assertEq(f[0].char, 'a');
   assertEq(f[0].count, 5);
 });
+
+/* ---------- 健壮性：非法 / 变体输入 ---------- */
+
+test('ROT13：非字母、全角与非字符串原样处理', function () {
+  assertEq(T.rot13('Ｈｅｌｌｏ 123 —— 网络'), 'Ｈｅｌｌｏ 123 —— 网络');
+  assertEq(T.rot13(12345), '12345');
+  assertEq(T.rot13('Ünïcode'), 'Üaïpbqr');
+});
+
+test('Base64：非法输入抛错而不是静默乱码', function () {
+  assertThrows(function () { T.b64decodeUtf8('!!!not base64!!!'); }, '含非法字符应抛错');
+  assertThrows(function () { T.b64decodeUtf8('SGVsbG8=extra'); }, '中间出现 = 应抛错');
+  assertThrows(function () { T.b64decodeUtf8('A'); }, '长度 %4==1 应抛错');
+});
+
+test('Base64：容忍空白、换行与 URL-safe 字符', function () {
+  assertEq(T.b64decodeUtf8('SGVs bG8s\nIFdvcmxk IQ=='), 'Hello, World!');
+  assertEq(T.b64decodeUtf8('b2JsaXZpb25fa2VlcGVy'), 'oblivion_keeper');
+  assertEq(T.b64decodeUtf8(''), '');
+  assertEq(T.b64decodeUtf8(null), '');
+  // 编码-解码往返在随机长度下也成立（覆盖填充的 0/1/2 字节尾巴）
+  for (let n = 0; n < 64; n++) {
+    let s = '';
+    for (let i = 0; i < n; i++) s += String.fromCharCode(32 + ((n * 7 + i * 13) % 90));
+    assertEq(T.b64decodeUtf8(T.b64encodeUtf8(s)), s, '长度 ' + n + ' 的往返');
+  }
+});
+
+test('Base64：TextEncoder 不可用时的回退也支持 Unicode 与表情', function () {
+  const prevEnc = global.TextEncoder, prevDec = global.TextDecoder;
+  global.TextEncoder = undefined;
+  global.TextDecoder = undefined;
+  try {
+    const s = '网络 🎉 ä';
+    assertEq(T.b64encodeUtf8(s), '572R57ucIPCfjokgw6Q=', '回退编码应与标准一致');
+    assertEq(T.b64decodeUtf8(T.b64encodeUtf8(s)), s, '回退解码应还原原字符串');
+  } finally {
+    global.TextEncoder = prevEnc;
+    global.TextDecoder = prevDec;
+  }
+});
+
+test('摩斯：词分隔符支持 "/"、"|" 与多个空格', function () {
+  assertEq(T.morseDecode('-.-- --- ..- / ... .... --- ..- .-.. -..'), 'YOU SHOULD');
+  assertEq(T.morseDecode('-.-- --- ..-   ... .... --- ..- .-.. -..'), 'YOU SHOULD');
+  assertEq(T.morseDecode('-.-- --- ..- | --. ---'), 'YOU GO');
+  assertEq(T.morseDecode('-.--/---'), 'YO', '紧贴字母的 / 视为字母分隔');
+  assertEq(T.morseDecode('-.--\n--- ..-'), 'YOU');
+  assertEq(T.morseDecode(''), '');
+  assertEq(T.morseDecode('   '), '');
+});
+
+test('摩斯：未知点划组合输出 ?', function () {
+  assertEq(T.morseDecode('....-...'), '?');
+  assertEq(T.morseDecode('... --- ... ....-...'), 'SOS?');
+});
+
+test('摩斯编码：多个空格归一为单个词分隔', function () {
+  assertEq(T.morseEncode('A  B'), '.- / -...');
+  assertEq(T.morseEncode('A\nB'), '.- / -...');
+  assertEq(T.morseEncode('  SOS  '), '... --- ...');
+  assertEq(T.morseDecode(T.morseEncode('网络')), '网络', '非拉丁字符原样往返');
+});
+
+test('字符统计：标点、表情与扩展区汉字都计入（按码点）', function () {
+  const f = T.charFreq('🎉🎉x，a');
+  assertEq(f[0].char, '🎉');
+  assertEq(f[0].count, 2);
+  assert(f.some(function (x) { return x.char === '，'; }), '中文标点应计入');
+  assert(T.charFreq('\u{20BB7}').length === 1, '扩展区汉字应计入');
+  assertEq(T.charFreq('').length, 0);
+  assertEq(T.charFreq('   \n\t ').length, 0);
+});
+
+test('藏头检测：兼容 CRLF 与空行', function () {
+  assertEq(T.firstCharsOfLines('钥匙\r\n匙子\r\n\r\n在网'), '钥匙在');
+  assertEq(T.firstCharsOfLines(''), '');
+});

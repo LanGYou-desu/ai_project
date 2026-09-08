@@ -21,7 +21,6 @@
     '2010': { char: '声', index: 4, desc: '第四枚密钥，解码 2010 年论坛签名后，去搜索那个名字' }
   };
   var PASSWORD = '网络之声';
-  var FINAL_WORD = '永存';
 
   // 每个年代的 3 级提示（逐级给出）
   var HINTS = {
@@ -99,13 +98,10 @@
     ERAS: ERAS,
     KEYS: KEYS,
     PASSWORD: PASSWORD,
-    FINAL_WORD: FINAL_WORD,
     HINTS: HINTS,
     ACHIEVEMENTS: ACHIEVEMENTS,
     INTRO: INTRO,
-    EPILOGUE: EPILOGUE,
-    TITLE: 'NETIME · 网络时光机',
-    SUBTITLE: '旧互联网考古 · 一桩跨越三十年的失踪案'
+    EPILOGUE: EPILOGUE
   };
 
   if (typeof module !== 'undefined' && module.exports) {

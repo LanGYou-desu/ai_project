@@ -30,35 +30,102 @@
     };
   }
 
-  function load() {
-    var store = global.localStorage;
-    var raw = null;
-    if (store && typeof store.getItem === 'function') raw = store.getItem('netime-save-v1');
-    if (!raw) return defaultState();
+  var SAVE_KEY = 'netime-save-v1';
+
+  // 隐私模式 / 禁用 Cookie 时，连访问 localStorage 属性本身都可能抛错
+  function getStore() {
     try {
-      var st = JSON.parse(raw);
-      var d = defaultState();
-      // 合并（向前兼容）
-      Object.keys(d).forEach(function (k) {
-        if (st[k] !== undefined) d[k] = st[k];
-      });
-      return d;
+      var s = global.localStorage;
+      return s && typeof s === 'object' ? s : null;
     } catch (e) {
-      return defaultState();
+      return null;
     }
   }
 
+  function isPlainObject(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
+  function strArray(v) {
+    return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : [];
+  }
+  function boolMap(v) {
+    var out = {};
+    if (isPlainObject(v)) {
+      Object.keys(v).forEach(function (k) { if (typeof v[k] === 'boolean') out[k] = v[k]; });
+    }
+    return out;
+  }
+  function strMap(v) {
+    var out = {};
+    if (isPlainObject(v)) {
+      Object.keys(v).forEach(function (k) { if (typeof v[k] === 'string') out[k] = v[k]; });
+    }
+    return out;
+  }
+  function countMap(v) {
+    var out = {};
+    if (isPlainObject(v)) {
+      Object.keys(v).forEach(function (k) {
+        if (typeof v[k] === 'number' && isFinite(v[k]) && v[k] >= 0) out[k] = Math.floor(v[k]);
+      });
+    }
+    return out;
+  }
+
+  // 读存档：JSON 损坏 / 字段类型不对 / 被别的脚本写坏，一律清洗后回退，绝不让存档把游戏搞崩
+  function load() {
+    var d = defaultState();
+    var store = getStore();
+    var raw = null;
+    if (store && typeof store.getItem === 'function') {
+      try { raw = store.getItem(SAVE_KEY); } catch (e) { raw = null; }
+    }
+    if (!raw) return d;
+    var st;
+    try { st = JSON.parse(raw); } catch (e) { return d; }
+    if (!isPlainObject(st)) return d;
+
+    if (typeof st.version === 'number' && isFinite(st.version)) d.version = st.version;
+    var unlocked = boolMap(st.eraUnlocked);
+    var first = (Story.ERAS || [])[0];
+    if (first) unlocked[first.id] = true;      // 第一段年代始终可用，否则玩家无路可走
+    d.eraUnlocked = unlocked;
+    d.keysFound = strMap(st.keysFound);
+    d.keyOrder = strArray(st.keyOrder);
+    d.passwordUnlocked = st.passwordUnlocked === true;
+    d.clues = (Array.isArray(st.clues) ? st.clues : []).filter(function (c) {
+      return isPlainObject(c) && typeof c.id === 'string';
+    }).map(function (c) {
+      return {
+        id: c.id,
+        era: typeof c.era === 'string' ? c.era : '',
+        title: typeof c.title === 'string' ? c.title : '',
+        text: typeof c.text === 'string' ? c.text : '',
+        pageId: typeof c.pageId === 'string' ? c.pageId : '',
+        time: typeof c.time === 'string' ? c.time : ''
+      };
+    });
+    d.visitedPages = strArray(st.visitedPages);
+    d.hintsUsed = countMap(st.hintsUsed);
+    d.sourceViewed = strArray(st.sourceViewed);
+    d.achievements = strArray(st.achievements);
+    d.notes = (Array.isArray(st.notes) ? st.notes : []).filter(function (n) {
+      return isPlainObject(n) && typeof n.text === 'string';
+    }).map(function (n) {
+      return { text: n.text, time: typeof n.time === 'string' ? n.time : '' };
+    });
+    return d;
+  }
+
   function save(state) {
-    var store = global.localStorage;
+    var store = getStore();
     if (store && typeof store.setItem === 'function') {
-      try { store.setItem('netime-save-v1', JSON.stringify(state)); } catch (e) { /* 忽略 */ }
+      try { store.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* 配额 / 隐私模式：忽略 */ }
     }
   }
 
   function erase() {
-    var store = global.localStorage;
+    var store = getStore();
     if (store && typeof store.removeItem === 'function') {
-      try { store.removeItem('netime-save-v1'); } catch (e) { /* 忽略 */ }
+      try { store.removeItem(SAVE_KEY); } catch (e) { /* 忽略 */ }
     }
   }
 
@@ -88,6 +155,7 @@
 
       var expect = (Story.KEYS || {})[era];
       if (!expect) return { ok: false, message: '这个年代不需要密钥。' };
+      if (!Puzzle.state.eraUnlocked[era]) return { ok: false, message: era + ' 年的网络还没有解锁，先找回上一段年代的时间密钥。' };
       if (Puzzle.state.keysFound[era]) return { ok: false, message: '第 ' + expect.index + ' 枚密钥已经找到过了。' };
       if (input !== expect.char) {
         return { ok: false, message: '密钥校验失败：不对，再想想。（提示：可以点「提示」）' };
@@ -161,11 +229,6 @@
     },
 
     /* ---------- 提示 ---------- */
-    hints: function (era) {
-      var all = (Story.HINTS || {})[era] || [];
-      var used = Puzzle.state.hintsUsed[era] || 0;
-      return all.slice(0, used + 1); // 已用 + 下一个
-    },
     useHint: function (era) {
       var all = (Story.HINTS || {})[era] || [];
       var used = Puzzle.state.hintsUsed[era] || 0;
