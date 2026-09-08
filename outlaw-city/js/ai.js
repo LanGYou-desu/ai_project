@@ -1,5 +1,7 @@
 "use strict";
+// 车辆 AI。control() 每帧被调用，返回的驾驶指令对象由 AI 自身复用，避免每帧产生垃圾。
 function makeTrafficAI(v, road) {
+  const ctrl = { throttle: 0, steer: 0, brake: false, handbrake: false };
   const ai = {
     road: road,
     cruise: v.def.maxSpeed * Utils.rand(0.45, 0.62),
@@ -40,36 +42,56 @@ function makeTrafficAI(v, road) {
           if (side < 46) { throttle = 0; break; }
         }
       }
-      return { throttle: throttle, steer: steer, brake: false, handbrake: false };
+      ctrl.throttle = throttle; ctrl.steer = steer; ctrl.brake = false; ctrl.handbrake = false;
+      return ctrl;
     },
   };
   return ai;
 }
 function makePoliceAI(v) {
+  const ctrl = { throttle: 0, steer: 0, brake: false, handbrake: false };
   const ai = {
     police: true, hostile: true, stopped: false, escort: false,
     control(dt) {
       const p = W.player;
-      if (!p || p.dead || this.stopped) return { throttle: 0, steer: 0, brake: true };
+      if (!p || p.dead) {
+        this.stopped = false;
+        ctrl.throttle = 0; ctrl.steer = 0; ctrl.brake = true; ctrl.handbrake = false;
+        return ctrl;
+      }
       const d = Utils.dist(v.x, v.y, p.x, p.y);
-      if (d < 320) { this.stopped = true; return { throttle: 0, steer: 0, brake: true }; }
+      // 贴近后停车（此时警察下车步战）；玩家跑远后必须能重新追击，不能永久锁死
+      if (d < 320) {
+        this.stopped = true;
+        ctrl.throttle = 0; ctrl.steer = 0; ctrl.brake = true; ctrl.handbrake = false;
+        return ctrl;
+      }
+      this.stopped = false;
       const desired = Utils.angleTo(v.x, v.y, p.x, p.y);
-      const steer = Utils.clamp(Utils.angleDiff(desired - v.heading) * 2.2, -1, 1);
-      return { throttle: 1, steer: steer, brake: false, handbrake: false };
+      ctrl.throttle = 1;
+      ctrl.steer = Utils.clamp(Utils.angleDiff(desired - v.heading) * 2.2, -1, 1);
+      ctrl.brake = false; ctrl.handbrake = false;
+      return ctrl;
     },
     onWreck() {},
   };
   return ai;
 }
 function makeEscortAI(v) {
+  const ctrl = { throttle: 0, steer: 0, brake: false, handbrake: false };
   return {
     police: false, hostile: true, escort: true,
     control(dt) {
       const p = W.player;
-      if (!p || p.dead) return { throttle: 0, steer: 0, brake: true };
+      if (!p || p.dead) {
+        ctrl.throttle = 0; ctrl.steer = 0; ctrl.brake = true; ctrl.handbrake = false;
+        return ctrl;
+      }
       const desired = Utils.angleTo(v.x, v.y, p.x, p.y);
-      const steer = Utils.clamp(Utils.angleDiff(desired - v.heading) * 2.4, -1, 1);
-      return { throttle: 1, steer: steer, brake: false, handbrake: false };
+      ctrl.throttle = 1;
+      ctrl.steer = Utils.clamp(Utils.angleDiff(desired - v.heading) * 2.4, -1, 1);
+      ctrl.brake = false; ctrl.handbrake = false;
+      return ctrl;
     },
     onWreck() {},
   };

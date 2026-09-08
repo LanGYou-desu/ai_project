@@ -1,16 +1,4 @@
 "use strict";
-function drawBlip(ctx, x, y, color, t, label) {
-  const r = 15 + Math.sin(t) * 4;
-  ctx.strokeStyle = color; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill();
-  if (label) {
-    ctx.fillStyle = "#fff"; ctx.font = "bold 12px 'Segoe UI', sans-serif"; ctx.textAlign = "center";
-    ctx.fillText(label, x, y + 4);
-    ctx.textAlign = "left";
-  }
-}
 const HUD = {
   hour() {
     const t = (W.gameTime % CFG.DAY_LENGTH) / CFG.DAY_LENGTH;
@@ -75,7 +63,8 @@ const HUD = {
     ctx.fillText(Utils.fmtMoney(p.money), x, 34);
     ctx.font = "16px 'Segoe UI', sans-serif";
     ctx.fillStyle = "#f87171";
-    ctx.fillText("★".repeat(p.wanted) + "☆".repeat(5 - p.wanted), x, 56);
+    const stars = Utils.clamp(p.wanted | 0, 0, 5); // 防越界：repeat 负数会抛 RangeError
+    ctx.fillText("★".repeat(stars) + "☆".repeat(5 - stars), x, 56);
     const h = this.hour();
     const hh = String(Math.floor(h)).padStart(2, "0");
     const mm = String(Math.floor((h % 1) * 60)).padStart(2, "0");

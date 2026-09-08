@@ -12,8 +12,11 @@ const Input = {
     window.addEventListener("blur", () => { this.keys = {}; this.mouse.down = false; this.releaseLock(); });
     canvas.addEventListener("mousemove", (e) => {
       const r = canvas.getBoundingClientRect();
-      this.mouse.x = (e.clientX - r.left) * (canvas.width / r.width);
-      this.mouse.y = (e.clientY - r.top) * (canvas.height / r.height);
+      // 画布被隐藏/窗口最小化时 r.width 可能为 0，除法会得到 Infinity 并让相机角度失效
+      if (r.width > 0 && r.height > 0) {
+        this.mouse.x = (e.clientX - r.left) * (canvas.width / r.width);
+        this.mouse.y = (e.clientY - r.top) * (canvas.height / r.height);
+      }
       if (this.locked) {
         this.dx += (e.movementX || 0);
         this.dy += (e.movementY || 0);

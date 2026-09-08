@@ -1,6 +1,8 @@
 "use strict";
+// 城市地图：随机生成街区/道路/建筑/水面/公园/街灯，并提供碰撞查询与小地图位图。
+// 3D 版只使用 data / mini 与几何查询函数（原先的 2D 分块贴图已删除）。
 const MapSys = {
-  data: null, chunks: [], chunkSize: 1040, mini: null, use2DChunks: true,
+  data: null, mini: null,
   init() {
     const W0 = CFG.WORLD;
     const cell = W0.cell, road = W0.road, margin = W0.margin;
@@ -47,7 +49,6 @@ const MapSys = {
       if (Math.random() < 0.7) lamps.push({ x: vx + road / 2 + 8, y: hy + road / 2 + 8 });
     }
     this.data = { worldW: worldW, worldH: worldH, roadsV: roadsV, roadsH: roadsH, buildings: buildings, water: water, parks: parks, lamps: lamps, trees: trees, cell: cell, road: road };
-    if (this.use2DChunks !== false) this.buildChunks();
     this.buildMini();
   },
   cellCenter(i, j) { return { x: i * this.data.cell + this.data.cell / 2, y: j * this.data.cell + this.data.cell / 2 }; },
@@ -97,9 +98,11 @@ const MapSys = {
     return x < 4 || y < 4 || x > d.worldW - 4 || y > d.worldH - 4;
   },
   resolve(x, y, r, out) {
+    // 结果写回调用方提供的 out（可跨帧复用，避免每帧每个实体都新建对象），并返回同一个对象
     out.x = x; out.y = y;
     const d = this.data;
     const doPush = (rects, rr) => {
+      let pushes = 0;
       for (const b of rects) {
         if (!this.circleRect(out.x, out.y, rr, b)) continue;
         const nx = Utils.clamp(out.x, b.x, b.x + b.w);
@@ -114,97 +117,19 @@ const MapSys = {
           const m = Math.min(l, rt, t, bo);
           if (m === l) out.x = b.x - rr; else if (m === rt) out.x = b.x + b.w + rr; else if (m === t) out.y = b.y - rr; else out.y = b.y + b.h + rr;
         }
+        pushes++;
       }
+      return pushes;
     };
-    doPush(d.buildings, r);
-    doPush(d.water, r * 0.6);
+    // 建筑会互相重叠：单次遍历可能把实体从一个矩形推进另一个，最多迭代 3 轮收敛
+    for (let pass = 0; pass < 3; pass++) {
+      const pushed = doPush(d.buildings, r) + doPush(d.water, r * 0.6);
+      if (!pushed) break;
+    }
     out.x = Utils.clamp(out.x, 6, d.worldW - 6);
     out.y = Utils.clamp(out.y, 6, d.worldH - 6);
-    return { x: out.x, y: out.y, hit: Math.abs(out.x - x) > 0.01 || Math.abs(out.y - y) > 0.01 };
-  },
-  buildChunks() {
-    const cs = this.chunkSize, d = this.data;
-    const nx = Math.ceil(d.worldW / cs), ny = Math.ceil(d.worldH / cs);
-    this.chunks = [];
-    for (let cy = 0; cy < ny; cy++) {
-      for (let cx = 0; cx < nx; cx++) {
-        const cv = document.createElement("canvas");
-        cv.width = cs; cv.height = cs;
-        const g = cv.getContext("2d");
-        this.drawStatic(g, cx * cs, cy * cs);
-        this.chunks.push({ x: cx * cs, y: cy * cs, cv: cv });
-      }
-    }
-  },
-  drawStatic(g, ox, oy) {
-    const d = this.data, cs = this.chunkSize;
-    const road = d.road;
-    g.fillStyle = "#4a453e";
-    g.fillRect(0, 0, cs, cs);
-    g.fillStyle = "#2f6f9e";
-    for (const w of d.water) {
-      if (w.x + w.w < ox || w.x > ox + cs || w.y + w.h < oy || w.y > oy + cs) continue;
-      g.beginPath(); g.moveTo(w.x - ox + 12, w.y - oy);
-      g.arcTo(w.x - ox + w.w, w.y - oy, w.x - ox + w.w, w.y - oy + w.h, 12);
-      g.arcTo(w.x - ox + w.w, w.y - oy + w.h, w.x - ox, w.y - oy + w.h, 12);
-      g.arcTo(w.x - ox, w.y - oy + w.h, w.x - ox, w.y - oy, 12);
-      g.arcTo(w.x - ox, w.y - oy, w.x - ox + w.w, w.y - oy, 12);
-      g.closePath(); g.fill();
-    }
-    g.fillStyle = "#4e7d43";
-    for (const p of d.parks) {
-      if (p.x + p.w < ox || p.x > ox + cs || p.y + p.h < oy || p.y > oy + cs) continue;
-      g.fillRect(p.x - ox, p.y - oy, p.w, p.h);
-    }
-    g.fillStyle = "#2c2c2c";
-    for (const vx of d.roadsV) { if (vx + road / 2 > ox && vx - road / 2 < ox + cs) g.fillRect(vx - road / 2 - ox, 0, road, cs); }
-    for (const hy of d.roadsH) { if (hy + road / 2 > oy && hy - road / 2 < oy + cs) g.fillRect(0, hy - road / 2 - oy, cs, road); }
-    g.fillStyle = "#d9b64a";
-    const dash = 26, gap = 20;
-    for (const vx of d.roadsV) {
-      const rx = vx - ox;
-      if (rx > -road && rx < cs + road) for (let yy = 0; yy < cs; yy += dash + gap) g.fillRect(rx - 2, yy, 4, dash);
-    }
-    for (const hy of d.roadsH) {
-      const ry = hy - oy;
-      if (ry > -road && ry < cs + road) for (let xx = 0; xx < cs; xx += dash + gap) g.fillRect(xx, ry - 2, dash, 4);
-    }
-    for (const b of d.buildings) {
-      if (b.x + b.w < ox || b.x > ox + cs || b.y + b.h < oy || b.y > oy + cs) continue;
-      const x = b.x - ox, y = b.y - oy;
-      g.fillStyle = "rgba(0,0,0,0.35)";
-      g.fillRect(x + 5, y + 7, b.w, b.h);
-      g.fillStyle = b.color;
-      g.fillRect(x, y, b.w, b.h);
-      g.fillStyle = "rgba(255,255,255,0.12)";
-      g.fillRect(x, y, b.w, 5);
-      if (b.w * b.h > 4200) {
-        g.fillStyle = "rgba(255,255,255,0.22)";
-        const step = 18;
-        for (let wx = x + 9; wx < x + b.w - 9; wx += step) {
-          for (let wy = y + 12; wy < y + b.h - 9; wy += step) {
-            if (Math.random() < 0.55) g.fillRect(wx, wy, 4, 6);
-          }
-        }
-      }
-    }
-    for (const t of d.trees) {
-      if (t.x < ox || t.x > ox + cs || t.y < oy || t.y > oy + cs) continue;
-      g.fillStyle = "#5b3a1e";
-      g.fillRect(t.x - ox - 2, t.y - oy - 2, 5, 5);
-      g.fillStyle = "#2f6b32";
-      g.beginPath(); g.arc(t.x - ox, t.y - oy, t.r, 0, Math.PI * 2); g.fill();
-      g.fillStyle = "#3d8a41";
-      g.beginPath(); g.arc(t.x - ox - t.r * 0.25, t.y - oy - t.r * 0.25, t.r * 0.55, 0, Math.PI * 2); g.fill();
-    }
-    g.fillStyle = "#22252a";
-    for (const lp of d.lamps) {
-      if (lp.x < ox || lp.x > ox + cs || lp.y < oy || lp.y > oy + cs) continue;
-      g.fillRect(lp.x - ox - 2, lp.y - oy - 8, 4, 12);
-      g.fillStyle = "#ffe9a8";
-      g.fillRect(lp.x - ox - 4, lp.y - oy - 12, 8, 5);
-      g.fillStyle = "#22252a";
-    }
+    out.hit = Math.abs(out.x - x) > 0.01 || Math.abs(out.y - y) > 0.01;
+    return out;
   },
   buildMini() {
     const size = 190, d = this.data;
@@ -220,27 +145,5 @@ const MapSys = {
     for (const vx of d.roadsV) g.fillRect(vx * s - 2, 0, 4, size);
     for (const hy of d.roadsH) g.fillRect(0, hy * s - 2, size, 4);
     this.mini = cv;
-  },
-  draw(ctx, cam) {
-    const cs = this.chunkSize;
-    const vx0 = cam.x - 80, vy0 = cam.y - 80, vx1 = cam.x + W.viewW + 80, vy1 = cam.y + W.viewH + 80;
-    for (const ch of this.chunks) {
-      if (ch.x + cs < vx0 || ch.x > vx1 || ch.y + cs < vy0 || ch.y > vy1) continue;
-      ctx.drawImage(ch.cv, ch.x, ch.y);
-    }
-  },
-  drawNightLamps(ctx, cam, light) {
-    if (light > 0.55) return;
-    const d = this.data;
-    const a = (0.55 - light) * 0.5;
-    const g0 = 95;
-    for (const lp of d.lamps) {
-      if (lp.x < cam.x - g0 || lp.x > cam.x + W.viewW + g0 || lp.y < cam.y - g0 || lp.y > cam.y + W.viewH + g0) continue;
-      const rad = ctx.createRadialGradient(lp.x, lp.y, 2, lp.x, lp.y, g0);
-      rad.addColorStop(0, "rgba(255,220,150," + a + ")");
-      rad.addColorStop(1, "rgba(255,220,150,0)");
-      ctx.fillStyle = rad;
-      ctx.beginPath(); ctx.arc(lp.x, lp.y, g0, 0, Math.PI * 2); ctx.fill();
-    }
   },
 };

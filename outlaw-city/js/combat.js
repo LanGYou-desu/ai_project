@@ -122,29 +122,4 @@ const Combat = {
     this.particles.push({ type: "fire", x: x, y: y, vx: Utils.rand(-20, 20), vy: Utils.rand(-90, -30), life: Utils.rand(0.3, 0.7), r: Utils.rand(8, 16), grav: -40 });
     if (Math.random() < 0.3) this.particles.push({ type: "smoke", x: x, y: y, vx: 0, vy: -40, life: Utils.rand(0.8, 1.6), r: Utils.rand(10, 18), grav: -20 });
   },
-  draw(ctx) {
-    for (const b of this.bullets) {
-      ctx.strokeStyle = "rgba(255,220,80,0.9)";
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(b.x, b.y);
-      ctx.lineTo(b.x - b.vx * 0.016, b.y - b.vy * 0.016);
-      ctx.stroke();
-    }
-    for (const p of this.particles) {
-      const a = Utils.clamp(p.life / 0.5, 0, 1);
-      ctx.globalAlpha = a;
-      if (p.type === "blood") ctx.fillStyle = "#b91c1c";
-      else if (p.type === "spark") ctx.fillStyle = "#fde047";
-      else if (p.type === "smoke") ctx.fillStyle = "#64748b";
-      else if (p.type === "fire") ctx.fillStyle = Utils.choice(["#f97316", "#f59e0b", "#ef4444"]);
-      else if (p.type === "flash") ctx.fillStyle = "#fff7d6";
-      else if (p.type === "muzzle") ctx.fillStyle = "#ffe08a";
-      else ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r * (p.type === "smoke" ? 1 + (1 - a) : 1), 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  },
 };

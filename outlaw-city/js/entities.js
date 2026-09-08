@@ -1,4 +1,6 @@
 "use strict";
+// 复用的碰撞结果对象：MapSys.resolve 会把结果写回它，避免每帧每个实体都新建对象
+const RES_SCRATCH = { x: 0, y: 0, hit: false };
 class Player {
   constructor(x, y) {
     this.x = x; this.y = y;
@@ -58,32 +60,6 @@ class Player {
     W.damageFlash = 1;
     if (this.health <= 0) { this.health = 0; W.onPlayerKilled(src); }
   }
-  draw(ctx) {
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.beginPath(); ctx.arc(2, 3, CFG.PLAYER.radius + 1, 0, Math.PI * 2); ctx.fill();
-    ctx.rotate(this.heading);
-    ctx.fillStyle = this.dmgFlash > 0.2 ? "#ffffff" : "#3b82f6";
-    ctx.beginPath(); ctx.arc(0, 0, CFG.PLAYER.radius, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#1e3a8a";
-    ctx.beginPath(); ctx.arc(CFG.PLAYER.radius * 0.45, 0, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.rotate(this.aim - this.heading);
-    const w = this.weapon();
-    if (w !== "fist") {
-      ctx.strokeStyle = "#1f2937"; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(16, 0); ctx.stroke();
-    }
-    if (this.muzzleT > 0) {
-      ctx.fillStyle = "rgba(255,220,90,0.9)";
-      ctx.beginPath(); ctx.arc(21, 0, 6, 0, Math.PI * 2); ctx.fill();
-    }
-    if (this.meleeSwing > 0) {
-      ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(10, 0, 22, -0.9, 0.9); ctx.stroke();
-    }
-    ctx.restore();
-  }
 }
 class Vehicle {
   constructor(type, x, y, heading, opts) {
@@ -125,7 +101,7 @@ class Vehicle {
     this.vy = Utils.lerp(this.vy, targetVY, k);
     this.x += this.vx * dt; this.y += this.vy * dt;
     const speed = Utils.hypot(this.vx, this.vy);
-    const res = MapSys.resolve(this.x, this.y, this.radius, { x: this.x, y: this.y });
+    const res = MapSys.resolve(this.x, this.y, this.radius, RES_SCRATCH);
     if (res.hit) {
       const dx = this.x - res.x, dy = this.y - res.y;
       const dd = Utils.hypot(dx, dy) || 1;
@@ -210,49 +186,6 @@ class Vehicle {
       for (const n of W.npcs) if (n.police && n.car === this) n.damage(999, "explosion");
     }
   }
-  draw(ctx) {
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.heading);
-    const w = this.def.w, h = this.def.h;
-    if (this.wrecked) {
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = "#191919";
-      this.box(ctx, -w / 2, -h / 2, w, h, 7);
-      ctx.globalAlpha = 1;
-      ctx.restore();
-      return;
-    }
-    ctx.fillStyle = "rgba(0,0,0,0.28)";
-    this.box(ctx, -w / 2 + 3, -h / 2 + 5, w, h, 7);
-    ctx.fillStyle = "#111318";
-    this.box(ctx, -w / 2 + 3, -h / 2 + 3, w - 6, h - 6, 6);
-    ctx.fillStyle = this.damageFlash > 0 ? "#ffffff" : this.color;
-    this.box(ctx, -w / 2, -h / 2, w, h, 7);
-    ctx.fillStyle = "rgba(20,40,60,0.9)";
-    this.box(ctx, -w * 0.18, -h / 2 + 4, w * 0.36, h * 0.18, 3);
-    this.box(ctx, -w * 0.18, h / 2 - h * 0.2, w * 0.36, h * 0.16, 3);
-    if (this.siren) {
-      const fl = Math.floor(W.gameTime * 5) % 2;
-      ctx.fillStyle = fl ? "#ef4444" : "#3b82f6";
-      this.box(ctx, -3, -h / 2 - 5, 6, 5, 2);
-    }
-    if (this.driver) {
-      ctx.fillStyle = "#3b82f6";
-      ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.restore();
-  }
-  box(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-    ctx.fill();
-  }
 }
 class NPC {
   constructor(type, x, y, opts) {
@@ -300,7 +233,7 @@ class NPC {
           this.heading = Utils.angleLerp(this.heading, Utils.angleTo(this.x, this.y, this.tx, this.ty), 3 * dt);
           this.x += Math.cos(this.heading) * this.speed * dt;
           this.y += Math.sin(this.heading) * this.speed * dt;
-          const res = MapSys.resolve(this.x, this.y, 8, { x: this.x, y: this.y });
+          const res = MapSys.resolve(this.x, this.y, 8, RES_SCRATCH);
           this.x = res.x; this.y = res.y;
         }
         if (W.lastGunshot && Utils.dist(this.x, this.y, W.lastGunshot.x, W.lastGunshot.y) < 230 && Math.random() < dt * 3) {
@@ -375,39 +308,6 @@ class NPC {
       this.state = "flee"; this.fleeFrom = { x: this.x, y: this.y };
     }
   }
-  draw(ctx) {
-    if (this.dead) {
-      ctx.save();
-      ctx.translate(this.x, this.y);
-      ctx.rotate(this.heading);
-      ctx.globalAlpha = Math.max(0, 1 - this.deathTimer / 18);
-      ctx.fillStyle = "#7f1d1d";
-      ctx.beginPath(); ctx.ellipse(0, 0, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.restore();
-      return;
-    }
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.beginPath(); ctx.arc(1, 2, 7, 0, Math.PI * 2); ctx.fill();
-    let bodyC = this.dmgFlash > 0 ? "#ffffff" : this.clothes;
-    if (this.police) bodyC = this.dmgFlash > 0 ? "#ffffff" : "#1e3a8a";
-    if (this.gang) bodyC = this.dmgFlash > 0 ? "#ffffff" : "#7f1d1d";
-    if (this.boss) bodyC = this.dmgFlash > 0 ? "#ffffff" : "#f8fafc";
-    ctx.fillStyle = bodyC;
-    ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#eab308";
-    ctx.beginPath(); ctx.arc(0, 0, 3.4, 0, Math.PI * 2); ctx.fill();
-    if (this.state === "attack" || this.police) {
-      ctx.save();
-      ctx.rotate(this.aimAngle);
-      ctx.strokeStyle = "#111"; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(4, 0); ctx.lineTo(13, 0); ctx.stroke();
-      ctx.restore();
-    }
-    ctx.restore();
-  }
 }
 class Pickup {
   constructor(type, x, y, value) {
@@ -432,21 +332,5 @@ class Pickup {
       p.ammo.rocket += 3;
       AudioSys.pickup(); W.notify("弹药补充", "#fbbf24");
     }
-  }
-  draw(ctx) {
-    const bob = Math.sin(this.t * 3) * 3;
-    ctx.save();
-    ctx.translate(this.x, this.y + bob);
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.beginPath(); ctx.arc(0, 4, 10, 0, Math.PI * 2); ctx.fill();
-    const c = this.type === "money" ? "#16a34a" : this.type === "health" ? "#dc2626" : this.type === "armor" ? "#0ea5e9" : "#eab308";
-    ctx.fillStyle = c;
-    ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 11px 'Segoe UI', sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(this.type === "money" ? "$" : this.type === "health" ? "+" : this.type === "armor" ? "A" : "M", 0, 4);
-    ctx.textAlign = "left";
-    ctx.restore();
   }
 }

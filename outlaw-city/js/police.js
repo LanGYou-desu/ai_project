@@ -27,7 +27,7 @@ const PoliceSys = {
     }
     P.spawnCd -= dt;
     const interval = Math.max(1.2, 5.5 - P.level);
-    const maxCars = Math.min(12, 2 + P.level * 2);
+    const maxCars = Math.min(CFG.POLICE.maxCars, 2 + P.level * 2);
     if (P.spawnCd <= 0 && P.cars.length < maxCars) {
       P.spawnCd = interval * Utils.rand(0.7, 1.2);
       this.spawnSquad();
@@ -90,8 +90,19 @@ const PoliceSys = {
       const i = W.npcs.indexOf(o);
       if (i >= 0) W.npcs.splice(i, 1);
     }
-    const i = W.vehicles.indexOf(c.v);
-    if (i >= 0) W.vehicles.splice(i, 1);
+    // 玩家开走/偷走的警车不能再被当成"警车编队"删除，否则玩家会连车带人被从世界里抹掉
+    if (c.v.driver !== W.player) {
+      const i = W.vehicles.indexOf(c.v);
+      if (i >= 0) W.vehicles.splice(i, 1);
+    }
     c.officers = [];
+  },
+  // 玩家抢走编队警车时调用：把它从警察编队里摘掉，车本身留在世界里
+  onCarStolen(v) {
+    const P = W.police;
+    if (!P || !P.cars) return;
+    for (let i = P.cars.length - 1; i >= 0; i--) {
+      if (P.cars[i].v === v) P.cars.splice(i, 1);
+    }
   },
 };

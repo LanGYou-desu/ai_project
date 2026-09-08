@@ -22,7 +22,13 @@ class Mission {
     }
     if (s.condition && s.condition(this)) this.advance();
   }
+  // 离开当前步骤时执行它的 onEnd（例如"定时炸弹"逃亡步结束时清除通缉）
+  endStep() {
+    const s = this.current;
+    if (s && s.onEnd) { s.onEnd(); s.onEnd = null; }
+  }
   advance() {
+    this.endStep();
     this.index++;
     this.current = this.steps[this.index] || null;
     if (this.current) {
@@ -43,6 +49,7 @@ class Mission {
   fail(reason) {
     if (this.done || this.failed) return;
     this.failed = true; this.failReason = reason;
+    this.endStep();
     W.notify("任务失败：" + reason, "#f87171");
     AudioSys.missionFail();
     this.cleanup();
@@ -308,14 +315,18 @@ const Missions = {
   update(dt) {
     if (!this.current) return;
     this.current.update(dt);
+    const s = this.current.current;
+    // 追踪型目标（例如"追捕逃犯"的跑车）：让标记跟着目标移动
+    if (s && s.marker && s.targetRef && isFinite(s.targetRef.x)) { s.marker.x = s.targetRef.x; s.marker.y = s.targetRef.y; }
     if (this.current.done) {
       const id = this.current.defId;
       if (id && this.order.indexOf(id) >= 0) {
         this.completeCount++;
         this.doneIds[id] = true;
+        if (id === "taxi") this.taxiUnlocked = true; // 跑完"城市出租"后解锁可重复的出租车生意
       }
       this.current = null;
-      if (this.completeCount >= 7) W.notify("剧情完成！进入自由模式", "#facc15");
+      if (this.completeCount >= this.order.length) W.notify("剧情完成！进入自由模式", "#facc15");
     } else if (this.current.failed) {
       this.current = null;
     }
@@ -324,27 +335,15 @@ const Missions = {
     if (!this.current) return;
     const s = this.current.current;
     if (!s || s.type !== "kill") return;
-    if (n.gang) s.killed++;
-    if (s.targetTag && n.tag === s.targetTag) s.killed++;
+    // 指定目标的任务（例如"枭雄陨落"只算老大）不能把普通帮派成员的击杀也算进去
+    if (s.targetTag) {
+      if (n.tag === s.targetTag) s.killed++;
+    } else if (n.gang) {
+      s.killed++;
+    }
     if (s.killed > s.count) s.killed = s.count;
   },
   onPlayerDied() {
     if (this.current) this.current.fail("你被击倒了");
-  },
-  drawWorld(ctx) {
-    const t = W.gameTime * 2;
-    if (this.current) {
-      const s = this.current.current;
-      if (s && s.marker) {
-        if (s.targetRef) { s.marker.x = s.targetRef.x; s.marker.y = s.targetRef.y; }
-        drawBlip(ctx, s.marker.x, s.marker.y, s.marker.color, t, null);
-      }
-      return;
-    }
-    for (const mk of this.markers) {
-      if (this.doneIds[mk.id]) continue;
-      drawBlip(ctx, mk.x, mk.y, "#facc15", t, "?");
-    }
-    if (this.taxiUnlocked) drawBlip(ctx, this.taxiStand.x, this.taxiStand.y, "#22c55e", t, "T");
   },
 };

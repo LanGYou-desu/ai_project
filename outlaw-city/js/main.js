@@ -2,7 +2,7 @@
 const W = {
   viewW: 1280, viewH: 720,
   player: null, vehicles: [], npcs: [], pickups: [],
-  gameTime: 0, cam: { x: 0, y: 0 },
+  gameTime: 0,
   state: "menu", stateTimer: 0,
   prompt: null, notifs: [], damageFlash: 0,
   lastGunshot: null,
@@ -48,13 +48,15 @@ function boot() {
   const hudCanvas = document.getElementById("hud");
   if (!glCanvas || !hudCanvas) return;
   W.ctx = hudCanvas.getContext("2d");
-  W.viewW = hudCanvas.width; W.viewH = hudCanvas.height;
+  if (!W.ctx) return;
+  // 画布尺寸为 0（窗口最小化/容器隐藏）时退回默认分辨率，避免除零产生 NaN
+  W.viewW = hudCanvas.width || 1280; W.viewH = hudCanvas.height || 720;
   Input.init(hudCanvas);
   AudioSys.init();
-  MapSys.use2DChunks = false;
   MapSys.init();
   W.mapW = MapSys.data.worldW; W.mapH = MapSys.data.worldH;
   Render3D.init(glCanvas, W.viewW, W.viewH);
+  if (Render3D.disabled) W.notify("3D 渲染不可用：" + Render3D.errorMsg, "#f87171");
   Input.onLockChange = function (locked) {
     if (!locked && W.state === "play") { W.state = "paused"; W.notify("按 Esc 或点击画面继续", "#94a3b8"); }
   };
@@ -77,8 +79,6 @@ function initWorld() {
   W.pickups.push(new Pickup("money", pts[3].x, pts[3].y, 200));
   W.pickups.push(new Pickup("health", pts[4].x, pts[4].y));
   W.pickups.push(new Pickup("armor", pts[5].x, pts[5].y));
-  W.cam.x = W.hospital.x - W.viewW / 2;
-  W.cam.y = W.hospital.y - W.viewH / 2;
 }
 function spawnTraffic() {
   const rp = MapSys.randomRoadPoint();
@@ -136,23 +136,30 @@ function update(dt) {
   Missions.update(dt);
   Combat.update(dt);
   for (const pk of W.pickups) pk.update(dt);
-  W.pickups = W.pickups.filter(pk => !pk.dead);
+  // 原地删除，避免每帧 filter 出一个新数组
+  for (let i = W.pickups.length - 1; i >= 0; i--) if (W.pickups[i].dead) W.pickups.splice(i, 1);
   W.spawnCd -= dt;
   if (W.spawnCd <= 0) {
     W.spawnCd = 2.5;
-    const cars = W.vehicles.filter(v => v.ai && !v.ai.police && !v.ai.escort).length;
+    let cars = 0;
+    for (const v of W.vehicles) if (v.ai && !v.ai.police && !v.ai.escort) cars++;
     if (cars < 14) spawnTraffic();
   }
   W.pedCd -= dt;
   if (W.pedCd <= 0) {
     W.pedCd = 1.2;
-    const civs = W.npcs.filter(n => n.type === "civilian").length;
+    // 尸体要回收，且统计只能算活人，否则市区里的人会被打光后再也不刷新
+    let civs = 0;
+    for (let i = W.npcs.length - 1; i >= 0; i--) {
+      const n = W.npcs[i];
+      if (n.dead && n.deathTimer > 30) { W.npcs.splice(i, 1); continue; }
+      if (!n.dead && n.type === "civilian") civs++;
+    }
     if (civs < 22) {
       const pt = MapSys.randomWalkablePoint();
       W.npcs.push(new NPC("civilian", pt.x, pt.y));
     }
   }
-  updateCamera(dt);
   updatePrompt();
 }
 function playerFootUpdate(dt) {
@@ -164,7 +171,7 @@ function playerFootUpdate(dt) {
   if (k.KeyA || k.ArrowLeft) mx -= 1;
   if (k.KeyD || k.ArrowRight) mx += 1;
   if (mx || my) {
-    // 屏幕方向移动：W=屏幕上方，S=下方，A/D=左右（固定镜头下与 2D 手感一致）
+    // 屏幕方向移动：W=屏幕上方，S=下方，A/D=左右（按镜头方向）
     const sv = Render3D.screenVecs();
     let wx = sv.rx * mx + sv.ux * (-my);
     let wz = sv.rz * mx + sv.uz * (-my);
@@ -174,10 +181,11 @@ function playerFootUpdate(dt) {
     p.x += wx * sp * dt;
     p.y += wz * sp * dt;
     p.heading = Utils.angleLerp(p.heading, Math.atan2(wz, wx), 8 * dt);
-    const res = MapSys.resolve(p.x, p.y, CFG.PLAYER.radius, { x: p.x, y: p.y });
+    const res = MapSys.resolve(p.x, p.y, CFG.PLAYER.radius, RES_SCRATCH);
     p.x = res.x; p.y = res.y;
   }
 }
+const PLAYER_CTRL = { throttle: 0, steer: 0, brake: false, handbrake: false };
 function playerVehicleControl(dt) {
   const k = Input.keys;
   let throttle = 0, steer = 0;
@@ -185,7 +193,9 @@ function playerVehicleControl(dt) {
   if (k.KeyS || k.ArrowDown) throttle -= 1;
   if (k.KeyA || k.ArrowLeft) steer -= 1;
   if (k.KeyD || k.ArrowRight) steer += 1;
-  return { throttle: throttle, steer: steer, brake: false, handbrake: !!(k.Space) };
+  PLAYER_CTRL.throttle = throttle; PLAYER_CTRL.steer = steer;
+  PLAYER_CTRL.brake = false; PLAYER_CTRL.handbrake = !!(k.Space);
+  return PLAYER_CTRL;
 }
 function playerShoot(fromCar) {
   const p = W.player;
@@ -228,7 +238,12 @@ function enterVehicle(v) {
   p.vehicle = v; v.driver = p;
   p.x = v.x; p.y = v.y;
   W.stats.carsStolen++;
-  if (v.type === "police") { W.addWanted(1); W.notify("你偷了一辆警车！", "#f87171"); }
+  if (v.type === "police") {
+    W.addWanted(1);
+    W.notify("你偷了一辆警车！", "#f87171");
+    // 从警察编队里摘掉，否则通缉清零时这辆车（连同车里的玩家）会被当成编队车辆删除
+    PoliceSys.onCarStolen(v);
+  }
   AudioSys.engineStart();
   AudioSys.horn();
 }
@@ -238,7 +253,7 @@ function exitVehicle() {
   v.driver = null; p.vehicle = null;
   p.x = v.x + Math.cos(v.heading + Math.PI / 2) * (v.radius + 16);
   p.y = v.y + Math.sin(v.heading + Math.PI / 2) * (v.radius + 16);
-  const res = MapSys.resolve(p.x, p.y, CFG.PLAYER.radius, { x: p.x, y: p.y });
+  const res = MapSys.resolve(p.x, p.y, CFG.PLAYER.radius, RES_SCRATCH);
   p.x = res.x; p.y = res.y;
   AudioSys.engineStop();
 }
@@ -261,16 +276,6 @@ function updatePrompt() {
     if (d < v.radius + 26 && d < bd) { bd = d; best = v; }
   }
   if (best) W.prompt = { x: p.x, y: p.y, text: "按 E 上车" };
-}
-function updateCamera(dt) {
-  const p = W.player;
-  const tx = p.vehicle ? p.vehicle.x : p.x;
-  const ty = p.vehicle ? p.vehicle.y : p.y;
-  const k = 1 - Math.exp(-4.5 * dt);
-  W.cam.x = Utils.lerp(W.cam.x, tx - W.viewW / 2, k);
-  W.cam.y = Utils.lerp(W.cam.y, ty - W.viewH / 2, k);
-  W.cam.x = Utils.clamp(W.cam.x, -80, W.mapW - W.viewW + 80);
-  W.cam.y = Utils.clamp(W.cam.y, -80, W.mapH - W.viewH + 80);
 }
 function respawn() {
   const p = W.player;
@@ -318,7 +323,7 @@ function loop(now) {
     if (W.stateTimer <= 0) respawn();
   }
   for (const n of W.notifs) n.t -= dt;
-  W.notifs = W.notifs.filter(n => n.t > 0);
+  for (let i = W.notifs.length - 1; i >= 0; i--) if (W.notifs[i].t <= 0) W.notifs.splice(i, 1);
   Input.clearPressed();
   render(dt);
 }
@@ -327,6 +332,7 @@ function render(dt) {
   const ctx = W.ctx;
   ctx.clearRect(0, 0, W.viewW, W.viewH);
   HUD.draw(ctx);
+  if (Render3D.disabled) drawError(ctx);
   if (W.state === "menu") drawMenu(ctx);
   if (W.state === "paused") drawPause(ctx);
   if (W.state === "wasted") drawBigText(ctx, "WASTED", "#ef4444");
@@ -338,36 +344,17 @@ function render(dt) {
     ctx.fillRect(0, 0, W.viewW, W.viewH);
   }
 }
-function drawHeadlights(ctx, v, light) {
-  ctx.save();
-  ctx.translate(v.x, v.y);
-  ctx.rotate(v.heading);
-  const a = (0.5 - light) * 0.8;
-  const g = ctx.createLinearGradient(0, 0, 300, 0);
-  g.addColorStop(0, "rgba(255,240,180," + a + ")");
-  g.addColorStop(1, "rgba(255,240,180,0)");
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(20, -10);
-  ctx.lineTo(320, -70);
-  ctx.lineTo(320, 70);
-  ctx.lineTo(20, 10);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-function drawSunMoon(ctx, light) {
-  const h = HUD.hour();
-  const x = W.viewW - 60;
-  let y;
-  if (h >= 6 && h <= 18) {
-    y = Utils.lerp(W.viewH + 40, 40, (h - 6) / 12);
-    ctx.fillStyle = "#fde047";
-  } else {
-    y = Utils.lerp(W.viewH + 40, 40, ((h - 18 + 24) % 24) / 12);
-    ctx.fillStyle = "#e2e8f0";
-  }
-  ctx.beginPath(); ctx.arc(x, y, 22, 0, Math.PI * 2); ctx.fill();
+function drawError(ctx) {
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(0,0,0,0.75)";
+  ctx.fillRect(0, W.viewH / 2 - 60, W.viewW, 120);
+  ctx.fillStyle = "#f87171";
+  ctx.font = "bold 26px 'Segoe UI', sans-serif";
+  ctx.fillText("3D 渲染不可用", W.viewW / 2, W.viewH / 2 - 12);
+  ctx.fillStyle = "#e2e8f0";
+  ctx.font = "16px 'Segoe UI', sans-serif";
+  ctx.fillText(Render3D.errorMsg || "浏览器/显卡未提供 WebGL", W.viewW / 2, W.viewH / 2 + 24);
+  ctx.textAlign = "left";
 }
 function drawMenu(ctx) {
   ctx.fillStyle = "rgba(5,8,18,0.92)";
@@ -421,4 +408,6 @@ function drawBigText(ctx, txt, color) {
   ctx.globalAlpha = 1;
   ctx.textAlign = "left";
 }
-window.addEventListener("DOMContentLoaded", boot);
+// 脚本在 body 末尾同步加载：DOM 已就绪时直接启动，避免错过 DOMContentLoaded 导致黑屏
+if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", boot);
+else boot();

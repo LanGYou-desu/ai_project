@@ -1,20 +1,31 @@
 "use strict";
 // 3D 渲染器：基于 three.js 的世界/实体/光照/镜头/粒子渲染
 const Render3D = {
-  disabled: false,
+  disabled: false, errorMsg: "",
   renderer: null, scene: null, camera: null,
   sun: null, amb: null, head: null,
   playerMesh: null,
   vehs: [], npcs: [], pickups: [], markers: [], flashFxList: [],
-  camTarget: null, lastCamHeading: null,
+  vehSet: null, vehMap: null, npcSet: null, npcMap: null, pkSet: null, pkMap: null,
+  markerList: null, lampIdx: null, lampDist: null,
+  camTarget: null,
   raycaster: null, plane: null, ndc: null, hitV: null,
   pGeo: null, pPos: null, pCol: null, pPts: null,
   bGeo: null, bPos: null, bPts: null,
   lampLights: [],
   init(glCanvas, w, h) {
-    if (!window.THREE) { this.disabled = true; console.warn("three.js 未加载，3D 渲染停用"); return; }
+    this.disabled = false; this.errorMsg = "";
+    if (!window.THREE) { this.disabled = true; this.errorMsg = "three.js 未加载"; console.warn("three.js 未加载，3D 渲染停用"); return; }
     const T = window.THREE;
-    this.renderer = new T.WebGLRenderer({ canvas: glCanvas, antialias: true });
+    try {
+      this.renderer = new T.WebGLRenderer({ canvas: glCanvas, antialias: true });
+    } catch (e) {
+      // WebGL 不可用（显卡驱动/浏览器禁用）时不能让整个游戏崩掉
+      this.disabled = true;
+      this.errorMsg = "WebGL 不可用：" + (e && e.message ? e.message : e);
+      console.warn("WebGL 初始化失败，3D 渲染停用：", e);
+      return;
+    }
     this.renderer.setSize(w, h);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = T.PCFSoftShadowMap;
@@ -32,6 +43,10 @@ const Render3D = {
     this.ndc = new T.Vector2();
     this.hitV = new T.Vector3();
     this.scene.fog = new T.Fog(0x9ec8f0, 500, 1600);
+    this.vehSet = new Set(); this.vehMap = new Map();
+    this.npcSet = new Set(); this.npcMap = new Map();
+    this.pkSet = new Set(); this.pkMap = new Map();
+    this.markerList = [];
     this.buildWorld();
     this.buildLights();
     this.buildParticles();
@@ -42,76 +57,100 @@ const Render3D = {
     const T = window.THREE;
     const d = MapSys.data;
     const W2 = d.worldW;
+    // 静态世界统一放进一个组：建好后冻结矩阵，省掉每帧上千次的 matrix.compose()/matrixWorld 乘法
+    const wg = new T.Group();
     const ground = new T.Mesh(new T.PlaneGeometry(W2, W2), new T.MeshLambertMaterial({ color: 0x4a453e }));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
-    this.scene.add(ground);
+    wg.add(ground);
     const roadMat = new T.MeshLambertMaterial({ color: 0x2c2c2c });
+    const roadVGeo = new T.PlaneGeometry(d.road, W2);
+    const roadHGeo = new T.PlaneGeometry(W2, d.road);
     for (const vx of d.roadsV) {
-      const m = new T.Mesh(new T.PlaneGeometry(d.road, W2), roadMat);
+      const m = new T.Mesh(roadVGeo, roadMat);
       m.rotation.x = -Math.PI / 2; m.position.set(vx, 0.02, W2 / 2);
-      m.receiveShadow = true; this.scene.add(m);
+      m.receiveShadow = true; wg.add(m);
     }
     for (const hy of d.roadsH) {
-      const m = new T.Mesh(new T.PlaneGeometry(W2, d.road), roadMat);
+      const m = new T.Mesh(roadHGeo, roadMat);
       m.rotation.x = -Math.PI / 2; m.position.set(W2 / 2, 0.02, hy);
-      m.receiveShadow = true; this.scene.add(m);
+      m.receiveShadow = true; wg.add(m);
     }
     const laneMat = new T.MeshBasicMaterial({ color: 0xd9b64a });
+    const laneVGeo = new T.PlaneGeometry(0.6, 30);
+    const laneHGeo = new T.PlaneGeometry(30, 0.6);
     for (const vx of d.roadsV) {
       for (let yy = 20; yy < W2; yy += 140) {
-        const m = new T.Mesh(new T.PlaneGeometry(0.6, 30), laneMat);
+        const m = new T.Mesh(laneVGeo, laneMat);
         m.rotation.x = -Math.PI / 2; m.position.set(vx, 0.06, yy);
-        this.scene.add(m);
+        wg.add(m);
       }
     }
     for (const hy of d.roadsH) {
       for (let xx = 20; xx < W2; xx += 140) {
-        const m = new T.Mesh(new T.PlaneGeometry(30, 0.6), laneMat);
+        const m = new T.Mesh(laneHGeo, laneMat);
         m.rotation.x = -Math.PI / 2; m.position.set(xx, 0.06, hy);
-        this.scene.add(m);
+        wg.add(m);
       }
     }
+    const waterMat = new T.MeshLambertMaterial({ color: 0x2f7bc4, transparent: true, opacity: 0.82 });
     for (const wq of d.water) {
-      const m = new T.Mesh(new T.PlaneGeometry(wq.w, wq.h), new T.MeshLambertMaterial({ color: 0x2f7bc4, transparent: true, opacity: 0.82 }));
+      const m = new T.Mesh(new T.PlaneGeometry(wq.w, wq.h), waterMat);
       m.rotation.x = -Math.PI / 2; m.position.set(wq.x + wq.w / 2, 0.04, wq.y + wq.h / 2);
-      this.scene.add(m);
+      wg.add(m);
     }
     const parkMat = new T.MeshLambertMaterial({ color: 0x4e7d43 });
     for (const pk of d.parks) {
       const m = new T.Mesh(new T.PlaneGeometry(pk.w, pk.h), parkMat);
       m.rotation.x = -Math.PI / 2; m.position.set(pk.x + pk.w / 2, 0.02, pk.y + pk.h / 2);
-      m.receiveShadow = true; this.scene.add(m);
+      m.receiveShadow = true; wg.add(m);
     }
+    // 按颜色复用材质（原本每栋楼一个材质，200+ 个材质对象）
+    const bMats = new Map();
+    const bMat = (c) => {
+      let m = bMats.get(c);
+      if (!m) { m = new T.MeshLambertMaterial({ color: new T.Color(c) }); bMats.set(c, m); }
+      return m;
+    };
     for (const b of d.buildings) {
       const hgt = 16 + b.height * 18;
-      const mesh = new T.Mesh(new T.BoxGeometry(b.w, hgt, b.h), new T.MeshLambertMaterial({ color: new T.Color(b.color) }));
+      const mesh = new T.Mesh(new T.BoxGeometry(b.w, hgt, b.h), bMat(b.color));
       mesh.position.set(b.x + b.w / 2, hgt / 2, b.y + b.h / 2);
       mesh.castShadow = true; mesh.receiveShadow = true;
-      this.scene.add(mesh);
+      wg.add(mesh);
     }
+    const trunkGeo = new T.CylinderGeometry(0.9, 1.3, 4, 6);
+    const crownGeo = new T.SphereGeometry(1, 8, 6);
+    const trunkMat = new T.MeshLambertMaterial({ color: 0x5b3a1e });
+    const crownMat = new T.MeshLambertMaterial({ color: 0x2f6b32 });
     for (const t of d.trees) {
       const g = new T.Group();
-      const trunk = new T.Mesh(new T.CylinderGeometry(0.9, 1.3, 4, 6), new T.MeshLambertMaterial({ color: 0x5b3a1e }));
+      const trunk = new T.Mesh(trunkGeo, trunkMat);
       trunk.position.y = 2;
-      const crown = new T.Mesh(new T.SphereGeometry(t.r * 0.55, 8, 6), new T.MeshLambertMaterial({ color: 0x2f6b32 }));
+      const crown = new T.Mesh(crownGeo, crownMat);
+      crown.scale.setScalar(t.r * 0.55);
       crown.position.y = 4.5 + t.r * 0.25;
       g.add(trunk); g.add(crown);
       g.position.set(t.x, 0, t.y);
-      this.scene.add(g);
+      wg.add(g);
     }
     const poleMat = new T.MeshLambertMaterial({ color: 0x22252a });
     const headMat = new T.MeshBasicMaterial({ color: 0xffe9a8 });
+    const poleGeo = new T.CylinderGeometry(0.35, 0.35, 9, 6);
+    const lampHeadGeo = new T.SphereGeometry(1.1, 6, 5);
     for (const lp of d.lamps) {
       const g = new T.Group();
-      const pole = new T.Mesh(new T.CylinderGeometry(0.35, 0.35, 9, 6), poleMat);
+      const pole = new T.Mesh(poleGeo, poleMat);
       pole.position.y = 4.5;
-      const head = new T.Mesh(new T.SphereGeometry(1.1, 6, 5), headMat);
+      const head = new T.Mesh(lampHeadGeo, headMat);
       head.position.y = 9.2;
       g.add(pole); g.add(head);
       g.position.set(lp.x, 0, lp.y);
-      this.scene.add(g);
+      wg.add(g);
     }
+    this.scene.add(wg);
+    this.worldGroup = wg;
+    wg.traverse(o => { o.matrixAutoUpdate = false; o.updateMatrix(); });
   },
   buildLights() {
     const T = window.THREE;
@@ -135,6 +174,9 @@ const Render3D = {
       this.scene.add(pl);
       this.lampLights.push(pl);
     }
+    // 每帧只点亮最近的 N 盏街灯，用固定数组做 top-K 选择，避免 map()+sort() 的每帧分配
+    this.lampIdx = new Int32Array(this.lampLights.length);
+    this.lampDist = new Float64Array(this.lampLights.length);
   },
   buildParticles() {
     const T = window.THREE;
@@ -154,6 +196,10 @@ const Render3D = {
     this.bPts = new T.Points(this.bGeo, new T.PointsMaterial({ color: 0xffdc50, size: 1.8, sizeAttenuation: true, transparent: true, opacity: 0.95 }));
     this.bPts.frustumCulled = false;
     this.scene.add(this.bPts);
+    // 属性对象每帧都要用，缓存下来免得反复走 attributes.xxx 的字符串查找
+    this.pPosAttr = this.pGeo.attributes.position;
+    this.pColAttr = this.pGeo.attributes.color;
+    this.bPosAttr = this.bGeo.attributes.position;
   },
   makeCharacter(bodyColor, scale) {
     const T = window.THREE;
@@ -166,7 +212,7 @@ const Render3D = {
     gun.position.set(1.2 * scale, 1.9 * scale, 0);
     g.add(body); g.add(head); g.add(gun);
     g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-    return { group: g, body: body, head: head, gun: gun };
+    return { group: g, body: body, head: head, gun: gun, baseColor: bodyColor, flash: false };
   },
   makeVehicleMesh(v) {
     const T = window.THREE;
@@ -226,7 +272,7 @@ const Render3D = {
     this.flashFxList.push({ mesh: m, life: 0.16, max: 0.16, r: r });
   },
   update(dt) {
-    if (this.disabled) return;
+    if (this.disabled || !this.scene || !this.camera || !W.player) return;
     const T = window.THREE;
     const light = HUD.dayLight();
     const p = W.player;
@@ -253,11 +299,26 @@ const Render3D = {
     }
     const lampMul = Math.max(0, 0.55 - light) * 1.8;
     if (lampMul > 0.05) {
-      const ds = MapSys.data.lamps.map(lp => ({ lp: lp, d: Utils.dist2(px, pz, lp.x, lp.y) }));
-      ds.sort((a, b) => a.d - b.d);
-      for (let i = 0; i < this.lampLights.length; i++) {
+      // 固定数组做 top-K（最近的 K 盏街灯），零分配；原先每帧 map()+sort() 会造出上百个对象
+      const lamps = MapSys.data.lamps, K = this.lampLights.length;
+      const idx = this.lampIdx, dist = this.lampDist;
+      let count = 0;
+      for (let i = 0; i < lamps.length; i++) {
+        const lp = lamps[i];
+        const d2 = Utils.dist2(px, pz, lp.x, lp.y);
+        if (count < K) {
+          let j = count++;
+          while (j > 0 && dist[j - 1] > d2) { dist[j] = dist[j - 1]; idx[j] = idx[j - 1]; j--; }
+          dist[j] = d2; idx[j] = i;
+        } else if (d2 < dist[K - 1]) {
+          let j = K - 1;
+          while (j > 0 && dist[j - 1] > d2) { dist[j] = dist[j - 1]; idx[j] = idx[j - 1]; j--; }
+          dist[j] = d2; idx[j] = i;
+        }
+      }
+      for (let i = 0; i < K; i++) {
         const pl = this.lampLights[i];
-        if (i < ds.length) { pl.position.set(ds[i].lp.x, 8, ds[i].lp.y); pl.intensity = lampMul * 1.7; }
+        if (i < count) { const lp = lamps[idx[i]]; pl.position.set(lp.x, 8, lp.y); pl.intensity = lampMul * 1.7; }
         else pl.intensity = 0;
       }
     } else {
@@ -280,23 +341,26 @@ const Render3D = {
       pm.group.position.set(p.x, 0, p.y);
       pm.group.rotation.y = -p.aim;
       pm.gun.rotation.y = 0;
-      pm.body.material.color.setHex(p.dmgFlash > 0.2 ? 0xffffff : 0x3b82f6);
+      this.applyFlash(pm, p.dmgFlash > 0.2, 0x3b82f6);
     }
+    // 用 Set/Map 做成员判断，替换掉原来的 indexOf 内嵌循环（O(n²) → O(n)）
+    const vSet = this.vehSet, vMap = this.vehMap;
+    vSet.clear(); vMap.clear();
+    for (const v of W.vehicles) vSet.add(v);
     for (let i = this.vehs.length - 1; i >= 0; i--) {
-      if (W.vehicles.indexOf(this.vehs[i].v) < 0) {
+      if (!vSet.has(this.vehs[i].v)) {
         this.scene.remove(this.vehs[i].m.group);
         this.disposeGroup(this.vehs[i].m.group);
         this.vehs.splice(i, 1);
-      }
+      } else vMap.set(this.vehs[i].v, this.vehs[i]);
     }
     for (const v of W.vehicles) {
-      let e = null;
-      for (const x of this.vehs) if (x.v === v) { e = x; break; }
+      let e = vMap.get(v);
       if (!e) {
         const m = this.makeVehicleMesh(v);
         this.scene.add(m.group);
-        this.vehs.push({ v: v, m: m });
         e = { v: v, m: m };
+        this.vehs.push(e); vMap.set(v, e);
       }
       const m = e.m;
       m.group.position.set(v.x, 0, v.y);
@@ -317,16 +381,18 @@ const Render3D = {
         m.siren.material.color.setHex(fl ? 0xef4444 : 0x3b82f6);
       }
     }
+    const nSet = this.npcSet, nMap = this.npcMap;
+    nSet.clear(); nMap.clear();
+    for (const n of W.npcs) nSet.add(n);
     for (let i = this.npcs.length - 1; i >= 0; i--) {
-      if (W.npcs.indexOf(this.npcs[i].n) < 0) {
+      if (!nSet.has(this.npcs[i].n)) {
         this.scene.remove(this.npcs[i].m.group);
         this.disposeGroup(this.npcs[i].m.group);
         this.npcs.splice(i, 1);
-      }
+      } else nMap.set(this.npcs[i].n, this.npcs[i]);
     }
     for (const n of W.npcs) {
-      let e = null;
-      for (const x of this.npcs) if (x.n === n) { e = x; break; }
+      let e = nMap.get(n);
       if (!e) {
         let c = 0x94a3b8;
         if (n.police) c = 0x1e3a8a;
@@ -335,8 +401,8 @@ const Render3D = {
         else c = parseInt(n.clothes.replace("#", ""), 16) || 0x94a3b8;
         const m = this.makeCharacter(c, 0.85);
         this.scene.add(m.group);
-        this.npcs.push({ n: n, m: m });
         e = { n: n, m: m };
+        this.npcs.push(e); nMap.set(n, e);
       }
       const m = e.m;
       m.group.position.set(n.x, 0, n.y);
@@ -350,23 +416,35 @@ const Render3D = {
         if (m.dead) { m.dead = false; m.group.rotation.x = 0; m.group.rotation.z = 0; }
         m.group.rotation.y = -n.heading;
         m.gun.rotation.y = -(n.aimAngle - n.heading);
-        if (n.dmgFlash > 0.2) m.body.material.color.setHex(0xffffff);
+        // 受击闪白后必须恢复本色，否则 NPC 会一直白着
+        this.applyFlash(m, n.dmgFlash > 0.2, m.baseColor);
       }
+    }
+  },
+  // 受击闪白：只在状态翻转时改材质颜色，避免每帧 setHex
+  applyFlash(m, flashing, baseColor) {
+    if (flashing) {
+      if (!m.flash) { m.flash = true; m.body.material.color.setHex(0xffffff); }
+    } else if (m.flash) {
+      m.flash = false;
+      m.body.material.color.setHex(baseColor);
     }
   },
   syncPickups(dt) {
     const T = window.THREE;
+    const pSet = this.pkSet, pMap = this.pkMap;
+    pSet.clear(); pMap.clear();
+    for (const pk of W.pickups) pSet.add(pk);
     for (let i = this.pickups.length - 1; i >= 0; i--) {
-      if (W.pickups.indexOf(this.pickups[i].pk) < 0) {
+      if (!pSet.has(this.pickups[i].pk)) {
         this.scene.remove(this.pickups[i].m.group);
         this.disposeGroup(this.pickups[i].m.group);
         this.pickups.splice(i, 1);
-      }
+      } else pMap.set(this.pickups[i].pk, this.pickups[i]);
     }
     for (let i = 0; i < W.pickups.length; i++) {
       const pk = W.pickups[i];
-      let e = null;
-      for (const x of this.pickups) if (x.pk === pk) { e = x; break; }
+      let e = pMap.get(pk);
       if (!e) {
         let c = 0xeab308;
         if (pk.type === "money") c = 0x16a34a;
@@ -374,8 +452,8 @@ const Render3D = {
         else if (pk.type === "armor") c = 0x0ea5e9;
         const m = this.makePickupMesh(c);
         this.scene.add(m.group);
-        this.pickups.push({ pk: pk, m: m });
         e = { pk: pk, m: m };
+        this.pickups.push(e); pMap.set(pk, e);
       }
       const bob = Math.sin(W.gameTime * 3 + i) * 0.6;
       e.m.group.position.set(pk.x, 1.2 + bob, pk.y);
@@ -384,24 +462,31 @@ const Render3D = {
   },
   syncMarkers(dt) {
     const T = window.THREE;
-    const list = [];
+    // 复用同一个数组与条目对象，避免每帧 new 一批临时对象
+    const list = this.markerList;
+    let n = 0;
+    const push = (x, y, color) => {
+      let o = list[n];
+      if (!o) { o = { x: 0, y: 0, color: "#ffffff" }; list[n] = o; }
+      o.x = x; o.y = y; o.color = color; n++;
+    };
     const cur = Missions.current;
     if (cur && cur.current && cur.current.marker && isFinite(cur.current.marker.x)) {
-      list.push({ x: cur.current.marker.x, y: cur.current.marker.y, color: cur.current.marker.color });
+      push(cur.current.marker.x, cur.current.marker.y, cur.current.marker.color);
     } else {
       for (const mm of Missions.markers) {
-        if (!Missions.doneIds[mm.id]) list.push({ x: mm.x, y: mm.y, color: "#facc15" });
+        if (!Missions.doneIds[mm.id]) push(mm.x, mm.y, "#facc15");
       }
-      if (Missions.taxiUnlocked) list.push({ x: Missions.taxiStand.x, y: Missions.taxiStand.y, color: "#22c55e" });
+      if (Missions.taxiUnlocked) push(Missions.taxiStand.x, Missions.taxiStand.y, "#22c55e");
     }
-    while (this.markers.length < list.length) {
+    while (this.markers.length < n) {
       const m = this.makeMarkerMesh(0xfacc15);
       this.scene.add(m.group);
       this.markers.push({ m: m });
     }
     for (let i = 0; i < this.markers.length; i++) {
       const mm = this.markers[i].m;
-      if (i < list.length) {
+      if (i < n) {
         mm.group.visible = true;
         mm.group.position.set(list[i].x, 0, list[i].y);
         mm.spike.material.color.set(list[i].color);
@@ -437,8 +522,8 @@ const Render3D = {
       this.pCol[i * 3] = r / 255; this.pCol[i * 3 + 1] = g2 / 255; this.pCol[i * 3 + 2] = b2 / 255;
     }
     this.pGeo.setDrawRange(0, n);
-    this.pGeo.attributes.position.needsUpdate = true;
-    this.pGeo.attributes.color.needsUpdate = true;
+    this.pPosAttr.needsUpdate = true;
+    this.pColAttr.needsUpdate = true;
     const bs = Combat.bullets;
     const nb = Math.min(bs.length, 300);
     for (let i = 0; i < nb; i++) {
@@ -448,7 +533,7 @@ const Render3D = {
       this.bPos[i * 3 + 2] = b.y;
     }
     this.bGeo.setDrawRange(0, nb);
-    this.bGeo.attributes.position.needsUpdate = true;
+    this.bPosAttr.needsUpdate = true;
   },
   updateFx(dt) {
     for (let i = this.flashFxList.length - 1; i >= 0; i--) {
@@ -469,6 +554,9 @@ const Render3D = {
   },
   updateCamera(dt) {
     const p = W.player;
+    if (!p || !this.camTarget) return;
+    if (!isFinite(this.camYaw)) this.camYaw = -Math.PI * 0.75;
+    if (!isFinite(this.camPitch)) this.camPitch = 0.85;
     const px = p.vehicle ? p.vehicle.x : p.x;
     const pz = p.vehicle ? p.vehicle.y : p.y;
     const vehicle = p.vehicle;
@@ -509,6 +597,8 @@ const Render3D = {
   // 屏幕方向 → 世界方向（地平面投影），供 WASD 使用
   screenVecs() {
     const p = W.player;
+    // 3D 停用（无 WebGL）时退回固定的俯视方向，保证移动仍然可用
+    if (this.disabled || !this.camTarget) return { ux: 0, uz: -1, rx: 1, rz: 0 };
     const sx = p.vehicle ? p.vehicle.x : p.x;
     const sz = p.vehicle ? p.vehicle.y : p.y;
     let fx = sx - this.camTarget.x;
@@ -520,13 +610,17 @@ const Render3D = {
   // 鼠标转动视角（yaw 水平 / pitch 俯仰）
   rotateCam(dyaw, dpitch) {
     if (this.disabled) return;
-    this.camYaw += dyaw;
+    if (!isFinite(dyaw) || !isFinite(dpitch)) return; // 挡住 0 尺寸画布等异常输入
+    this.camYaw = Utils.angleDiff(this.camYaw + dyaw);
     this.camPitch = Utils.clamp(this.camPitch + dpitch, this.minPitch, this.maxPitch);
     this.mouseIdleT = 0;
   },
   aimPoint() {
     const p = W.player;
-    if (this.disabled || !this.camera) return { x: p.x, y: p.y };
+    // 3D 停用时用鼠标相对屏幕中心的偏移做近似瞄准
+    if (this.disabled || !this.camera) {
+      return { x: p.x + (Input.mouse.x - W.viewW / 2), y: p.y + (Input.mouse.y - W.viewH / 2) };
+    }
     const shooter = p.vehicle || p;
     try {
       this.ndc.set(0, 0); // 准星固定屏幕中央
