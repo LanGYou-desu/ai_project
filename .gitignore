@@ -35,5 +35,9 @@ pnpm-debug.log*
 .repro/
 .tmp-*
 
+# 类型检查与覆盖率缓存（新增的 TypeScript / Vite 项目）
+*.tsbuildinfo
+coverage/
+
 # Extracted APK / reverse-engineering working dirs (huge, not part of the repo)
 reverse experiment/

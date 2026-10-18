@@ -1,0 +1,29 @@
+{
+  "name": "personal-os",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "个人网站操作系统：桌面、窗口、虚拟磁盘、终端与音乐播放器",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run disk:sync && vite build",
+    "preview": "vite preview",
+    "start": "node server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "disk:sync": "tsx scripts/disk-sync.ts",
+    "disk:dump": "tsx tools/disk-dump.ts",
+    "check": "svelte-check --threshold warning"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@types/node": "^22.10.2",
+    "happy-dom": "^17.4.4",
+    "svelte": "^5.20.0",
+    "svelte-check": "^4.7.7",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.1.0",
+    "vitest": "^3.0.5"
+  }
+}

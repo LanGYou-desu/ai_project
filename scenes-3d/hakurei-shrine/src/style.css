@@ -1,0 +1,81 @@
+:root {
+  color-scheme: light;
+  --paper: #eee6d6;
+  --paper-deep: #d9d1c1;
+  --ink: #2d3037;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 92% 70% at 50% 38%, rgba(252, 248, 237, 0.94) 0%, rgba(239, 234, 220, 0.86) 44%, rgba(205, 218, 217, 0.72) 100%),
+    linear-gradient(164deg, #e5ecef 0%, #f2e9d8 50%, #d4dcd7 100%);
+}
+
+body::before,
+body::after {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  content: "";
+  pointer-events: none;
+}
+
+body::before {
+  background:
+    radial-gradient(circle at 15% 8%, rgba(255, 255, 255, 0.44), transparent 28%),
+    radial-gradient(circle at 85% 20%, rgba(255, 245, 223, 0.32), transparent 26%),
+    radial-gradient(ellipse at 50% 96%, rgba(101, 106, 96, 0.14), transparent 58%);
+  mix-blend-mode: soft-light;
+}
+
+body::after {
+  background: radial-gradient(ellipse 90% 80% at 50% 48%, transparent 58%, rgba(70, 69, 62, 0.16) 118%);
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  touch-action: none;
+}
+
+#stage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+#stage:active {
+  cursor: grabbing;
+}
+
+noscript {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  font: 16px/1.6 "Yu Mincho", "Noto Serif SC", serif;
+  background: var(--paper);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #stage {
+    cursor: default;
+  }
+}

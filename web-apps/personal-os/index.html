@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="glass-dark" data-wallpaper="aurora">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="personal-os：把个人网站做成桌面操作系统——窗口、终端、虚拟磁盘与音乐播放器，全部运行在浏览器里。"
+    />
+    <meta name="theme-color" content="#0a0e17" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#dbe7f6" media="(prefers-color-scheme: light)" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="personal-os" />
+    <link rel="apple-touch-icon" href="./favicon.svg" />
+    <title>personal-os · 我的桌面</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0a0e17;
+        color: #e8ecf4;
+        font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+.vite
+# 虚拟磁盘：运行时数据 & 构建产物，不入库
+disk/disk.img
+disk/backups/
+disk/*.log
+public/disk.img

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>骑车 · SVG 动画小画（BIKE ART）</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    padding: 40px 20px;
+    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    background: radial-gradient(120% 120% at 50% 0%, #1d2b45 0%, #0b0f18 60%, #05070c 100%);
+    color: #dbe7f5;
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(18px, 2.6vw, 28px);
+    letter-spacing: .18em;
+    font-weight: 600;
+    color: #9fd7ff;
+    text-shadow: 0 0 18px rgba(90, 180, 255, .45);
+  }
+  p.sub { margin: 0; font-size: 13px; letter-spacing: .12em; color: #6f8199; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    width: min(920px, 96vw);
+    margin-top: 8px;
+  }
+  a.card {
+    display: block;
+    padding: 20px 22px;
+    border-radius: 16px;
+    text-decoration: none;
+    color: inherit;
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid rgba(255, 255, 255, .1);
+    transition: transform .18s ease, background .18s ease, border-color .18s ease;
+  }
+  a.card:hover {
+    transform: translateY(-3px);
+    background: rgba(255, 255, 255, .09);
+    border-color: rgba(140, 200, 255, .45);
+  }
+  .card h2 { margin: 0 0 8px; font-size: 16px; letter-spacing: .06em; color: #cfe6ff; }
+  .card p { margin: 0; font-size: 12.5px; line-height: 1.7; color: #8fa3bd; }
+  .tag { display: inline-block; margin-top: 10px; font-size: 11px; letter-spacing: .14em; color: #5f7897; }
+  footer { margin-top: 14px; font-size: 11px; letter-spacing: .1em; color: #52637d; }
+</style>
+</head>
+<body>
+  <h1>骑 车 · BIKE ART</h1>
+  <p class="sub">三张单文件 SVG 动画小画 · 双击即看 · 零依赖</p>
+  <div class="grid">
+    <a class="card" href="bike0931/pelican-bike.html">
+      <h2>海边的鹈鹕 · 骑单车</h2>
+      <p>一只鹈鹕沿海边骑单车，46 段 SMIL 动画把海风与车轮都画活了。</p>
+      <span class="tag">PELICAN · bike0931</span>
+    </a>
+    <a class="card" href="bike1017/pelican-bike.html">
+      <h2>骑车的鹈鹕</h2>
+      <p>同一主题的新版重绘：构图更松、色彩更亮的一只骑车鹈鹕。</p>
+      <span class="tag">PELICAN · bike1017</span>
+    </a>
+    <a class="card" href="bike1017/emma-bike.html">
+      <h2>艾玛骑车</h2>
+      <p>小女孩艾玛骑车的清新画风，粉紫色调，车轮缓缓转动。</p>
+      <span class="tag">EMMA · bike1017</span>
+    </a>
+  </div>
+  <footer>纯 SVG + SMIL · 无 JavaScript · 离线可用</footer>
+</body>
+</html>

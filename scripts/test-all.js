@@ -1,12 +1,15 @@
 'use strict';
-/* 仓库级测试总入口：把 20 个各自独立的项目一次跑完，给出统一汇总。
+/* 仓库级测试总入口：把 21 个带自动化测试的项目一次跑完，给出统一汇总。
  *
- *   node scripts/test-all.js            # 跑全部
- *   node scripts/test-all.js loom unlit # 只跑指定项目
- *   node scripts/test-all.js --fast     # 跳过耗时最长的项目
+ *   node scripts/test-all.js                     # 跑全部
+ *   node scripts/test-all.js loom unlit          # 只跑指定项目（写短名或完整路径均可）
+ *   node scripts/test-all.js games-web/loom      # 同上，用分类路径
+ *   node scripts/test-all.js --fast              # 跳过耗时最长的项目
  *
  * 零依赖：只用 Node 内置模块。每个项目仍然是"各自独立"的，
  * 这里只负责按登记表调用它们自己的测试命令，不改变任何项目结构。
+ * 其余 4 个项目（bike-art / hakurei-shrine / tokyo-cel-city / naiwa-model）
+ * 是纯静态页面或 3D 模型作品，没有自动化测试，就不登记了。
  */
 const { spawnSync } = require('child_process');
 const path = require('path');
@@ -14,10 +17,36 @@ const fs = require('fs');
 
 const ROOT = path.join(__dirname, '..');
 
-/* 每个项目登记它自己的测试方式；cmd 用 shell 执行，便于复用各项目的既有命令 */
+/* 每个项目登记它自己的测试方式；cmd 用 shell 执行，便于复用各项目的既有命令。
+ * id 即项目在仓库中的相对路径（分类目录/项目名）。 */
 const PROJECTS = [
-  { id: 'ai-compiler',   name: 'AI 编译器',        suites: [{ cmd: 'npm test', timeout: 180000 }] },
-  { id: 'cyber-academy', name: '赛博安全学院',      suites: [
+  { id: 'games-web/netime',          name: 'NETIME 时光机',    suites: [{ cmd: 'node tests/run.js', timeout: 120000 }] },
+  { id: 'games-web/sound-archaeology', name: '声音考古学',     suites: [{ cmd: 'node tests/run.js', timeout: 120000 }] },
+  { id: 'games-web/lingua',          name: 'LINGUA 语言博物馆', suites: [{ cmd: 'node test/run.js', timeout: 120000 }] },
+  { id: 'games-web/last-broadcast',  name: 'LASTBROADCAST',    suites: [{ cmd: 'node test/run.js', timeout: 120000 }] },
+  { id: 'games-web/eco-ark',         name: 'ECO-ARK 生态方舟', suites: [{ cmd: 'node test/run.js', timeout: 300000 }] },
+  { id: 'games-web/unlit',           name: '无光之城',         suites: [
+      { cmd: 'node test/run.js',           timeout: 120000 },
+      { cmd: 'node test/smoke-browser.js', timeout: 180000 }
+    ] },
+  { id: 'games-web/synapse',         name: '神经织造',         suites: [
+      { cmd: 'node test/run.js',      timeout: 180000 },
+      { cmd: 'node test/smoke-ui.js', timeout: 120000 }
+    ] },
+  { id: 'games-web/ink-saga',        name: '墨战·天书纪',      suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
+  { id: 'games-web/loom',            name: 'LOOM 织机编程',    suites: [
+      { cmd: 'node test/run.js',      timeout: 180000 },
+      { cmd: 'node test/smoke-ui.js', timeout: 120000 }
+    ] },
+  { id: 'games-web/outlaw-city',     name: '亡命都市 3D',      suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
+  { id: 'games-desktop/devsaga',     name: 'DevSaga',          suites: [{ cmd: 'python -m unittest discover -s tests -p "test_*.py"', timeout: 300000 }] },
+  { id: 'games-desktop/shell-quest', name: '真实文件历险',     suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
+  { id: 'games-desktop/the-vanished', name: '桌面悬疑事件',    suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
+  { id: 'games-desktop/desktop-siege', name: '桌面保卫战',     suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
+  { id: 'games-desktop/house-guest', name: '桌灵·房客',        suites: [{ cmd: 'python -m unittest discover -s tests -p "test_*.py"', timeout: 300000 }] },
+  { id: 'scenes-3d/car-showroom',    name: '3D 跑车展厅',      suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
+  { id: 'scenes-3d/hakoniwa-town',   name: '箱庭小镇',         suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
+  { id: 'web-apps/cyber-academy',    name: '赛博安全学院',     suites: [
       { cmd: 'node test/audit.js',        timeout: 120000 },
       { cmd: 'node test/lab-test.js',     timeout: 120000 },
       { cmd: 'node test/lab-game-test.js',timeout: 120000 },
@@ -27,42 +56,23 @@ const PROJECTS = [
       { cmd: 'node test/smoke.js',        timeout: 180000 },
       { cmd: 'node test/tools-test.js',   timeout: 180000 }
     ] },
-  { id: 'devsaga',       name: 'DevSaga',          suites: [{ cmd: 'python -m unittest discover -s tests -p "test_*.py"', timeout: 300000 }] },
-  { id: 'netime',        name: 'NETIME 时光机',    suites: [{ cmd: 'node tests/run.js', timeout: 120000 }] },
-  { id: 'sound-archaeology', name: '声音考古学',   suites: [{ cmd: 'node tests/run.js', timeout: 120000 }] },
-  { id: 'lingua',        name: 'LINGUA 语言博物馆', suites: [{ cmd: 'node test/run.js', timeout: 120000 }] },
-  { id: 'last-broadcast', name: 'LASTBROADCAST',    suites: [{ cmd: 'node test/run.js', timeout: 120000 }] },
-  { id: 'eco-ark',       name: 'ECO-ARK 生态方舟', suites: [{ cmd: 'node test/run.js', timeout: 300000 }] },
-  { id: 'shell-quest',   name: '真实文件历险',     suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
-  { id: 'the-vanished',  name: '桌面悬疑事件',     suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
-  { id: 'desktop-siege', name: '桌面保卫战',       suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
-  { id: 'house-guest',    name: '桌灵·房客',        suites: [{ cmd: 'python -m unittest discover -s tests -p "test_*.py"', timeout: 300000 }] },
-  { id: 'unlit',         name: '无光之城',         suites: [
-      { cmd: 'node test/run.js',           timeout: 120000 },
-      { cmd: 'node test/smoke-browser.js', timeout: 180000 }
-    ] },
-  { id: 'synapse',       name: '神经织造',         suites: [
-      { cmd: 'node test/run.js',      timeout: 180000 },
-      { cmd: 'node test/smoke-ui.js', timeout: 120000 }
-    ] },
-  { id: '3d-car',        name: '3D 跑车展厅',      suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
-  { id: '3d-hakoniwa-town', name: '箱庭小镇',      suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
-  { id: 'history-reader', name: '历史朗读者',      suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
-  { id: 'ink-saga',      name: '墨战·天书纪',      suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
-  { id: 'outlaw-city',   name: '亡命都市 3D',      suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
-  { id: 'loom',          name: 'LOOM 织机编程',    suites: [
-      { cmd: 'node test/run.js',      timeout: 180000 },
-      { cmd: 'node test/smoke-ui.js', timeout: 120000 }
-    ] }
+  { id: 'web-apps/history-reader',   name: '历史朗读者',       suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
+  { id: 'web-apps/personal-os',      name: 'personal-os 个人操作系统', suites: [{ cmd: 'npm test', timeout: 300000 }] },
+  { id: 'dev-tools/ai-compiler',     name: 'AI 编译器',        suites: [{ cmd: 'npm test', timeout: 180000 }] }
 ];
 
 /* --fast：跳过已知最慢的两个项目 */
-const SLOW = new Set(['eco-ark', 'devsaga']);
+const SLOW = new Set(['games-web/eco-ark', 'games-desktop/devsaga']);
 
 function pick(argv) {
   const fast = argv.includes('--fast');
   const ids = argv.filter(function (a) { return a[0] !== '-'; });
-  let list = PROJECTS.filter(function (p) { return !ids.length || ids.indexOf(p.id) >= 0; });
+  let list = PROJECTS.filter(function (p) {
+    if (!ids.length) return true;
+    return ids.some(function (a) {
+      return a === p.id || p.id.slice(p.id.indexOf('/') + 1) === a;
+    });
+  });
   if (fast) list = list.filter(function (p) { return !SLOW.has(p.id); });
   return { list: list, fast: fast };
 }
