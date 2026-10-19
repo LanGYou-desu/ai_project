@@ -1,17 +1,17 @@
 # AI Project 合集
 
-> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录 **25 个项目**，按 6 个类别归档在顶层子目录里：
+> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录 **26 个项目**，按 6 个类别归档在顶层子目录里：
 >
 > | 类别 | 内容 | 项目数 |
 > | ---- | ---- | ---- |
 > | [`gamesWeb/`](./gamesWeb/) | 🎮 纯前端网页游戏与互动体验（解谜 / 叙事 / 模拟 / 教学） | 10 |
 > | [`gamesDesktop/`](./gamesDesktop/) | 🖥 与真实系统交互的桌面 / 终端游戏（真实文件、通知、进程） | 5 |
-> | [`scenes3d/`](./scenes3d/) | 🏞 3D 场景与模型作品（Three.js 场景 · Blender 建模） | 5 |
+> | [`scenes3d/`](./scenes3d/) | 🏞 3D 场景与模型作品（Three.js 场景 · Blender 建模） | 6 |
 > | [`webApps/`](./webApps/) | 🌐 网页应用（安全训练营、文学装置、个人操作系统） | 3 |
 > | [`devTools/`](./devTools/) | 🧰 开发工具 | 1 |
 > | [`webArt/`](./webArt/) | 🎨 美术小作 | 1 |
 >
-> 其中 **21 个项目自带自动化测试**，合计 **2413 项断言**，一条 `npm test` 即可全量回归（其余 4 个为静态页面或 3D 模型作品，无测试）。
+> 其中 **22 个项目自带自动化测试**，合计 **4179 项断言**，一条 `npm test` 即可全量回归（其余 4 个为静态页面或 3D 模型作品，无测试）。
 
 | GitHub | https://github.com/LanGYou-desu/ai_project |
 | ------ | ------------------------------------------ |
@@ -52,6 +52,7 @@
 | [hakureiShrine](./scenes3d/hakureiShrine/) | Web 3D 微缩场景 | 「博麗神社」：无 UI 三渲二微缩庭院——本殿/鸟居/手水舍/绘马架与 Q 版像素灵梦扫地巡院，拖拽旋转缩放欣赏；单文件版离线即开 | Three.js 0.186 + Vite（单文件版零依赖） | — |
 | [tokyoCelCity](./scenes3d/tokyoCelCity/) | Web 3D 程序化城市 | 「天空都市 東京」：单文件实时生成的三渲二都市——2,400m × 2,400m 数千栋建筑、运河与远山，白昼/黄昏/夜 + 巡航模式 | Three.js r159（内联单文件，零依赖） | — |
 | [naiwaModel](./scenes3d/naiwaModel/) | Blender 3D 建模 | 「奶蛙」：依据官方三视图程序化重建的 3D 形象，含 GLB / 120mm 水密 STL / 三视图与转台 GIF 全套交付物与重建脚本 | Blender 4.5 + Python | — |
+| [rainMart](./scenes3d/rainMart/) | Web 3D 街角模型 | 「雨夜便利店」：三渲二雨夜日式便利店街角微缩模型——店铺内外 / 街景道具 / 11 栋真实开窗楼群全几何建模，GPU 雨丝、檐口滴水、涟漪与霓虹湿地倒影，红绿灯周期循环；纯 canvas 无 UI、离线可跑 | Three.js r158（本地化）+ 原生 JS（零依赖） | 1766 |
 
 ### 🌐 webApps · 网页应用
 
@@ -75,10 +76,10 @@
 
 ## 🧪 全仓库测试
 
-21 个项目自带自动化测试（其中 20 个是零依赖脚本，personalOs 用 Vitest）；根目录提供一个统一入口，把它们一次跑完并汇总：
+22 个项目自带自动化测试（其中 21 个是零依赖脚本，personalOs 用 Vitest）；根目录提供一个统一入口，把它们一次跑完并汇总：
 
 ```bash
-npm test                                # 跑全部 21 个带测试的项目
+npm test                                # 跑全部 22 个带测试的项目
 npm run test:fast                       # 跳过最慢的两个（ecoArk / devsaga）
 node scripts/test-all.js loom netime    # 只跑指定项目（写短名或完整路径均可）
 node scripts/test-all.js gamesWeb/loom # 同上，用分类路径
@@ -89,10 +90,11 @@ node scripts/test-all.js gamesWeb/loom # 同上，用分类路径
 ```
   ✓ gamesWeb/netime               node tests/run.js             1.9s  · 86 项
   ✓ gamesDesktop/desktopSiege    node test/run.js              2.7s  · 52 项
+  ✓ scenes3d/rainMart            node test/run.js              0.3s  · 1766 项
   ✓ webApps/personalOs           npm test                      3.5s
   ...
   ─────────────────────────────────────────────────────────────
-  项目 21/21 通过 · 测试套件 31/31 通过 · 用时 81.9s
+  项目 22/22 通过 · 测试套件 32/32 通过 · 用时 89.3s
 ```
 
 `scripts/test-all.js` 只是一张"登记表 + 调度器"：按各项目**自己的**测试命令调用它们，不改变任何项目结构、不引入任何依赖。项目之间依然完全独立 —— 单独进任意目录跑它自己的测试同样可以。
@@ -101,7 +103,7 @@ node scripts/test-all.js gamesWeb/loom # 同上，用分类路径
 
 ```
 ai_project/
-├── README.md                 # 本文件（25 个项目总览）
+├── README.md                 # 本文件（26 个项目总览）
 ├── package.json              # 根级脚本：npm test 一次跑完所有带测试的项目
 ├── scripts/test-all.js       # 仓库级测试调度器（按各项目自己的命令调用）
 ├── .gitattributes            # 换行符与二进制策略（.bat/.ps1 检出为 CRLF）
@@ -130,8 +132,9 @@ ai_project/
 │   ├── carShowroom/         # 3D CAR · 跑车展厅（Ferrari 458 交互式车展）
 │   ├── hakoniwaTown/        # HAKONIWA TOWN · 箱庭小镇（程序化岛屿 / 昼夜循环）
 │   ├── hakureiShrine/       # 博麗神社 · 幻想郷の小さな社（三渲二微缩庭院）
-│   ├── tokyoCelCity/       # 天空都市 東京 · Celestial Metropolis（程序化城市）
-│   └── naiwaModel/          # 奶蛙 NAIWA · 3D 建模（Blender 程序化重建）
+│   ├── tokyoCelCity/        # 天空都市 東京 · Celestial Metropolis（程序化城市）
+│   ├── naiwaModel/          # 奶蛙 NAIWA · 3D 建模（Blender 程序化重建）
+│   └── rainMart/            # RAIN MART · 雨夜便利店（三渲二雨夜街角微缩模型）
 │
 ├── webApps/                 # 🌐 网页应用
 │   ├── cyberAcademy/        # CYBER ACADEMY · 赛博安全学院（训练营 + 本地靶场）
@@ -343,6 +346,15 @@ blender -b --factory-startup --python scripts/make_print.py      # 120 mm 水密
 
 依据官方三视图程序化重建的「奶蛙」3D 形象：Catmull-Rom 梨形躯干 + 体素重网格 + 顶点色奶白肚皮，全流程 Python 脚本化生成，含 GLB / 水密 STL / 主视觉 / 三视图 / 360° 转台全套交付物。
 
+#### rainMart（RAIN MART · 雨夜便利店）
+```bash
+cd scenes3d/rainMart
+.\run.bat               # 一键启动（http://127.0.0.1:8137；Node / Python 均可，离线可跑）
+node test/run.js        # 1766 项断言（无头 stub 构建真实场景：装配 / 铺装 / 雨系统 / 动态时序 / 相机交互）
+```
+
+三渲二雨夜便利店街角微缩模型：便利店（闪烁招牌 / 感应门 / 冷柜与关东煮蒸汽）、街景道具（贩卖机 / 电线杆 / 红绿灯 / 自行车）与 11 栋真实开窗背景楼群（72 扇窗）；GPU 雨丝、檐口滴水、涟漪、玻璃雨痕与水洼霓虹倒影。纯 canvas 全屏渲染、无任何 UI，闲置 9 秒缓慢自动环绕；Three.js r158 本地化，`file://` 离线可跑。
+
 ### 🌐 webApps
 
 #### cyberAcademy（CYBER ACADEMY · 赛博安全学院）
@@ -400,7 +412,7 @@ npm test             # 85 项单元测试（node --test）
 
 ## 📝 仓库约定
 
-- **二十五个项目相互独立**：各自维护代码、文档与依赖，不互相引用；根目录的 `scripts/test-all.js` 只是调度器，不改动任何项目结构。
+- **二十六个项目相互独立**：各自维护代码、文档与依赖，不互相引用；根目录的 `scripts/test-all.js` 只是调度器，不改动任何项目结构。
 - **六类归档**：所有项目按体验形态归入 `gamesWeb/`（纯前端游戏）、`gamesDesktop/`（真实系统交互游戏）、`scenes3d/`（3D 场景与模型）、`webApps/`（网页应用）、`devTools/`（开发工具）、`webArt/`（美术小作）六个分类目录；新增项目也要先归档。
 - **目录名统一**：一律小驼峰 camelCase（首个单词小写，后续单词首字母大写，不使用分隔符）、不以数字开头；品牌单字名保留（`netime` / `devsaga` / `lingua` / `synapse` / `unlit` / `loom`），其余用一眼能读懂描述名（`carShowroom` / `hakoniwaTown` / `naiwaModel` / `tokyoCelCity`）。展示名统一为「BRAND · 中文名」。
 - **换行符统一**：`.gitattributes` 保证仓库内按 LF 存储，`.bat` / `.cmd` / `.ps1` 在 Windows 检出时自动转 CRLF（批处理对 LF 有已知隐患）；`*.blend` / `*.stl` / `*.glb` 等二进制不做任何转换。

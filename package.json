@@ -2,7 +2,7 @@
   "name": "ai-project-collection",
   "version": "1.0.0",
   "private": true,
-  "description": "AI Project 合集 —— 25 个相互独立、可单独运行的实战项目（monorepo 风格，按 6 类归档）",
+  "description": "AI Project 合集 —— 26 个相互独立、可单独运行的实战项目（monorepo 风格，按 6 类归档）",
   "scripts": {
     "test": "node scripts/test-all.js",
     "test:fast": "node scripts/test-all.js --fast"

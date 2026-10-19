@@ -1,5 +1,5 @@
 'use strict';
-/* 仓库级测试总入口：把 21 个带自动化测试的项目一次跑完，给出统一汇总。
+/* 仓库级测试总入口：把 22 个带自动化测试的项目一次跑完，给出统一汇总。
  *
  *   node scripts/test-all.js                     # 跑全部
  *   node scripts/test-all.js loom unlit          # 只跑指定项目（写短名或完整路径均可）
@@ -46,6 +46,7 @@ const PROJECTS = [
   { id: 'gamesDesktop/houseGuest', name: '桌灵·房客',        suites: [{ cmd: 'python -m unittest discover -s tests -p "test_*.py"', timeout: 300000 }] },
   { id: 'scenes3d/carShowroom',    name: '3D 跑车展厅',      suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
   { id: 'scenes3d/hakoniwaTown',   name: '箱庭小镇',         suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
+  { id: 'scenes3d/rainMart',       name: 'RAIN MART 雨夜便利店', suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
   { id: 'webApps/cyberAcademy',    name: '赛博安全学院',     suites: [
       { cmd: 'node test/audit.js',        timeout: 120000 },
       { cmd: 'node test/lab-test.js',     timeout: 120000 },
@@ -91,6 +92,7 @@ function extractCount(out) {
   let m;
   if ((m = /(\d+)\s*(?:项|个)?\s*通过[，,、\s]*(\d+)\s*(?:项|个)?\s*失败/.exec(out))) return { passed: +m[1], failed: +m[2] };
   if ((m = /结果[：:]\s*(\d+)\s*通过[，,]\s*(\d+)\s*失败/.exec(out))) return { passed: +m[1], failed: +m[2] };
+  if ((m = /通过\s*[:：]\s*(\d+)\s*项断言/.exec(out))) return { passed: +m[1] };
   if ((m = /通过\s*[:：]\s*(\d+)[^\d]+失败\s*[:：]\s*(\d+)/.exec(out))) return { passed: +m[1], failed: +m[2] };
   if ((m = /(\d+)\s*passed[^\d]+(\d+)\s*failed/i.exec(out))) return { passed: +m[1], failed: +m[2] };
   if ((m = /Ran\s+(\d+)\s+tests?/i.exec(out))) return { ran: +m[1] };
