@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0b0f0e" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230b1f1a'/%3E%3Ccircle cx='32' cy='32' r='21' fill='none' stroke='%23d8c9a6' stroke-width='3'/%3E%3Cpath d='M16 38c7-7 13 6 20 0s9-2 12-1' fill='none' stroke='%2379b7a5' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <title>STILLWATER</title>
+    <meta name="description" content="STILLWATER — an interactive liminal bathhouse. A real-time architectural study." />
+  </head>
+  <body>
+    <canvas id="scene" aria-label="STILLWATER scene"></canvas>
+    <div id="ui">
+      <div class="letterbox top"></div>
+      <div class="letterbox bottom"></div>
+
+      <div id="title-screen" class="screen">
+        <div class="title-mark">
+          <div class="eyebrow">AN ARCHITECTURAL DREAM</div>
+          <h1>STILLWATER</h1>
+          <div class="rule"></div>
+          <p class="subtitle">The baths are closed.<br />The water is still warm.</p>
+          <button id="enter-btn" type="button"><span>ENTER THE BATHS</span></button>
+          <div class="title-meta">
+            <span>SCENE 01 &nbsp;—&nbsp; THE LONG POOL</span>
+            <span>HEADPHONES RECOMMENDED</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="loading" class="screen">
+        <div class="load-inner">
+          <div class="eyebrow">STILLWATER BATHS · EST. 1931</div>
+          <h1 class="load-title">STILLWATER</h1>
+          <div class="load-bar"><i></i></div>
+          <div class="load-row"><span id="load-status">PREPARING THE WATER</span><span id="load-pct">0%</span></div>
+        </div>
+      </div>
+
+      <div id="cinematic" class="screen" aria-hidden="true">
+        <div class="cine-meta">
+          <div class="cine-chapter"><span class="dot"></span><span id="cine-chapter">SCENE 01 / THE LONG POOL</span></div>
+          <div class="cine-time" id="cine-time">00:00:00</div>
+        </div>
+        <div class="cine-title" id="cine-title"><span>STILLWATER</span></div>
+        <button id="skip-btn" type="button">SKIP <kbd>ESC</kbd></button>
+        <div class="cine-end" id="cine-end"><span>STILLWATER</span><small>an architectural dream</small></div>
+      </div>
+
+      <div id="hud" class="screen" aria-hidden="true">
+        <header class="hud-top">
+          <div class="hud-loc">
+            <span class="hud-kicker">STILLWATER BATHS</span>
+            <span class="hud-sub">SCENE 01 — THE LONG POOL</span>
+          </div>
+          <div class="hud-clock"><span id="hud-time">06:42</span><small>WATER 28°C</small></div>
+        </header>
+        <div class="reticle" aria-hidden="true"></div>
+        <footer class="hud-bottom">
+          <div class="hud-status"><span class="live-dot"></span><span id="hud-mode">DRIFT</span></div>
+          <div class="hud-controls">
+            <span><kbd>W A S D</kbd> drift</span>
+            <span><kbd>MOUSE</kbd> look</span>
+            <span><kbd>SHIFT</kbd> faster</span>
+            <span><kbd>P</kbd> photo</span>
+            <span><kbd>R</kbd> film</span>
+            <span><kbd>M</kbd> sound</span>
+          </div>
+        </footer>
+      </div>
+
+      <div id="photo-ui" class="screen" aria-hidden="true">
+        <div class="photo-frame"><i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i></div>
+        <div class="photo-top"><span>PHOTO MODE</span><span id="photo-lens">45mm · f/2.8</span></div>
+        <div class="photo-bottom">
+          <div><span class="lbl">EXPOSURE</span><span id="photo-exp">0.0</span></div>
+          <div><span class="lbl">FOCAL LENGTH</span><span id="photo-fov">45mm</span></div>
+          <div><span class="lbl">FILTER</span><span id="photo-filter">KODAK 2383</span></div>
+          <div class="phint"><kbd>ARROWS</kbd> exposure · <kbd>[ ]</kbd> lens · <kbd>S</kbd> save frame · <kbd>P</kbd> exit</div>
+        </div>
+        <div id="flash" class="flash"></div>
+      </div>
+
+      <div id="end-card" class="screen">
+        <div class="end-inner">
+          <div class="eyebrow">STILLWATER</div>
+          <h2>The water remembers.</h2>
+          <button id="explore-btn" type="button"><span>DRIFT FREELY</span></button>
+          <p class="tiny">W A S D — MOUSE — P FOR PHOTO MODE</p>
+        </div>
+      </div>
+
+      <div id="toast" role="status"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

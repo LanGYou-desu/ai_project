@@ -8,8 +8,8 @@
  *
  * 零依赖：只用 Node 内置模块。每个项目仍然是"各自独立"的，
  * 这里只负责按登记表调用它们自己的测试命令，不改变任何项目结构。
- * 其余 4 个项目（bikeArt / hakureiShrine / tokyoCelCity / naiwaModel）
- * 是纯静态页面或 3D 模型作品，没有自动化测试，就不登记了。
+ * 其余 7 个项目（bikeArt / hakureiShrine / tokyoCelCity / naiwaModel /
+ * rainMart / stillwater / lumenBay）是纯静态页面或 3D 场景作品，没有自动化测试，就不登记了。
  */
 const { spawnSync } = require('child_process');
 const path = require('path');
@@ -46,7 +46,6 @@ const PROJECTS = [
   { id: 'gamesDesktop/houseGuest', name: '桌灵·房客',        suites: [{ cmd: 'python -m unittest discover -s tests -p "test_*.py"', timeout: 300000 }] },
   { id: 'scenes3d/carShowroom',    name: '3D 跑车展厅',      suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
   { id: 'scenes3d/hakoniwaTown',   name: '箱庭小镇',         suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
-  { id: 'scenes3d/rainMart',       name: 'RAIN MART 雨夜便利店', suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
   { id: 'webApps/cyberAcademy',    name: '赛博安全学院',     suites: [
       { cmd: 'node test/audit.js',        timeout: 120000 },
       { cmd: 'node test/lab-test.js',     timeout: 120000 },
@@ -59,7 +58,8 @@ const PROJECTS = [
     ] },
   { id: 'webApps/historyReader',   name: '历史朗读者',       suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
   { id: 'webApps/personalOs',      name: 'personalOs 个人操作系统', suites: [{ cmd: 'npm test', timeout: 300000 }] },
-  { id: 'devTools/aiCompiler',     name: 'AI 编译器',        suites: [{ cmd: 'npm test', timeout: 180000 }] }
+  { id: 'devTools/aiCompiler',     name: 'AI 编译器',        suites: [{ cmd: 'npm test', timeout: 180000 }] },
+  { id: 'devTools/shitMover',      name: 'B站搬史程序',      suites: [{ cmd: 'python -m unittest discover -s tests -p "test_*.py"', timeout: 120000 }] }
 ];
 
 /* --fast：跳过已知最慢的两个项目 */

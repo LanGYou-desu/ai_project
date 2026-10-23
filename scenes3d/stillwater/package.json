@@ -1,0 +1,32 @@
+{
+  "name": "stillwater",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "STILLWATER — a liminal bathhouse demo",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "bake": "tsx scripts/bake.ts",
+    "bake:parallel": "tsx scripts/bake-parallel.ts",
+    "shots": "tsx scripts/shots.ts",
+    "shots:final": "tsx scripts/shots.ts --dpr=2 --out=shots/final",
+    "ui": "tsx scripts/ui-shots.ts",
+    "ui:controls": "tsx scripts/ui-controls.ts"
+  },
+  "dependencies": {
+    "@fontsource/cormorant-garamond": "^5.2.6",
+    "@fontsource/ibm-plex-mono": "^5.2.6",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@types/three": "^0.186.0",
+    "playwright": "^1.64.1",
+    "pngjs": "^7.0.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4"
+  }
+}

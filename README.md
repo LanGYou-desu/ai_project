@@ -1,17 +1,17 @@
 # AI Project 合集
 
-> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录 **26 个项目**，按 6 个类别归档在顶层子目录里：
+> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录 **29 个项目**，按 6 个类别归档在顶层子目录里：
 >
 > | 类别 | 内容 | 项目数 |
 > | ---- | ---- | ---- |
 > | [`gamesWeb/`](./gamesWeb/) | 🎮 纯前端网页游戏与互动体验（解谜 / 叙事 / 模拟 / 教学） | 10 |
 > | [`gamesDesktop/`](./gamesDesktop/) | 🖥 与真实系统交互的桌面 / 终端游戏（真实文件、通知、进程） | 5 |
-> | [`scenes3d/`](./scenes3d/) | 🏞 3D 场景与模型作品（Three.js 场景 · Blender 建模） | 6 |
+> | [`scenes3d/`](./scenes3d/) | 🏞 3D 场景与模型作品（Three.js 场景 · Blender 建模） | 7 |
 > | [`webApps/`](./webApps/) | 🌐 网页应用（安全训练营、文学装置、个人操作系统） | 3 |
-> | [`devTools/`](./devTools/) | 🧰 开发工具 | 1 |
-> | [`webArt/`](./webArt/) | 🎨 美术小作 | 1 |
+> | [`devTools/`](./devTools/) | 🧰 开发工具 | 2 |
+> | [`webArt/`](./webArt/) | 🎨 美术小作 | 2 |
 >
-> 其中 **22 个项目自带自动化测试**，合计 **4179 项断言**，一条 `npm test` 即可全量回归（其余 4 个为静态页面或 3D 模型作品，无测试）。
+> 其中 **22 个项目自带自动化测试**，合计 **2458 项断言**，一条 `npm test` 即可全量回归（其余 7 个为静态页面或 3D 场景作品，无测试）。
 
 | GitHub | https://github.com/LanGYou-desu/ai_project |
 | ------ | ------------------------------------------ |
@@ -52,7 +52,8 @@
 | [hakureiShrine](./scenes3d/hakureiShrine/) | Web 3D 微缩场景 | 「博麗神社」：无 UI 三渲二微缩庭院——本殿/鸟居/手水舍/绘马架与 Q 版像素灵梦扫地巡院，拖拽旋转缩放欣赏；单文件版离线即开 | Three.js 0.186 + Vite（单文件版零依赖） | — |
 | [tokyoCelCity](./scenes3d/tokyoCelCity/) | Web 3D 程序化城市 | 「天空都市 東京」：单文件实时生成的三渲二都市——2,400m × 2,400m 数千栋建筑、运河与远山，白昼/黄昏/夜 + 巡航模式 | Three.js r159（内联单文件，零依赖） | — |
 | [naiwaModel](./scenes3d/naiwaModel/) | Blender 3D 建模 | 「奶蛙」：依据官方三视图程序化重建的 3D 形象，含 GLB / 120mm 水密 STL / 三视图与转台 GIF 全套交付物与重建脚本 | Blender 4.5 + Python | — |
-| [rainMart](./scenes3d/rainMart/) | Web 3D 街角模型 | 「雨夜便利店」：三渲二雨夜日式便利店街角微缩模型——店铺内外 / 街景道具 / 11 栋真实开窗楼群全几何建模，GPU 雨丝、檐口滴水、涟漪与霓虹湿地倒影，红绿灯周期循环；纯 canvas 无 UI、离线可跑 | Three.js r158（本地化）+ 原生 JS（零依赖） | 1766 |
+| [rainMart](./scenes3d/rainMart/) | Web 3D 街角模型 | 「星降るマート」：三渲二雨夜便利店街角微缩模型——店铺内外 / 邻家咖啡店与小巷 / 街景道具全几何建模，3600 条 GPU 雨丝、檐口滴水、水花涟漪与低空薄雾，玻璃雨痕与湿地霓虹反光；纯 canvas 无 UI，源码模块版 + 单文件离线版 | Three.js（本地化 ES Module）+ 原生 JS（零依赖） | — |
+| [stillwater](./scenes3d/stillwater/) | Web 3D 建筑漫游 | 「STILLWATER」：单场景 PV 质感的室内泳池建筑漫游——长池 / 拱顶天窗 / 瓷砖着色器 / 水面折射与烘焙 GI，电影式运镜 + 自由漫游 + 摄影模式 | Three.js 0.186 + Vite + TypeScript（Playwright 截图验证，烘焙 GI 体积已入库） | — |
 
 ### 🌐 webApps · 网页应用
 
@@ -67,16 +68,18 @@
 | 项目 | 类型 | 一句话介绍 | 技术栈 | 测试 |
 | ---- | ---- | ---------- | ------ | ---- |
 | [aiCompiler](./devTools/aiCompiler/) | Electron 桌面应用 | 把编辑器代码发给 AI「模拟运行」，AI 输出流式显示在内置终端里的 AI 编译器 | Electron + Express + Monaco Editor + electron-builder | 85 |
+| [shitMover](./devTools/shitMover/) | Python 自动化脚本 | 「自动搬史程序」：自动检索 B 站视频，统计评论区 @ 好友比例，筛选后按阈值自动 @ 好友（分块 / 去重 / dry-run / 指定 UID），Playwright 驱动并保存登录态 | Python 3.10+ + Playwright（Chromium） | 45 |
 
 ### 🎨 webArt · 美术小作
 
 | 项目 | 类型 | 一句话介绍 | 技术栈 | 测试 |
 | ---- | ---- | ---------- | ------ | ---- |
 | [bikeArt](./webArt/bikeArt/) | SVG 动画美术 | 「骑车」：三张单文件 SVG 动画小画（海边的鹈鹕 / 骑车的鹈鹕 / 艾玛骑车），零脚本、零依赖、双击即看 | 原生 SVG + SMIL | — |
+| [lumenBay](./webArt/lumenBay/) | 程序化像素艺术 | 「光湾市」：会呼吸的像素海港——清晨 / 黄昏 / 夜景三套光照、天气与生成式配乐，Canvas 2D 全程序化绘制，可点击行人、搅动海风，无任何图片 / 音频素材 | 原生 HTML/CSS/JS + Canvas 2D + Web Audio（零依赖） | — |
 
 ## 🧪 全仓库测试
 
-22 个项目自带自动化测试（其中 21 个是零依赖脚本，personalOs 用 Vitest）；根目录提供一个统一入口，把它们一次跑完并汇总：
+22 个项目自带自动化测试（其中 20 个是零依赖脚本，personalOs 用 Vitest，shitMover 用 Python unittest）；根目录提供一个统一入口，把它们一次跑完并汇总：
 
 ```bash
 npm test                                # 跑全部 22 个带测试的项目
@@ -90,11 +93,11 @@ node scripts/test-all.js gamesWeb/loom # 同上，用分类路径
 ```
   ✓ gamesWeb/netime               node tests/run.js             1.9s  · 86 项
   ✓ gamesDesktop/desktopSiege    node test/run.js              2.7s  · 52 项
-  ✓ scenes3d/rainMart            node test/run.js              0.3s  · 1766 项
+  ✓ devTools/shitMover           python -m unittest ...       0.2s  · 45 项
   ✓ webApps/personalOs           npm test                      3.5s
   ...
   ─────────────────────────────────────────────────────────────
-  项目 22/22 通过 · 测试套件 32/32 通过 · 用时 89.3s
+  项目 22/22 通过 · 测试套件 32/32 通过 · 用时 85.5s
 ```
 
 `scripts/test-all.js` 只是一张"登记表 + 调度器"：按各项目**自己的**测试命令调用它们，不改变任何项目结构、不引入任何依赖。项目之间依然完全独立 —— 单独进任意目录跑它自己的测试同样可以。
@@ -103,7 +106,7 @@ node scripts/test-all.js gamesWeb/loom # 同上，用分类路径
 
 ```
 ai_project/
-├── README.md                 # 本文件（26 个项目总览）
+├── README.md                 # 本文件（29 个项目总览）
 ├── package.json              # 根级脚本：npm test 一次跑完所有带测试的项目
 ├── scripts/test-all.js       # 仓库级测试调度器（按各项目自己的命令调用）
 ├── .gitattributes            # 换行符与二进制策略（.bat/.ps1 检出为 CRLF）
@@ -134,7 +137,8 @@ ai_project/
 │   ├── hakureiShrine/       # 博麗神社 · 幻想郷の小さな社（三渲二微缩庭院）
 │   ├── tokyoCelCity/        # 天空都市 東京 · Celestial Metropolis（程序化城市）
 │   ├── naiwaModel/          # 奶蛙 NAIWA · 3D 建模（Blender 程序化重建）
-│   └── rainMart/            # RAIN MART · 雨夜便利店（三渲二雨夜街角微缩模型）
+│   ├── rainMart/            # RAIN MART · 星降るマート（三渲二雨夜街角微缩模型）
+│   └── stillwater/          # STILLWATER · 室内泳池（PV 质感建筑漫游）
 │
 ├── webApps/                 # 🌐 网页应用
 │   ├── cyberAcademy/        # CYBER ACADEMY · 赛博安全学院（训练营 + 本地靶场）
@@ -142,10 +146,12 @@ ai_project/
 │   └── personalOs/          # personalOs · 我的个人操作系统（含虚拟磁盘）
 │
 ├── devTools/                # 🧰 开发工具
-│   └── aiCompiler/          # AI COMPILER · AI 编译器（Electron 桌面应用）
+│   ├── aiCompiler/          # AI COMPILER · AI 编译器（Electron 桌面应用）
+│   └── shitMover/           # SHIT MOVER · B 站搬史（自动 @ 好友脚本）
 │
 └── webArt/                  # 🎨 美术小作
-    └── bikeArt/             # BIKE ART · 骑车（SVG 动画小画）
+    ├── bikeArt/             # BIKE ART · 骑车（SVG 动画小画）
+    └── lumenBay/            # LUMEN BAY · 光湾市（程序化像素海港）
 ```
 
 ## 🚀 快速开始
@@ -346,14 +352,25 @@ blender -b --factory-startup --python scripts/make_print.py      # 120 mm 水密
 
 依据官方三视图程序化重建的「奶蛙」3D 形象：Catmull-Rom 梨形躯干 + 体素重网格 + 顶点色奶白肚皮，全流程 Python 脚本化生成，含 GLB / 水密 STL / 主视觉 / 三视图 / 360° 转台全套交付物。
 
-#### rainMart（RAIN MART · 雨夜便利店）
+#### rainMart（星降るマート · 雨夜便利店）
 ```bash
 cd scenes3d/rainMart
-.\run.bat               # 一键启动（http://127.0.0.1:8137；Node / Python 均可，离线可跑）
-node test/run.js        # 1766 项断言（无头 stub 构建真实场景：装配 / 铺装 / 雨系统 / 动态时序 / 相机交互）
+.\start.bat             # 一键启动（http://127.0.0.1:4173；无 Node 时自动打开单文件版）
+# 或直接双击 start.html（单文件离线版，file:// 可用）
 ```
 
-三渲二雨夜便利店街角微缩模型：便利店（闪烁招牌 / 感应门 / 冷柜与关东煮蒸汽）、街景道具（贩卖机 / 电线杆 / 红绿灯 / 自行车）与 11 栋真实开窗背景楼群（72 扇窗）；GPU 雨丝、檐口滴水、涟漪、玻璃雨痕与水洼霓虹倒影。纯 canvas 全屏渲染、无任何 UI，闲置 9 秒缓慢自动环绕；Three.js r158 本地化，`file://` 离线可跑。
+三渲二雨夜便利店街角微缩模型：便利店、邻家咖啡店与小巷、街景道具全几何建模；3600 条 GPU 雨丝、檐口滴水、水花与涟漪、低空薄雾，玻璃雨痕与湿地霓虹反光，雨棚下的街道会自动避雨。纯 canvas 全屏渲染、无任何 UI；Three.js 本地化，源码模块版与单文件版均可离线运行。
+
+#### stillwater（STILLWATER · 室内泳池建筑漫游）
+```bash
+cd scenes3d/stillwater
+.\start.bat             # 一键启动（自动安装依赖并打开 http://127.0.0.1:5173）
+npm run dev             # 手动启动
+npm run build           # 生产构建（tsc --noEmit + vite build）
+npm run shots:final     # 截图验证（需先启动 dev server）
+```
+
+单场景 PV 质感的室内泳池建筑漫游 Demo：24m × 52m 拱顶泳池大厅、瓷砖着色器、水面折射与 72×48×112 烘焙 GI 体积；开场电影式运镜后进入自由漫游与摄影模式（曝光 / 焦距 / 保存 PNG）。全部几何与细节程序化生成，仅字体来自 Fontsource。
 
 ### 🌐 webApps
 
@@ -400,6 +417,19 @@ npm test             # 85 项单元测试（node --test）
 
 首次打开后到「设置」页填写 OpenAI 兼容接口（如 DeepSeek）的地址 / 密钥 / 模型，即可让 AI 模拟运行编辑器中的代码，还支持 AI 提问、生成代码、代码解释、错误自动修复、Markdown 预览等功能。
 
+#### shitMover（自动搬史程序 · B 站）
+```powershell
+cd devTools/shitMover
+python -m pip install -r requirements.txt
+python -m playwright install chromium     # 首次运行前安装浏览器
+python shit_mover.py login                # 扫码登录一次，登录态存入 browser_profile/
+python shit_mover.py scan                 # 只检索、统计 @ 比例，不发布
+python shit_mover.py run --dry-run        # 预览完整发布计划
+python -m unittest discover -s tests -p "test_*.py"   # 45 项单元测试
+```
+
+自动检索 B 站视频、统计评论区 @ 好友比例，按阈值筛选后自动在评论区 @ 好友（单条最多 10 人、自动分块、默认去重）；支持指定 UID 模式与 `一键搬史.bat`。评论只包含 @，请仅用于少量、经好友同意的分享。
+
 ### 🎨 webArt
 
 #### bikeArt（BIKE ART · 骑车）
@@ -410,9 +440,17 @@ npm test             # 85 项单元测试（node --test）
 
 三张单文件 SVG 动画小画：海边的鹈鹕 · 骑单车 / 骑车的鹈鹕 / 艾玛骑车。纯 SVG + SMIL，零脚本、零依赖、离线可用。
 
+#### lumenBay（光湾市 · LUMEN BAY）
+```bash
+# 直接双击 webArt/lumenBay/index.html（file:// 可用）
+# 或起静态服务器：python -m http.server 8000 → http://localhost:8000
+```
+
+一座会呼吸的像素海港：清晨 / 黄昏 / 夜景三套光照、天气、生活节奏与生成式配乐；`1` / `2` / `3` 切换时刻，`M` 静音，点击行人打招呼、移动鼠标搅动海风。画面与声音全部由 Canvas 2D + Web Audio 实时生成，无图片 / 音频素材、无第三方库、无构建步骤。
+
 ## 📝 仓库约定
 
-- **二十六个项目相互独立**：各自维护代码、文档与依赖，不互相引用；根目录的 `scripts/test-all.js` 只是调度器，不改动任何项目结构。
+- **二十九个项目相互独立**：各自维护代码、文档与依赖，不互相引用；根目录的 `scripts/test-all.js` 只是调度器，不改动任何项目结构。
 - **六类归档**：所有项目按体验形态归入 `gamesWeb/`（纯前端游戏）、`gamesDesktop/`（真实系统交互游戏）、`scenes3d/`（3D 场景与模型）、`webApps/`（网页应用）、`devTools/`（开发工具）、`webArt/`（美术小作）六个分类目录；新增项目也要先归档。
 - **目录名统一**：一律小驼峰 camelCase（首个单词小写，后续单词首字母大写，不使用分隔符）、不以数字开头；品牌单字名保留（`netime` / `devsaga` / `lingua` / `synapse` / `unlit` / `loom`），其余用一眼能读懂描述名（`carShowroom` / `hakoniwaTown` / `naiwaModel` / `tokyoCelCity`）。展示名统一为「BRAND · 中文名」。
 - **换行符统一**：`.gitattributes` 保证仓库内按 LF 存储，`.bat` / `.cmd` / `.ps1` 在 Windows 检出时自动转 CRLF（批处理对 LF 有已知隐患）；`*.blend` / `*.stl` / `*.glb` 等二进制不做任何转换。

@@ -1,0 +1,24 @@
+{
+  "keywords": [
+    "抽象"
+  ],
+  "search_pages": 0,
+  "min_at_ratio": 0.05,
+  "sample_pages": 3,
+  "comment_sort": "hot",
+  "include_replies": false,
+  "friends": [],
+  "comment_template": "",
+  "reply_suffix": "",
+  "mentions_per_comment": 10,
+  "max_comment_length": 1000,
+  "max_posts_per_run": 2,
+  "post_delay_seconds": 10,
+  "request_delay_seconds": 0.8,
+  "require_confirm": true,
+  "headless": false,
+  "profile_dir": "browser_profile",
+  "state_file": "data/state.json",
+  "log_file": "data/run.log",
+  "login_timeout_seconds": 300
+}

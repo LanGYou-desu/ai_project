@@ -1,0 +1,23 @@
+{
+  "dims": [
+    72,
+    48,
+    112
+  ],
+  "min": [
+    -12,
+    -2.7,
+    -32
+  ],
+  "max": [
+    12,
+    18.2,
+    20
+  ],
+  "spp": 160,
+  "bounces": 4,
+  "format": "RGBA16F",
+  "encoding": "half-float linear radiance, alpha=1",
+  "workers": 24,
+  "generated": "2026-10-21T09:14:09.723Z"
+}

@@ -41,3 +41,7 @@ coverage/
 
 # Extracted APK / reverse-engineering working dirs (huge, not part of the repo)
 reverse experiment/
+
+# 本地归档但不入库：大体积分发包 / 自带独立仓库的项目
+devTools/hustDesktop/
+gamesDesktop/mcLauncher/

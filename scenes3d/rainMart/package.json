@@ -1,0 +1,10 @@
+{
+  "name": "rain-mart-diorama",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A rainy-night Japanese convenience-store street-corner diorama.",
+  "scripts": {
+    "start": "node serve.mjs"
+  }
+}

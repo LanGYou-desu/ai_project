@@ -1,0 +1,7 @@
+node_modules/
+dist/
+shots/
+.bake-parts/
+vite.log
+*.log
+.DS_Store

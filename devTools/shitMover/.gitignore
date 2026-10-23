@@ -1,0 +1,6 @@
+browser_profile/
+data/
+config.json
+__pycache__/
+*.pyc
+.pytest_cache/

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a1622">
+  <meta name="description" content="光湾市——一座会呼吸的像素海港。清晨、黄昏与夜景，三种光线，三段生成式配乐。">
+  <title>光湾市 · LUMEN BAY</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-mode="morning">
+  <div class="scene-wrap" aria-label="光湾市像素海港动画">
+    <canvas id="city" aria-label="像素风格的海港城市，有高楼、老屋、树木、石桥、水湾和散步的行人"></canvas>
+    <div class="scene-noise" aria-hidden="true"></div>
+    <div class="scene-scan" aria-hidden="true"></div>
+  </div>
+
+  <header class="hud top-hud">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <span class="brand-mark__sun"></span>
+        <span class="brand-mark__line"></span>
+      </span>
+      <div class="brand-copy">
+        <p class="brand-kicker">A PIXEL HARBOR STUDY · 1987</p>
+        <h1>光湾市 <span>LUMEN BAY</span></h1>
+      </div>
+    </div>
+
+    <div class="readout-strip" aria-label="城市信息">
+      <div class="readout">
+        <span class="readout__label">LOCAL</span>
+        <strong id="clock">06:18</strong>
+      </div>
+      <div class="readout">
+        <span class="readout__label">AIR</span>
+        <strong id="temp">18°</strong>
+      </div>
+      <div class="readout readout--wind">
+        <span class="readout__label">WIND</span>
+        <strong><span id="wind">2.1</span><small> m/s</small></strong>
+        <i class="wind-arrow" aria-hidden="true">→</i>
+      </div>
+    </div>
+  </header>
+
+  <aside class="optics" aria-label="光照信息">
+    <p class="panel-kicker">LIGHT STUDY</p>
+    <div class="light-row">
+      <span class="light-swatch light-swatch--key"></span>
+      <span><small>主光源</small><strong id="keyLight">晨日 · 东南偏东</strong></span>
+    </div>
+    <div class="light-row">
+      <span class="light-swatch light-swatch--fill"></span>
+      <span><small>副光源</small><strong id="fillLight">海面反射 · 冷</strong></span>
+    </div>
+  </aside>
+
+  <nav class="time-dock" aria-label="切换城市时间">
+    <div class="dock-cap">
+      <span>SET THE HOUR</span>
+      <span class="dock-cap__line"></span>
+      <span id="moodLabel">晨雾未散</span>
+    </div>
+    <div class="time-switch" role="group" aria-label="清晨、黄昏、夜景">
+      <button class="time-btn is-active" type="button" data-mode="morning" aria-pressed="true">
+        <span class="time-btn__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" shape-rendering="crispEdges"><path d="M3 17h18v2H3zm0-4h4v1H3zm14 0h4v1h-4zM8 7h8v1H8zM6 9h12v1H6zm2 2h8v4H8zM4 4h2v2H4zm14-1h2v2h-2zM11 1h2v3h-2z"/></svg>
+        </span>
+        <span class="time-btn__copy"><strong>清晨</strong><small>MORNING · 06:18</small></span>
+        <span class="time-btn__key">1</span>
+      </button>
+      <button class="time-btn" type="button" data-mode="dusk" aria-pressed="false">
+        <span class="time-btn__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" shape-rendering="crispEdges"><path d="M2 18h20v2H2zm3-2h14v1H5zm2-4h10v3H7zM4 8h3v2H4zm13 0h3v2h-3zM8 6h8v1H8zM2 3l3 2-1 1-3-2zm17 1l3-1 1 1-3 2z"/></svg>
+        </span>
+        <span class="time-btn__copy"><strong>黄昏</strong><small>GOLDEN HOUR · 18:42</small></span>
+        <span class="time-btn__key">2</span>
+      </button>
+      <button class="time-btn" type="button" data-mode="night" aria-pressed="false">
+        <span class="time-btn__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" shape-rendering="crispEdges"><path d="M13 3h5v2h2v2h2v10h-2v2h-2v2H8v-2H6v-2H4V7h2V5h2V3h5v2h-3v2H8v2H6v6h2v2h2v2h6v-2h2v-2h2V7h-2V5h-5zM17 2h2v2h-2zM20 5h2v2h-2z"/></svg>
+        </span>
+        <span class="time-btn__copy"><strong>夜景</strong><small>AFTERGLOW · 22:16</small></span>
+        <span class="time-btn__key">3</span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="sound-dock">
+    <button id="soundToggle" class="sound-toggle" type="button" aria-pressed="false" aria-label="开启声音">
+      <span class="equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="sound-copy"><small>SOUNDTRACK</small><strong id="trackTitle">等待入城</strong></span>
+    </button>
+    <input id="volume" class="volume" type="range" min="0" max="100" value="62" aria-label="音乐音量">
+  </div>
+
+  <p class="interaction-hint"><span class="hint-cross" aria-hidden="true">+</span> 点击行人打招呼 <span class="hint-dot">·</span> 数字键 1 2 3 切换时刻 <span class="hint-dot">·</span> M 静音</p>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">
+    <span class="toast__tag">NOW</span>
+    <span id="toastText">清晨 · 潮声与第一班渡轮</span>
+  </div>
+
+  <section id="intro" class="intro" aria-label="进入光湾市">
+    <div class="intro__haze" aria-hidden="true"></div>
+    <div class="intro__content">
+      <p class="intro__eyebrow"><span></span> AN INTERACTIVE PIXEL HARBOR <span></span></p>
+      <h2 class="intro__title">
+        <span class="intro__title-cn">光湾</span>
+        <span class="intro__title-en">LUMEN&nbsp;BAY</span>
+      </h2>
+      <p class="intro__poem">一城里，三种光。<br>听风穿过旧屋檐，也看霓虹落进海湾。</p>
+      <div class="intro__actions">
+        <button id="enterSound" class="pixel-button pixel-button--primary" type="button">
+          <span class="pixel-button__icon" aria-hidden="true">♪</span>
+          <span>进入城市<small>声音导览 · 建议佩戴耳机</small></span>
+          <span class="pixel-button__arrow" aria-hidden="true">→</span>
+        </button>
+        <button id="enterMuted" class="pixel-button pixel-button--ghost" type="button">
+          静音漫游 <span aria-hidden="true">↗</span>
+        </button>
+      </div>
+      <div class="intro__meta">
+        <span><i class="live-dot"></i> 实时生成</span>
+        <span>06:18 — 22:16</span>
+        <span>无外部素材</span>
+      </div>
+    </div>
+    <div class="intro__stamp" aria-hidden="true">
+      <span>光</span><span>湾</span><span>市</span>
+      <small>HARBOR<br>DISTRICT</small>
+    </div>
+    <p class="intro__footer">拖动鼠标看风的方向 · 点击行人产生一次偶遇</p>
+    <div class="intro__loading" aria-hidden="true"><span></span> CITY GENERATED</div>
+  </section>
+
+  <noscript><p class="noscript">请开启 JavaScript，进入光湾市。</p></noscript>
+
+  <script defer src="js/palettes.js"></script>
+  <script defer src="js/audio.js"></script>
+  <script defer src="js/scene.js"></script>
+  <script defer src="js/app.js"></script>
+</body>
+</html>
