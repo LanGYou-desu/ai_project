@@ -1,0 +1,46 @@
+import { chromium } from 'playwright-core';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+const OUT = path.resolve('qa-output');
+fs.mkdirSync(OUT, { recursive: true });
+const browser = await chromium.launch({ executablePath: EDGE, headless: true, args: ['--enable-webgl', '--ignore-gpu-blocklist', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+const logs = [];
+page.on('console', (m) => { if (m.type() !== 'debug') logs.push(`[${m.type()}] ${m.text()}`); });
+page.on('pageerror', (e) => logs.push(`[PAGEERROR] ${e.message}`));
+await page.goto('http://127.0.0.1:4173/');
+await page.waitForFunction(() => window.__hollow);
+await page.click('[data-action="new-game"]');
+await page.waitForSelector('#intro-overlay:not(.is-hidden)', { timeout: 180000 });
+await page.waitForTimeout(1200);
+await page.click('#enter-button');
+await page.waitForFunction(() => window.__hollow.state === 'playing', null, { timeout: 20000 }).catch(async () => {
+  console.log('not playing:', await page.evaluate(() => window.__hollow.state));
+  await page.click('#enter-button').catch(() => {});
+  await page.waitForTimeout(1000);
+});
+await page.waitForTimeout(2500);
+await page.evaluate(() => {
+  const g = window.__hollow;
+  g.ui.hideClickResume?.();
+  g.ui.hideHud?.();
+  g.ui.hideLookHint?.();
+  g.ui.hideHint?.();
+  g.ui.setFade(false);
+  g.renderPipeline.postMaterial.uniforms.exposure.value = 1.14;
+});
+await page.waitForTimeout(500);
+await page.screenshot({ path: path.join(OUT, '30-clean-spawn.png') });
+await page.evaluate(() => window.__hollow.debugTeleport(0, 16.5, 0.25, -0.02));
+await page.waitForTimeout(500);
+await page.screenshot({ path: path.join(OUT, '31-clean-tunnel.png') });
+await page.evaluate(() => window.__hollow.debugTeleport(0, 6.4, 0.15, -0.03));
+await page.waitForTimeout(500);
+await page.screenshot({ path: path.join(OUT, '32-clean-entry.png') });
+await page.evaluate(() => window.__hollow.debugTeleport(-2.0, 7.4, 0.75, -0.05));
+await page.waitForTimeout(500);
+await page.screenshot({ path: path.join(OUT, '33-clean-alcove.png') });
+console.log(logs.filter(l => !l.includes('sigmaRadians')).slice(0, 30).join('\n'));
+await browser.close();

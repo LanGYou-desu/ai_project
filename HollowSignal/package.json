@@ -1,0 +1,14 @@
+{
+  "name": "the-hollow-signal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A short first-person psychological horror story set beneath Lake Orison.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node tools/smoke-test.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.64.1"
+  }
+}

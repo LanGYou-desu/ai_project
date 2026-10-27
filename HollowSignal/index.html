@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050706">
+  <meta name="description" content="The Hollow Signal — a short first-person psychological horror story beneath Lake Orison.">
+  <title>The Hollow Signal</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23050806'/%3E%3Cpath d='M6 16h5l3-7 4 14 3-7h5' fill='none' stroke='%23c8a36b' stroke-width='2'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game-canvas" aria-label="The Hollow Signal game view" tabindex="-1"></canvas>
+
+    <div id="world-overlay" class="world-overlay" aria-hidden="true">
+      <div class="edge-vignette"></div>
+      <div class="grain-layer"></div>
+      <div class="chroma-edge"></div>
+      <div id="hiding-shroud" class="hiding-shroud">
+        <div class="shroud-edge shroud-left"></div>
+        <div class="shroud-edge shroud-right"></div>
+        <div class="shroud-top"></div>
+        <div class="shroud-hint">Hold still. <span class="keycap-small">E</span> to leave.</div>
+      </div>
+      <div id="danger-pulse" class="danger-pulse"></div>
+      <div id="whiteout" class="whiteout"></div>
+    </div>
+
+    <main id="hud" class="hud is-hidden" aria-live="polite">
+      <section class="objective-panel" id="objective-panel">
+        <div class="micro-label"><span id="chapter-index">CHAPTER 01</span><span class="micro-rule"></span><span>HALCYON STATION</span></div>
+        <div class="objective-label">CURRENT OBJECTIVE</div>
+        <div class="objective-text" id="objective-text">Reach the service access tunnel.</div>
+        <div class="objective-sub" id="objective-sub"></div>
+      </section>
+
+      <div class="top-right-tools">
+        <button id="journal-button" class="icon-button" type="button" title="Case notes (J)" aria-label="Open case notes">J</button>
+        <button id="pause-button" class="icon-button" type="button" title="Pause (Esc)" aria-label="Pause">II</button>
+      </div>
+
+      <div id="tape-indicator" class="tape-indicator is-hidden">
+        <span class="tape-reel"></span>
+        <span id="tape-label">RECOVERED AUDIO</span>
+      </div>
+
+      <div id="inventory-bar" class="inventory-bar">
+        <div id="inv-flashlight" class="inv-item"><span class="inv-glyph">▮</span><span>FLASHLIGHT</span><span id="flashlight-state" class="inv-state">ON</span></div>
+        <div id="inv-keycard" class="inv-item is-hidden"><span class="inv-glyph">▤</span><span>ACCESS CARD</span></div>
+        <div id="inv-fuse" class="inv-item is-hidden"><span class="inv-glyph">⌁</span><span id="inv-fuse-label">CERAMIC FUSE</span></div>
+      </div>
+
+      <div id="noise-widget" class="noise-widget is-hidden">
+        <div class="noise-label"><span>YOUR NOISE</span><span id="noise-state">STILL</span></div>
+        <div class="noise-segments"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+
+      <div id="crosshair" class="crosshair"><span></span></div>
+      <div id="interaction" class="interaction is-hidden">
+        <div class="interaction-key">E</div>
+        <div class="interaction-copy"><span id="interaction-label">Inspect</span><span id="interaction-sub"></span></div>
+      </div>
+
+      <div id="subtitles" class="subtitles" aria-live="assertive">
+        <div class="speaker" id="subtitle-speaker"></div>
+        <div class="subtitle-text" id="subtitle-text"></div>
+      </div>
+
+      <div id="toast-stack" class="toast-stack"></div>
+      <div id="hud-hint" class="hud-hint"></div>
+
+      <div id="look-hint" class="look-hint is-hidden">
+        <div class="mouse-mark"><span></span></div>
+        <p>Look around</p>
+      </div>
+    </main>
+
+    <div id="screen-fade" class="screen-fade"></div>
+    <div id="damage-flash" class="damage-flash"></div>
+
+    <!-- Chapter card -->
+    <section id="chapter-card" class="chapter-card is-hidden">
+      <div class="chapter-number" id="chapter-card-number">CHAPTER I</div>
+      <h2 id="chapter-card-title">Low Water</h2>
+      <p id="chapter-card-quote">The lake gave up its dead a long time ago.</p>
+      <div class="chapter-rule"></div>
+      <div class="chapter-meta">HALCYON STATION · SUBLEVEL 3 · 06:42</div>
+    </section>
+
+    <!-- Initial menu -->
+    <section id="menu-screen" class="menu-screen">
+      <div class="menu-background" aria-hidden="true">
+        <div class="menu-image"></div>
+        <div class="menu-scrim"></div>
+        <div class="menu-grain"></div>
+        <div class="menu-scanlines"></div>
+        <div class="menu-signal">
+          <svg viewBox="0 0 900 180" preserveAspectRatio="none" aria-hidden="true">
+            <path id="signal-path" d="M0,90 L900,90"></path>
+          </svg>
+        </div>
+      </div>
+      <div class="menu-content">
+        <div class="station-mark">
+          <span class="mark-line"></span>
+          <span>MERIDIAN RESEARCH DIVISION</span>
+          <span class="mark-line"></span>
+        </div>
+        <div class="title-lockup">
+          <p class="eyebrow">A PSYCHOLOGICAL HORROR STORY</p>
+          <h1>THE<br><em>HOLLOW</em><br>SIGNAL</h1>
+          <div class="title-rule"><span></span><i></i><span></span></div>
+          <p class="setting-line">LAKE ORISON, OREGON &nbsp;·&nbsp; OCTOBER 2004</p>
+        </div>
+        <nav class="main-menu" aria-label="Main menu">
+          <button class="menu-button primary" data-action="new-game"><span class="menu-num">01</span><span>Begin transmission</span></button>
+          <button class="menu-button" id="continue-button" data-action="continue" hidden><span class="menu-num">02</span><span>Continue descent</span><b id="continue-chapter"></b></button>
+          <button class="menu-button" data-action="settings"><span class="menu-num">03</span><span>Settings</span></button>
+          <button class="menu-button" data-action="controls"><span class="menu-num">04</span><span>Controls</span></button>
+          <button class="menu-button" data-action="credits"><span class="menu-num">05</span><span>Credits</span></button>
+        </nav>
+        <div class="menu-footer">
+          <div class="headphones"><span class="hp-icon"></span><span>HEADPHONES RECOMMENDED</span></div>
+          <div class="build-mark">FIELD RECORDING 04-A · REV 1.0</div>
+        </div>
+      </div>
+      <div class="menu-side-label">DO NOT ADJUST YOUR RECEIVER</div>
+    </section>
+
+    <!-- Loading -->
+    <section id="loading-screen" class="loading-screen is-hidden">
+      <div class="loading-inner">
+        <div class="boot-label">MERIDIAN FIELD TERMINAL / SECURE BOOT</div>
+        <div class="loading-title">THE HOLLOW SIGNAL</div>
+        <div id="loading-status" class="loading-status">Mounting archive...</div>
+        <div class="loading-track"><span id="loading-bar"></span></div>
+        <div class="loading-meta"><span id="loading-percent">0%</span><span>PRESS NOTHING. LISTEN.</span></div>
+        <div id="loading-log" class="loading-log"></div>
+      </div>
+    </section>
+
+    <!-- Intro / chapter interstitial click gate -->
+    <section id="intro-overlay" class="intro-overlay is-hidden">
+      <div class="intro-inner">
+        <p id="intro-kicker" class="intro-kicker">THREE DAYS AGO</p>
+        <div id="intro-lines" class="intro-lines"></div>
+        <button id="enter-button" class="enter-button" type="button"><span>ENTER THE STATION</span><span class="enter-arrow">→</span></button>
+        <p class="intro-footnote" id="intro-footnote">Click to capture mouse · Esc to pause</p>
+      </div>
+    </section>
+
+    <!-- Generic settings panel -->
+    <section id="settings-screen" class="sheet-screen is-hidden">
+      <div class="sheet">
+        <header class="sheet-header">
+          <div><p class="micro-label">FIELD TERMINAL / CONFIG</p><h2>Settings</h2></div>
+          <button class="close-button" type="button" data-close="settings" aria-label="Close settings">×</button>
+        </header>
+        <div class="sheet-body settings-grid">
+          <div class="setting-group">
+            <label class="setting-label">Graphics quality</label>
+            <div class="segment-control" id="quality-control">
+              <button type="button" data-quality="low">LOW</button>
+              <button type="button" data-quality="medium">MEDIUM</button>
+              <button type="button" data-quality="high">HIGH</button>
+            </div>
+            <p class="setting-description">Baked lighting is always active. Quality changes shadow resolution, resolution scale, MSAA, particle density and prop detail.</p>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label" for="sensitivity">Look sensitivity <span id="sensitivity-value">1.0</span></label>
+            <input id="sensitivity" class="slider" type="range" min="0.35" max="2.5" step="0.05" value="1">
+          </div>
+          <div class="setting-group">
+            <label class="setting-label" for="volume">Master volume <span id="volume-value">75%</span></label>
+            <input id="volume" class="slider" type="range" min="0" max="1" step="0.01" value="0.75">
+          </div>
+          <div class="setting-group">
+            <label class="setting-label" for="grain">Film grain <span id="grain-value">Normal</span></label>
+            <input id="grain" class="slider" type="range" min="0" max="1" step="0.05" value="0.55">
+          </div>
+          <div class="setting-group toggle-group">
+            <span class="setting-label">Subtitles</span>
+            <button id="subtitles-toggle" class="toggle-button is-on" type="button" role="switch" aria-checked="true"><span></span>ON</button>
+          </div>
+          <div class="setting-group toggle-group">
+            <span class="setting-label">Reduced motion</span>
+            <button id="motion-toggle" class="toggle-button" type="button" role="switch" aria-checked="false"><span></span>OFF</button>
+            <p class="setting-description">Reduces head bob, camera sway and pulse effects.</p>
+          </div>
+          <div class="setting-group">
+            <label class="setting-label" for="fov">Field of view <span id="fov-value">72°</span></label>
+            <input id="fov" class="slider" type="range" min="62" max="90" step="1" value="72">
+          </div>
+        </div>
+        <footer class="sheet-footer">
+          <span>Settings are saved automatically.</span>
+          <div class="sheet-actions">
+            <button class="text-button" type="button" id="settings-back">Back</button>
+          </div>
+        </footer>
+      </div>
+    </section>
+
+    <section id="controls-screen" class="sheet-screen is-hidden">
+      <div class="sheet">
+        <header class="sheet-header">
+          <div><p class="micro-label">FIELD TERMINAL / ORIENTATION</p><h2>Controls</h2></div>
+          <button class="close-button" type="button" data-close="controls" aria-label="Close controls">×</button>
+        </header>
+        <div class="sheet-body">
+          <div class="controls-layout">
+            <div class="control-block">
+              <h3>Movement</h3>
+              <div class="control-row"><span class="keycap">W A S D</span><span>Walk</span></div>
+              <div class="control-row"><span class="keycap">MOUSE</span><span>Look</span></div>
+              <div class="control-row"><span class="keycap">SHIFT</span><span>Sprint / make noise</span></div>
+              <div class="control-row"><span class="keycap">C</span><span>Crouch / stay quiet</span></div>
+            </div>
+            <div class="control-block">
+              <h3>Action</h3>
+              <div class="control-row"><span class="keycap">E</span><span>Interact / hide</span></div>
+              <div class="control-row"><span class="keycap">F</span><span>Flashlight</span></div>
+              <div class="control-row"><span class="keycap">J</span><span>Case notes</span></div>
+              <div class="control-row"><span class="keycap">ESC</span><span>Pause game</span></div>
+            </div>
+          </div>
+          <div class="controls-note">
+            <span class="note-mark">!</span>
+            <p>Walk. Listen. Do not run unless you mean to be heard. The station is dark, but the dark is not empty.</p>
+          </div>
+          <div class="control-hint">Gamepad support is not implemented in this build.</div>
+        </div>
+        <footer class="sheet-footer"><span>Halcyon safety orientation, revised 1996.</span><div class="sheet-actions"><button class="text-button" type="button" data-close="controls">Back</button></div></footer>
+      </div>
+    </section>
+
+    <section id="credits-screen" class="sheet-screen is-hidden">
+      <div class="sheet credits-sheet">
+        <header class="sheet-header">
+          <div><p class="micro-label">MERIDIAN ARCHIVE / END RECORD</p><h2>Credits</h2></div>
+          <button class="close-button" type="button" data-close="credits" aria-label="Close credits">×</button>
+        </header>
+        <div class="sheet-body credits-body">
+          <p class="credits-title">THE HOLLOW SIGNAL</p>
+          <p>A short original work of psychological horror.</p>
+          <div class="credits-columns">
+            <div><h4>Written &amp; built for</h4><p>The Hollow Signal, first playable build.</p><h4>Engine</h4><p>Three.js (MIT), custom WebGL rendering and gameplay systems.</p></div>
+            <div><h4>Visual assets</h4><p>Procedural textures, architecture, props and effects generated in-project. No third-party 3D or photographic assets.</p><h4>Audio</h4><p>Original procedural ambience and sound design generated in-project.</p></div>
+            <div><h4>Typefaces</h4><p>Cormorant Garamond · SIL OFL<br>Barlow Condensed · SIL OFL<br>Special Elite · SIL OFL</p><h4>Software</h4><p>Three.js · MIT License<br>Playwright · Apache 2.0 (testing only)</p></div>
+          </div>
+          <p class="credits-warning">CONTAINS: psychological distress, sensory distortion, implied death, and depictions of grief.</p>
+        </div>
+        <footer class="sheet-footer"><span>Nothing here is real. Listen anyway.</span><div class="sheet-actions"><button class="text-button" type="button" data-close="credits">Back</button></div></footer>
+      </div>
+    </section>
+
+    <!-- Pause -->
+    <section id="pause-screen" class="pause-screen is-hidden">
+      <div class="pause-panel">
+        <p class="micro-label">TRANSMISSION INTERRUPTED</p>
+        <h2>Paused</h2>
+        <p id="pause-chapter" class="pause-chapter">CHAPTER I · LOW WATER</p>
+        <div class="pause-actions">
+          <button class="menu-button primary compact" data-action="resume"><span class="menu-num">01</span><span>Resume</span></button>
+          <button class="menu-button compact" data-action="pause-settings"><span class="menu-num">02</span><span>Settings</span></button>
+          <button class="menu-button compact" data-action="pause-controls"><span class="menu-num">03</span><span>Controls</span></button>
+          <button class="menu-button compact" data-action="restart-chapter"><span class="menu-num">04</span><span>Restart chapter</span></button>
+          <button class="menu-button compact" data-action="quit"><span class="menu-num">05</span><span>Quit to title</span></button>
+        </div>
+        <p class="pause-tip" id="pause-tip">The signal carries farther through water.</p>
+      </div>
+    </section>
+
+    <section id="note-modal" class="paper-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="note-title">
+      <div class="paper">
+        <div class="paper-punches"><i></i><i></i><i></i></div>
+        <div class="paper-header"><span id="note-kicker">RECOVERED DOCUMENT</span><span id="note-index">M-014</span></div>
+        <h2 id="note-title">Lorem</h2>
+        <div id="note-body" class="note-body"></div>
+        <div class="paper-footer"><span id="note-footer">HALCYON RESEARCH STATION</span><span>PRESS E TO CLOSE</span></div>
+      </div>
+    </section>
+
+    <section id="keypad-modal" class="keypad-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="keypad-title">
+      <div class="keypad-device">
+        <div class="keypad-top">
+          <span id="keypad-brand">SECURITY — HALCYON</span>
+          <span id="keypad-led" class="keypad-led"></span>
+        </div>
+        <h2 id="keypad-title">ENTER ACCESS CODE</h2>
+        <div id="keypad-display" class="keypad-display"><span>_</span><span>_</span><span>_</span><span>_</span></div>
+        <p id="keypad-hint">Four digits. Personnel reset code.</p>
+        <div class="keypad-grid">
+          <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button>
+          <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button>
+          <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button>
+          <button data-key="clear">CLR</button><button data-key="0">0</button><button data-key="enter">ENT</button>
+        </div>
+        <div class="keypad-footer"><span>TYPE DIGITS</span><span>ESC — STEP AWAY</span></div>
+      </div>
+    </section>
+
+    <section id="journal-modal" class="journal-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="journal-title">
+      <div class="journal">
+        <header class="journal-header">
+          <div><p class="micro-label">PERSONAL ARCHIVE / DR. IRIS VALE</p><h2 id="journal-title">Case Notes</h2></div>
+          <button class="close-button" type="button" id="journal-close" aria-label="Close journal">×</button>
+        </header>
+        <div class="journal-layout">
+          <nav id="journal-list" class="journal-list" aria-label="Collected documents"></nav>
+          <article class="journal-content">
+            <p class="journal-kicker" id="journal-kicker">SELECT A RECORD</p>
+            <h3 id="journal-entry-title">No record selected</h3>
+            <div id="journal-entry-body" class="journal-entry-body"><p>Documents, radio transcripts and recovered audio will collect here.</p></div>
+            <p class="journal-code" id="journal-code"></p>
+          </article>
+        </div>
+        <footer class="journal-footer"><span>J OR ESC — CLOSE</span><span id="journal-count">0 RECORDS</span></footer>
+      </div>
+    </section>
+
+    <section id="choice-modal" class="choice-modal is-hidden" role="dialog" aria-modal="true">
+      <div class="choice-inner">
+        <p class="micro-label">FINAL PROCEDURE</p>
+        <h2 id="choice-title">The array is waiting.</h2>
+        <p id="choice-body">There is still time to choose.</p>
+        <div class="choice-options">
+          <button class="choice-button" id="choice-a" data-choice="purge"><span class="choice-key">01</span><span><strong>Cut the power</strong><small>Let the silence be real.</small></span></button>
+          <button class="choice-button" id="choice-b" data-choice="answer"><span class="choice-key">02</span><span><strong>Answer the signal</strong><small>She is still in the wire.</small></span></button>
+        </div>
+        <p class="choice-warn">This decision ends the story.</p>
+      </div>
+    </section>
+
+    <section id="ending-screen" class="ending-screen is-hidden">
+      <div class="ending-inner">
+        <p class="ending-kicker" id="ending-kicker">ENDING 01 / STILL WATER</p>
+        <h2 id="ending-title">The lake remembers.</h2>
+        <div id="ending-body" class="ending-body"></div>
+        <div class="ending-rule"></div>
+        <p id="ending-quote" class="ending-quote">“I will not mistake the echo for you again.”</p>
+        <div class="ending-actions">
+          <button class="menu-button primary compact" data-action="ending-title"><span class="menu-num">01</span><span>Return to title</span></button>
+          <button class="menu-button compact" data-action="ending-restart"><span class="menu-num">02</span><span>Begin again</span></button>
+        </div>
+        <p class="ending-credit">THE HOLLOW SIGNAL · A short story in four chapters</p>
+      </div>
+    </section>
+
+    <section id="death-overlay" class="death-overlay is-hidden">
+      <div class="death-content">
+        <p class="death-kicker">THE STATION HAS NOTICED YOU</p>
+        <h2>You were heard.</h2>
+        <div class="death-loader"><span></span></div>
+        <p class="death-hint" id="death-hint">Returning to the last safe moment...</p>
+      </div>
+    </section>
+
+    <div id="click-to-resume" class="click-resume is-hidden">
+      <p>POINTER RELEASED</p>
+      <button type="button" id="resume-click-button">CLICK TO RETURN</button>
+    </div>
+
+    <div id="dev-debug" class="dev-debug is-hidden"></div>
+    <div id="fps-hud" class="fps-hud is-hidden"></div>
+  </div>
+
+  <noscript><div class="noscript">The Hollow Signal requires JavaScript and WebGL. Please enable both and reload.</div></noscript>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
