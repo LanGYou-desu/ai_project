@@ -1,0 +1,30 @@
+{
+  "sampleRate": 22050,
+  "chunkSeconds": 8,
+  "tracks": {
+    "lowWater": {
+      "chunks": 3,
+      "prefix": "chunk",
+      "duration": 8,
+      "loop": true
+    },
+    "listeningFloor": {
+      "chunks": 3,
+      "prefix": "chunk",
+      "duration": 8,
+      "loop": true
+    },
+    "skinnyWalls": {
+      "chunks": 3,
+      "prefix": "chunk",
+      "duration": 8,
+      "loop": true
+    },
+    "hollow": {
+      "chunks": 3,
+      "prefix": "chunk",
+      "duration": 8,
+      "loop": true
+    }
+  }
+}
