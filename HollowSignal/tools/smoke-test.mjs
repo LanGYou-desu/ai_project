@@ -71,6 +71,14 @@ async function run() {
   if (edge) launchOptions.executablePath = edge;
   browser = await chromium.launch(launchOptions);
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  // Keep automated tests from taking over the desktop mouse with the browser's
+  // pointer-lock cursor. Keyboard input and all game interactions still work.
+  await page.addInitScript(() => {
+    HTMLCanvasElement.prototype.requestPointerLock = function requestPointerLock() {
+      return Promise.resolve();
+    };
+    window.__hollowTestNoPointerLock = true;
+  });
   page.setDefaultTimeout(20000);
   const pageErrors = [];
   const consoleErrors = [];
@@ -81,6 +89,16 @@ async function run() {
 
   const state = () => page.evaluate(() => window.__hollow.getState());
   const bodyText = (selector) => page.locator(selector).textContent();
+  // While pointer lock is active, Playwright's physical mouse click moves the
+  // cursor and injects a large look delta into the game. Use a DOM click for
+  // in-game overlays so the camera stays where the test put it.
+  const clickDom = async (selector) => {
+    await page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      if (!el) throw new Error(`Missing element: ${sel}`);
+      el.click();
+    }, selector);
+  };
   const waitPlaying = async (timeout = 120000) => {
     await page.waitForFunction(
       () => window.__hollow?.state === 'playing' && window.__hollow?.input?.enabled,
@@ -95,20 +113,46 @@ async function run() {
     await page.waitForTimeout(1000);
     const visible = await page.locator('#enter-button').isVisible();
     ok(visible, 'intro Enter button is visible');
-    await page.click('#enter-button');
+    await clickDom('#enter-button');
     await waitPlaying();
   };
   const waitInteraction = async (needle, timeout = 15000) => {
-    await page.waitForFunction((text) => {
-      const g = window.__hollow;
-      return g?.state === 'playing' && (g.currentInteraction?.getLabel?.() || '').toLowerCase().includes(text.toLowerCase());
-    }, needle, { timeout });
+    try {
+      await page.waitForFunction((text) => {
+        const g = window.__hollow;
+        return g?.state === 'playing' && (g.currentInteraction?.getLabel?.() || '').toLowerCase().includes(text.toLowerCase());
+      }, needle, { timeout });
+    } catch (err) {
+      const diag = await page.evaluate(() => {
+        const g = window.__hollow;
+        return {
+          state: g?.state,
+          inputEnabled: g?.input?.enabled,
+          current: g?.currentInteraction?.getLabel?.() || null,
+          player: g ? { x: g.player.position.x, z: g.player.position.z, y: g.player.position.y } : null,
+          pointerLocked: g?.input?.locked ?? null,
+          chapter: g?.chapterIndex
+        };
+      }).catch(() => null);
+      console.error(`  diagnostic while waiting for "${needle}":`, JSON.stringify(diag));
+      throw err;
+    }
   };
   const interactAt = async (needle, expectLabel = needle) => {
     await ensurePlaying();
     const found = await page.evaluate((needle) => window.__hollow.debugTeleportToItem(needle), needle);
     ok(!!found, `found interaction "${needle}"`, found);
+    await page.waitForTimeout(250);
+    // A synthetic click used to close a document can leave a pending pointer-lock
+    // movement event that rotates the view after the first teleport. Re-place the
+    // camera once those events have drained so this helper stays deterministic.
+    await page.evaluate((needle) => {
+      const g = window.__hollow;
+      g.input.consumeMouse();
+      return g.debugTeleportToItem(needle);
+    }, needle);
     await page.waitForTimeout(450);
+    await page.evaluate(() => window.__hollow.input.consumeMouse());
     await waitInteraction(expectLabel);
     await page.keyboard.press('KeyE');
     await page.waitForTimeout(700);
@@ -122,13 +166,13 @@ async function run() {
     // A lost pointer lock can synchronously pause the game while a document
     // closes in a headless browser. Recover the same way a player would.
     if (await page.evaluate(() => window.__hollow.state === 'paused')) {
-      await page.click('[data-action="resume"]').catch(() => {});
+      await clickDom('[data-action="resume"]').catch(() => {});
       await waitPlaying();
     }
   };
   const ensurePlaying = async () => {
     if (await page.evaluate(() => window.__hollow.state === 'paused')) {
-      await page.click('[data-action="resume"]').catch(() => {});
+      await clickDom('[data-action="resume"]').catch(() => {});
       await waitPlaying();
     }
   };
@@ -183,7 +227,7 @@ async function run() {
     ok((await bodyText('#intro-lines')).includes('Station Halcyon'), 'chapter I intro text is present');
     await screenshot('02-intro');
     await page.waitForTimeout(1100);
-    await page.click('#enter-button');
+    await clickDom('#enter-button');
     await waitPlaying();
     let s = await state();
     ok(s.chapter === 0 && s.chapterTitle === 'Low Water', 'entered Chapter I', s.chapterTitle);
@@ -216,7 +260,7 @@ async function run() {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);
     ok((await state()).state === 'paused' && await page.locator('#pause-screen').isVisible(), 'Escape pauses');
-    await page.click('[data-action="resume"]');
+    await clickDom('[data-action="resume"]');
     await waitPlaying();
 
     /* --------------------------------------------------------------- */
@@ -304,14 +348,16 @@ async function run() {
     for (const key of ['9', '9', '9', '9']) await page.keyboard.press(`Digit${key}`);
     await page.keyboard.press('Enter');
     await page.waitForTimeout(500);
-    ok(await page.evaluate(() => !window.__hollow.ui.keypadState.open), 'wrong code closes the keypad');
+    ok(await page.evaluate(() => window.__hollow.ui.keypadState.open), 'wrong code leaves the keypad open for retry');
+    ok(await page.evaluate(() => window.__hollow.ui.keypadState.locked === false), 'wrong code releases the keypad lock');
     ok(!(await page.evaluate(() => window.__hollow.level.officeOpened)), 'wrong code does not unlock the office');
-    await interactAt('security keypad', 'security keypad');
+    await page.waitForTimeout(300);
+    ok(await page.evaluate(() => window.__hollow.ui.keypadState.digits === ''), 'wrong code clears the entered digits');
     for (const key of ['0', '3', '1', '7']) await page.keyboard.press(`Digit${key}`);
     await page.keyboard.press('Enter');
     await waitPlaying();
     await page.waitForTimeout(900);
-    ok(await page.evaluate(() => window.__hollow.level.officeOpened), 'code 0317 unlocks the office');
+    ok(await page.evaluate(() => window.__hollow.level.officeOpened), 'code 0317 unlocks the office after a retry');
 
     await interactAt('Hide in the locker', 'Hide in the locker');
     ok(await page.evaluate(() => window.__hollow.player.hidden), 'E enters a hiding locker');
@@ -328,6 +374,7 @@ async function run() {
     await interactAt('substation fuse', 'substation fuse');
     ok((await state()).items.fuse === true, 'substation fuse collected');
     await interactAt('Install the ceramic fuse', 'ceramic fuse');
+    await page.waitForFunction(() => window.__hollow.level.chaseActive, null, { timeout: 6000 }).catch(() => {});
     ok(await page.evaluate(() => window.__hollow.level.chaseActive), 'substation starts the scripted chase');
     ok((await state()).objective.includes('RUN'), 'objective switches to escape', (await state()).objective);
 
