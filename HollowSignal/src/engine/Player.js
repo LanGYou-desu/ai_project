@@ -275,12 +275,12 @@ export class Player {
   setCrouched(value, force = false) {
     if (value === this.crouched) return;
     if (!value && !force && this.game.level?.isLowCeiling?.(this.position.x, this.position.z)) {
-      this.game.ui.showHint('Not enough headroom to stand.', 2.4);
+      this.game.ui.showHint('头顶没有足够空间站起来。', 2.4);
       return;
     }
     this.crouched = value;
     if (this.crouched) this.sprinting = false;
-    this.game.ui.showToast(this.crouched ? 'Crouched — quieter footsteps' : 'Standing');
+    this.game.ui.showToast(this.crouched ? '蹲伏——脚步更轻' : '站立');
   }
 
   toggleFlashlight() {
@@ -358,7 +358,7 @@ export class Player {
       if (!this.staminaWarningPlayed) {
         this.staminaWarningPlayed = true;
         this.game.audio.play('breath', { volume: .2 });
-        this.game.ui.showHint('Your lungs are burning. Slow down.', 2.7);
+        this.game.ui.showHint('你的肺在燃烧。慢下来。', 2.7);
       }
     } else if (this.stamina > .55) {
       this.staminaWarningPlayed = false;

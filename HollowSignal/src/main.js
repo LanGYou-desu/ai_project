@@ -5,26 +5,37 @@ const loading = document.getElementById('loading-screen');
 const loadingStatus = document.getElementById('loading-status');
 
 function showBootFailure(error) {
-  console.error('THE HOLLOW SIGNAL failed to start:', error);
+  console.error('空洞信号启动失败：', error);
   if (!loading) return;
   loading.classList.remove('is-hidden');
   loading.classList.remove('is-leaving');
   if (loadingStatus) {
-    loadingStatus.textContent = 'The archive could not be mounted.';
+    loadingStatus.textContent = '声学档案无法挂载。';
   }
   const percent = document.getElementById('loading-percent');
-  if (percent) percent.textContent = 'ERROR';
+  if (percent) percent.textContent = '错误';
   const log = document.getElementById('loading-log');
   if (log) {
-    log.textContent = 'WebGL2 is required. If the problem persists, reload the page.\n' +
+    log.textContent = '需要 WebGL2。如果问题仍然存在，请重新加载页面。\n' +
       String(error && error.message ? error.message : error);
   }
 }
 
-try {
-  if (!canvas) throw new Error('Game canvas is missing from index.html.');
+async function boot() {
+  if (!canvas) throw new Error('index.html 中缺少游戏画布。');
   const probe = document.createElement('canvas');
-  if (!probe.getContext('webgl2')) throw new Error('This browser does not provide WebGL2.');
+  if (!probe.getContext('webgl2')) throw new Error('此浏览器不提供 WebGL2。');
+
+  // The station signage and notes are painted onto canvas textures. Wait for
+  // the bundled CJK faces so Chinese glyphs are present in the first bake.
+  if (document.fonts) {
+    await Promise.allSettled([
+      document.fonts.load('500 32px "Noto Sans SC"'),
+      document.fonts.load('300 64px "Noto Serif SC"')
+    ]);
+    await document.fonts.ready;
+  }
+
   const game = new Game(canvas);
   window.__hollow = game;
   window.HOLLOW_SIGNAL = {
@@ -36,6 +47,6 @@ try {
     debugCompleteChapter: () => game.debugCompleteChapter(),
     debugChoice: (id) => game.debugChoice(id)
   };
-} catch (error) {
-  showBootFailure(error);
 }
+
+boot().catch(showBootFailure);

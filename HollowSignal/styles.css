@@ -37,6 +37,20 @@
   font-style: normal;
   font-display: swap;
 }
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('./assets/fonts/NotoSansSC-Game.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Noto Serif SC';
+  src: url('./assets/fonts/NotoSerifSC-Game.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   --ink: #080a09;
@@ -53,9 +67,9 @@
   --line: rgba(216, 209, 192, 0.19);
   --line-soft: rgba(216, 209, 192, 0.09);
   --panel: rgba(7, 10, 9, 0.82);
-  --title-font: 'Garamond Film', 'Cormorant Garamond', Georgia, serif;
-  --ui-font: 'Barlow Narrow', 'Arial Narrow', 'Segoe UI', sans-serif;
-  --type-font: 'Special Elite', 'Courier New', monospace;
+  --title-font: 'Garamond Film', 'Noto Serif SC', 'Cormorant Garamond', Georgia, serif;
+  --ui-font: 'Barlow Narrow', 'Noto Sans SC', 'Arial Narrow', 'Segoe UI', sans-serif;
+  --type-font: 'Special Elite', 'Noto Serif SC', 'Courier New', monospace;
   --ease: cubic-bezier(.2, .7, .2, 1);
 }
 
@@ -1766,4 +1780,155 @@ body.is-menu #game-canvas { cursor: default; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+/* =========================================================
+   中文排版 / Chinese typography
+   ========================================================= */
+html[lang="zh-CN"] .title-lockup h1 {
+  font-size: clamp(66px, 9.2vw, 142px);
+  line-height: 1.02;
+  letter-spacing: .06em;
+}
+html[lang="zh-CN"] .title-lockup h1 em {
+  font-style: normal;
+  letter-spacing: .06em;
+}
+html[lang="zh-CN"] .eyebrow {
+  font-size: 10px;
+  letter-spacing: .22em;
+}
+html[lang="zh-CN"] .station-mark,
+html[lang="zh-CN"] .setting-line,
+html[lang="zh-CN"] .menu-footer,
+html[lang="zh-CN"] .build-mark,
+html[lang="zh-CN"] .menu-side-label {
+  font-size: 9px;
+  letter-spacing: .12em;
+}
+html[lang="zh-CN"] .menu-button {
+  font-size: 13px;
+  letter-spacing: .12em;
+}
+html[lang="zh-CN"] .menu-button.compact { font-size: 11.5px; }
+html[lang="zh-CN"] .menu-button b { font-size: 10px; letter-spacing: .06em; }
+html[lang="zh-CN"] .micro-label {
+  font-size: 10px;
+  letter-spacing: .14em;
+}
+html[lang="zh-CN"] .objective-label {
+  font-size: 10px;
+  letter-spacing: .2em;
+}
+html[lang="zh-CN"] .objective-sub {
+  font-size: 12px;
+  letter-spacing: .04em;
+}
+html[lang="zh-CN"] .noise-label {
+  font-size: 9.5px;
+  letter-spacing: .1em;
+}
+html[lang="zh-CN"] .hud-hint { font-size: 11.5px; line-height: 1.65; }
+html[lang="zh-CN"] .interaction-sub { font-size: 9.5px; letter-spacing: .04em; }
+html[lang="zh-CN"] .look-hint p { font-size: 10px; letter-spacing: .12em; }
+html[lang="zh-CN"] .chapter-number {
+  font-size: 10px;
+  letter-spacing: .3em;
+}
+html[lang="zh-CN"] .intro-inner { width: min(980px, 88vw); }
+html[lang="zh-CN"] .intro-kicker {
+  font-size: 9.5px;
+  letter-spacing: .25em;
+}
+html[lang="zh-CN"] .intro-lines p {
+  font-size: clamp(22px, 2.15vw, 31px);
+  line-height: 1.6;
+}
+html[lang="zh-CN"] .intro-lines p.is-dim { font-style: normal; }
+html[lang="zh-CN"] .enter-button {
+  font-size: 12px;
+  letter-spacing: .16em;
+}
+html[lang="zh-CN"] .enter-button:hover { letter-spacing: .19em; }
+html[lang="zh-CN"] .intro-footnote {
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+html[lang="zh-CN"] .chapter-card h2 {
+  font-style: normal;
+  letter-spacing: .06em;
+  line-height: 1.08;
+}
+html[lang="zh-CN"] .chapter-card p {
+  font-style: normal;
+  line-height: 1.65;
+}
+html[lang="zh-CN"] .chapter-meta {
+  font-size: 9.5px;
+  letter-spacing: .12em;
+}
+html[lang="zh-CN"] .boot-label,
+html[lang="zh-CN"] .loading-meta {
+  font-size: 9px;
+  letter-spacing: .12em;
+}
+html[lang="zh-CN"] .setting-label { font-size: 11px; letter-spacing: .04em; }
+html[lang="zh-CN"] .setting-description { font-size: 10.5px; line-height: 1.75; letter-spacing: .02em; }
+html[lang="zh-CN"] .control-hint { font-size: 9.5px; letter-spacing: .05em; }
+html[lang="zh-CN"] .controls-note p { line-height: 1.75; letter-spacing: .02em; }
+html[lang="zh-CN"] .sheet-header h2,
+html[lang="zh-CN"] .controls-note p,
+html[lang="zh-CN"] .pause-panel h2,
+html[lang="zh-CN"] .pause-chapter,
+html[lang="zh-CN"] .pause-tip,
+html[lang="zh-CN"] .death-content h2,
+html[lang="zh-CN"] .credits-body > p,
+html[lang="zh-CN"] .credits-body p,
+html[lang="zh-CN"] .choice-button small,
+html[lang="zh-CN"] .ending-quote,
+html[lang="zh-CN"] .journal-header h2,
+html[lang="zh-CN"] .journal-content h3,
+html[lang="zh-CN"] .choice-inner h2,
+html[lang="zh-CN"] .ending-inner h2 {
+  font-style: normal;
+}
+html[lang="zh-CN"] .credits-columns p { font-size: 10.5px; line-height: 1.9; letter-spacing: .02em; }
+html[lang="zh-CN"] .credits-warning { font-size: 10px; letter-spacing: .08em; line-height: 1.7; }
+html[lang="zh-CN"] .pause-chapter { letter-spacing: .12em; }
+html[lang="zh-CN"] .paper-header { font-size: 9.5px; letter-spacing: .08em; }
+html[lang="zh-CN"] .note-body p { font-size: 14px; line-height: 1.9; }
+html[lang="zh-CN"] .paper-footer { font-size: 9px; letter-spacing: .04em; }
+html[lang="zh-CN"] .keypad-top { font-size: 9px; letter-spacing: .08em; }
+html[lang="zh-CN"] .keypad-device h2 { letter-spacing: .08em; }
+html[lang="zh-CN"] .keypad-footer { font-size: 8.5px; letter-spacing: .06em; }
+html[lang="zh-CN"] .keypad-grid button[data-key="clear"],
+html[lang="zh-CN"] .keypad-grid button[data-key="enter"] { font-size: 10px; letter-spacing: .04em; }
+html[lang="zh-CN"] .journal-entry small { font-size: 8.5px; letter-spacing: .08em; }
+html[lang="zh-CN"] .journal-entry span { font-size: 12px; line-height: 1.45; }
+html[lang="zh-CN"] .journal-kicker { font-size: 9px; letter-spacing: .12em; }
+html[lang="zh-CN"] .journal-content h3 { font-size: 29px; line-height: 1.25; }
+html[lang="zh-CN"] .journal-entry-body p { font-size: 13px; line-height: 1.95; }
+html[lang="zh-CN"] .journal-footer { font-size: 8.5px; letter-spacing: .06em; }
+html[lang="zh-CN"] .choice-button strong { font-size: 14px; letter-spacing: .06em; }
+html[lang="zh-CN"] .choice-button small { font-size: 14px; line-height: 1.5; }
+html[lang="zh-CN"] .choice-warn { font-size: 9px; letter-spacing: .1em; }
+html[lang="zh-CN"] .ending-kicker { font-size: 9.5px; letter-spacing: .18em; }
+html[lang="zh-CN"] .ending-inner h2 { line-height: 1.2; }
+html[lang="zh-CN"] .ending-body p { font-size: 14px; line-height: 1.95; }
+html[lang="zh-CN"] .ending-quote { font-size: 18px; line-height: 1.65; }
+html[lang="zh-CN"] .ending-credit { font-size: 8.5px; letter-spacing: .1em; }
+html[lang="zh-CN"] .death-kicker { font-size: 9px; letter-spacing: .18em; }
+html[lang="zh-CN"] .death-hint { font-size: 9px; letter-spacing: .08em; }
+html[lang="zh-CN"] .click-resume p,
+html[lang="zh-CN"] .click-resume button { letter-spacing: .12em; }
+
+@media (max-width: 760px) {
+  html[lang="zh-CN"] .title-lockup h1 { font-size: clamp(58px, 15vw, 92px); }
+  html[lang="zh-CN"] .menu-button { font-size: 11.5px; }
+  html[lang="zh-CN"] .micro-label { font-size: 8.5px; }
+  html[lang="zh-CN"] .objective-label { font-size: 8.5px; }
+  html[lang="zh-CN"] .objective-text { font-size: 17px; }
+  html[lang="zh-CN"] .menu-footer { font-size: 7.5px; }
+  html[lang="zh-CN"] .note-body p { font-size: 13px; }
+  html[lang="zh-CN"] .journal-entry-body p { font-size: 12px; }
 }

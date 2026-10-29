@@ -224,13 +224,13 @@ async function run() {
     await page.click('[data-action="new-game"]');
     const introShown = await page.waitForSelector('#intro-overlay:not(.is-hidden)', { timeout: 90000 }).catch(() => null);
     ok(!!introShown, 'chapter I intro appears');
-    ok((await bodyText('#intro-lines')).includes('Station Halcyon'), 'chapter I intro text is present');
+    ok((await bodyText('#intro-lines')).includes('哈尔西恩站'), 'chapter I intro text is present');
     await screenshot('02-intro');
     await page.waitForTimeout(1100);
     await clickDom('#enter-button');
     await waitPlaying();
     let s = await state();
-    ok(s.chapter === 0 && s.chapterTitle === 'Low Water', 'entered Chapter I', s.chapterTitle);
+    ok(s.chapter === 0 && s.chapterTitle === '低水位', 'entered Chapter I', s.chapterTitle);
     ok(s.audio.ready === true, 'WebAudio unlocked');
     ok(s.audio.ambient === 'lowWater', 'streamed Chapter I ambience is active', s.audio);
     ok(s.level.colliders > 20 && s.level.bakedLights > 0, 'Chapter I collision + baked-light data built', s.level);
@@ -265,21 +265,21 @@ async function run() {
 
     /* --------------------------------------------------------------- */
     console.log('\n[3] Chapter I: card, reader, lift');
-    await interactAt('access card', 'access card');
+    await interactAt('检修卡', '检修卡');
     s = await state();
     ok(s.items.keycard === true, 'service keycard collected');
-    ok(s.objective.includes('security door reader'), 'objective advances to the card reader', s.objective);
+    ok(s.objective.includes('安保门'), 'objective advances to the card reader', s.objective);
 
-    await interactAt('card reader', 'card reader');
+    await interactAt('读卡器', '读卡器');
     await page.waitForTimeout(1100);
     s = await state();
     ok(await page.evaluate(() => window.__hollow.level.securityDoor.openState > .8), 'security door opens after card read');
-    ok(s.objective.includes('service lift'), 'objective advances to the lift', s.objective);
+    ok(s.objective.includes('检修电梯'), 'objective advances to the lift', s.objective);
 
-    await interactAt('service lift', 'service lift');
+    await interactAt('检修电梯', '检修电梯');
     await waitIntroAndEnter();
     s = await state();
-    ok(s.chapter === 1 && s.chapterTitle === 'The Listening Floor', 'lift reaches Chapter II', s.chapterTitle);
+    ok(s.chapter === 1 && s.chapterTitle === '聆听层', 'lift reaches Chapter II', s.chapterTitle);
     ok(s.audio.ambient === 'listeningFloor', 'Chapter II ambience is active', s.audio);
 
     /* --------------------------------------------------------------- */
@@ -294,39 +294,39 @@ async function run() {
     await page.click('[data-action="continue"]');
     await waitIntroAndEnter();
     s = await state();
-    ok(s.chapter === 1 && s.objective.includes('auxiliary power'), 'continue resumes Chapter II at the objective', s.objective);
+    ok(s.chapter === 1 && s.objective.includes('辅助电源'), 'continue resumes Chapter II at the objective', s.objective);
 
     /* --------------------------------------------------------------- */
     console.log('\n[5] Chapter II: records, fuses, breaker, badge, lift');
-    const tape = await page.evaluate(() => window.__hollow.debugTeleportToItem('cassette'));
+    const tape = await page.evaluate(() => window.__hollow.debugTeleportToItem('磁带'));
     ok(!!tape, 'Wren cassette is present');
     await page.waitForTimeout(400);
-    await waitInteraction('cassette');
+    await waitInteraction('磁带');
     await page.keyboard.press('KeyE');
     await page.waitForTimeout(600);
     ok((await state()).state === 'modal', 'cassette opens a recovered-audio document');
     ok(await page.evaluate(() => window.__hollow.hasRecord('tape-wren-1')), 'tape-wren-1 archived');
     await closeNote();
 
-    await interactAt('LATTICE addendum', 'LATTICE addendum');
+    await interactAt('晶格计划附录', '晶格计划附录');
     ok(await page.evaluate(() => window.__hollow.hasRecord('array-memo')), 'array-memo archived');
     await closeNote();
 
-    for (const fuse of ['fuse A', 'fuse B', 'fuse C']) {
+    for (const fuse of ['保险丝 A', '保险丝 B', '保险丝 C']) {
       await interactAt(fuse, fuse);
     }
     ok(await page.evaluate(() => window.__hollow.level.fuses.size === 3), 'all three ceramic fuses collected');
 
-    await interactAt('main breaker', 'main breaker');
+    await interactAt('主断路器', '主断路器');
     await page.waitForTimeout(1300);
     s = await state();
     ok(await page.evaluate(() => window.__hollow.level.powerOn), 'breaker restores power');
     ok(s.level.bakedLights >= 6, 'breaker rebakes the level lighting', s.level);
-    ok(s.objective.includes('personnel badge'), 'objective advances to the badge', s.objective);
+    ok(s.objective.includes('工牌'), 'objective advances to the badge', s.objective);
     await page.waitForTimeout(1200);
     ok(await page.evaluate(() => window.__hollow.level.silhouetteShown && window.__hollow.level.listener.root.visible), 'observation-window silhouette appears');
 
-    await interactAt('personnel badge', 'personnel badge');
+    await interactAt('工牌', '工牌');
     ok((await state()).state === 'modal', 'badge opens its personnel document');
     ok(await page.evaluate(() => window.__hollow.hasRecord('badge-wren')), 'badge-wren archived');
     await closeNote();
@@ -334,16 +334,16 @@ async function run() {
     ok(await page.evaluate(() => window.__hollow.hasRecord('badge-wren')), 'badge record persists after closing');
     await screenshot('03-chapter2-badge');
 
-    await interactAt('freight lift', 'freight lift');
+    await interactAt('货运电梯', '货运电梯');
     await waitIntroAndEnter();
     s = await state();
-    ok(s.chapter === 2 && s.chapterTitle === 'Skinny Walls', 'freight lift reaches Chapter III', s.chapterTitle);
+    ok(s.chapter === 2 && s.chapterTitle === '薄墙', 'freight lift reaches Chapter III', s.chapterTitle);
     ok(await page.evaluate(() => window.__hollow.hasRecord('badge-wren')), 'records persist across chapters');
 
     /* --------------------------------------------------------------- */
     console.log('\n[6] Chapter III: keypad, hiding, death, chase');
     await page.waitForTimeout(600);
-    await interactAt('security keypad', 'security keypad');
+    await interactAt('安保键盘', '安保键盘');
     ok((await state()).state === 'modal' && await page.locator('#keypad-modal').isVisible(), 'security keypad opens');
     for (const key of ['9', '9', '9', '9']) await page.keyboard.press(`Digit${key}`);
     await page.keyboard.press('Enter');
@@ -359,7 +359,7 @@ async function run() {
     await page.waitForTimeout(900);
     ok(await page.evaluate(() => window.__hollow.level.officeOpened), 'code 0317 unlocks the office after a retry');
 
-    await interactAt('Hide in the locker', 'Hide in the locker');
+    await interactAt('躲进储物柜', '躲进储物柜');
     ok(await page.evaluate(() => window.__hollow.player.hidden), 'E enters a hiding locker');
     await page.keyboard.press('KeyE');
     await page.waitForTimeout(500);
@@ -371,12 +371,12 @@ async function run() {
     await page.waitForFunction(() => window.__hollow.state === 'playing', null, { timeout: 15000 });
     ok(true, 'player respawns after death');
 
-    await interactAt('substation fuse', 'substation fuse');
+    await interactAt('变电站保险丝', '变电站保险丝');
     ok((await state()).items.fuse === true, 'substation fuse collected');
-    await interactAt('Install the ceramic fuse', 'ceramic fuse');
+    await interactAt('陶瓷保险丝', '陶瓷保险丝');
     await page.waitForFunction(() => window.__hollow.level.chaseActive, null, { timeout: 6000 }).catch(() => {});
     ok(await page.evaluate(() => window.__hollow.level.chaseActive), 'substation starts the scripted chase');
-    ok((await state()).objective.includes('RUN'), 'objective switches to escape', (await state()).objective);
+    ok((await state()).objective.includes('快跑'), 'objective switches to escape', (await state()).objective);
 
     // Face the exit and sprint for the lift. This is the same route a player uses.
     await page.evaluate(() => window.__hollow.debugTeleport(0, -19.9, Math.PI, 0));
@@ -389,20 +389,20 @@ async function run() {
     ok(s.state !== 'dying', 'sprint route escapes the Listener', s);
     await waitIntroAndEnter();
     s = await state();
-    ok(s.chapter === 3 && s.chapterTitle === 'The Hollow', 'lift reaches Chapter IV', s.chapterTitle);
+    ok(s.chapter === 3 && s.chapterTitle === '空洞', 'lift reaches Chapter IV', s.chapterTitle);
 
     /* --------------------------------------------------------------- */
     console.log('\n[7] Chapter IV: letter, gallery, final tape, endings');
-    await interactAt('letter in the coat', 'letter in the coat');
+    await interactAt('外套口袋', '外套口袋');
     ok(await page.evaluate(() => window.__hollow.hasRecord('iris-letter')), 'Iris letter archived');
     await closeNote();
 
     await page.evaluate(() => window.__hollow.debugTeleport(0, 2.55, 0, 0));
     await page.waitForFunction(() => window.__hollow.level.inGallery === true, null, { timeout: 15000 }).catch(() => {});
     ok(await page.evaluate(() => window.__hollow.level.inGallery), 'gallery threshold trigger fires');
-    ok((await state()).objective.includes('resonance console'), 'objective advances to the resonance console', (await state()).objective);
+    ok((await state()).objective.includes('共振控制台'), 'objective advances to the resonance console', (await state()).objective);
 
-    await interactAt('final cassette', 'final cassette');
+    await interactAt('最终磁带', '最终磁带');
     ok((await state()).state === 'modal', 'final cassette opens Wren’s last record');
     ok(await page.evaluate(() => window.__hollow.hasRecord('wren-final')), 'wren-final archived');
     await screenshot('04-final-note');
@@ -410,7 +410,7 @@ async function run() {
 
     // The console stays in reach after the document closes; its label changes
     // from "Examine the final cassette" to "Start the final playback".
-    await waitInteraction('final playback');
+    await waitInteraction('最终播放');
     await page.keyboard.press('KeyE');
     await page.waitForTimeout(700);
     ok(await page.evaluate(() => window.__hollow.level.tapeStarted), 'final tape playback starts');
@@ -425,9 +425,9 @@ async function run() {
     await page.click('#choice-a');
     await page.waitForSelector('#ending-screen:not(.is-hidden)', { timeout: 15000 });
     await page.waitForTimeout(3000);
-    ok((await bodyText('#ending-kicker')).includes('STILL WATER'), 'purge ending shows Still Water');
-    ok((await bodyText('#ending-title')) === 'The lake is quiet.', 'purge ending title is correct');
-    ok((await bodyText('#ending-body')).includes('breaker falls'), 'purge ending prose is present');
+    ok((await bodyText('#ending-kicker')).includes('静水'), 'purge ending shows Still Water');
+    ok((await bodyText('#ending-title')) === '湖安静了。', 'purge ending title is correct');
+    ok((await bodyText('#ending-body')).includes('断路器'), 'purge ending prose is present');
     await screenshot('06-ending-still-water');
 
     // Second ending through its real UI, without replaying the full tape.
@@ -439,8 +439,8 @@ async function run() {
     await page.click('#choice-b');
     await page.waitForSelector('#ending-screen:not(.is-hidden)', { timeout: 15000 });
     await page.waitForTimeout(3000);
-    ok((await bodyText('#ending-kicker')).includes('THE HOLLOW'), 'answer ending shows The Hollow');
-    ok((await bodyText('#ending-title')) === 'The wire remembers.', 'answer ending title is correct');
+    ok((await bodyText('#ending-kicker')).includes('空洞'), 'answer ending shows The Hollow');
+    ok((await bodyText('#ending-title')) === '导线记得。', 'answer ending title is correct');
     await screenshot('07-ending-the-hollow');
 
     /* --------------------------------------------------------------- */

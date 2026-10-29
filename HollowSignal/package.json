@@ -2,7 +2,7 @@
   "name": "the-hollow-signal",
   "version": "1.0.0",
   "private": true,
-  "description": "A short first-person psychological horror story set beneath Lake Orison.",
+  "description": "一部发生在奥里森湖水下的第一人称心理恐怖短篇。",
   "type": "module",
   "scripts": {
     "start": "node server.mjs",

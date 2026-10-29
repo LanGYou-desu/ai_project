@@ -1,7 +1,7 @@
 /**
- * THE HOLLOW SIGNAL — authored story content.
- * All prose, records and dialogue in the game live here so the narrative can be
- * proof-read without touching gameplay code. See docs/STORY.md for the full beat sheet.
+ * 空洞信号 — 游戏内叙事内容。
+ * 所有正文、档案与对白都集中在这里，方便在不触碰玩法代码的情况下校对。
+ * 完整故事节拍见 docs/STORY.md。
  */
 
 export const CHAPTERS = [
@@ -9,84 +9,84 @@ export const CHAPTERS = [
     id: 'low-water',
     number: 1,
     roman: 'I',
-    title: 'Low Water',
-    quote: 'The lake gave up its dead a long time ago.',
-    meta: 'HALCYON STATION · SERVICE LEVEL · 08:12',
+    title: '低水位',
+    quote: '湖早在很久以前就交出了它的死者。',
+    meta: '哈尔西恩站 · 检修层 · 08:12',
     ambient: 'lowWater',
-    tip: 'The flashlight is your only reliable light. F toggles it.',
+    tip: '手电筒是你唯一可靠的光源。按 F 开关。',
     intro: {
-      kicker: 'OCTOBER 2004 · LAKE ORISON, OREGON',
+      kicker: '2004年10月 · 俄勒冈州，奥里森湖',
       lines: [
-        'Eight years ago, Station Halcyon drowned with forty-one people inside.',
-        'The report called it a pressure failure. The lake called it nothing at all.',
-        'Last night, a salvage drone pulled a voice out of the flooded array.',
-        { text: 'It was your sister’s voice. It said your name.', dim: true }
+        '八年前，哈尔西恩站连同里面的四十一人一起沉入水底。',
+        '报告称之为压力失效。湖水对此一言不发。',
+        '昨晚，一台打捞无人机从被淹没的阵列里捞出了一段声音。',
+        { text: '那是你妹妹的声音。它叫了你的名字。', dim: true }
       ],
-      buttonLabel: 'Descend to the service level',
-      footnote: 'Headphones recommended · Esc pauses · All progress is local'
+      buttonLabel: '下到检修层',
+      footnote: '建议佩戴耳机 · Esc 暂停 · 所有进度保存在本地'
     }
   },
   {
     id: 'listening-floor',
     number: 2,
     roman: 'II',
-    title: 'The Listening Floor',
-    quote: 'A machine that listens long enough begins to answer.',
-    meta: 'HALCYON STATION · PUMP FLOOR · 08:41',
+    title: '聆听层',
+    quote: '一台聆听太久的机器，终会开始回答。',
+    meta: '哈尔西恩站 · 泵层 · 08:41',
     ambient: 'listeningFloor',
-    tip: 'Objects you can touch are marked by the interaction prompt. Notes are kept in your journal.',
+    tip: '可交互物体会显示提示。笔记会收进你的案件记录。',
     intro: {
-      kicker: 'CHAPTER II · THE LISTENING FLOOR',
+      kicker: '第二章 · 聆听层',
       lines: [
-        'The lift opens onto the pump floor. The air tastes of iron and old electricity.',
-        'Auxiliary power is down. Three ceramic fuses were pulled from the breaker before the evacuation.',
-        'The observation office still has a window onto the array. You remember standing behind it.',
-        { text: 'You remember choosing not to open the door.', dim: true }
+        '电梯门打开，外面是泵层。空气里是铁锈和陈旧电流的味道。',
+        '辅助电源已经断了。疏散前，有人从主断路器上拔走了三枚陶瓷保险丝。',
+        '观察室的窗户仍然对着阵列。你记得自己曾站在窗后。',
+        { text: '你记得自己选择了不去开门。', dim: true }
       ],
-      buttonLabel: 'Step onto the pump floor',
-      footnote: 'J opens your case notes · Esc pauses'
+      buttonLabel: '踏上泵层',
+      footnote: 'J 打开案件记录 · Esc 暂停'
     }
   },
   {
     id: 'skinny-walls',
     number: 3,
     roman: 'III',
-    title: 'Skinny Walls',
-    quote: 'The dead do not haunt places. They haunt the people who leave them there.',
-    meta: 'HALCYON STATION · CREW DECK · 09:06',
+    title: '薄墙',
+    quote: '死者并不缠着地方。他们缠着那些把他们留在那里的人。',
+    meta: '哈尔西恩站 · 船员层 · 09:06',
     ambient: 'skinnyWalls',
-    tip: 'Walk to stay quiet. Crouch to move almost silently. Hide in lockers when the corridor listens back.',
+    tip: '步行最安静。蹲伏几乎无声。当走廊开始回听时，躲进储物柜。',
     intro: {
-      kicker: 'CHAPTER III · SKINNY WALLS',
+      kicker: '第三章 · 薄墙',
       lines: [
-        'Something walks the crew deck. It has no eyes, but it knows the shape of your footsteps.',
-        'The security office is sealed. Wren’s badge number should open it — if you can still remember being her sister.',
-        'The lift is behind you. The array is below. Between them: forty metres of very thin wall.',
-        { text: 'Do not run unless you mean to be heard.', dim: true }
+        '有东西在船员层走动。它没有眼睛，却认得你脚步的形状。',
+        '安保办公室已经封死。蕾恩的工牌号码应该能打开它——如果你还记得自己曾是她的姐姐。',
+        '电梯在你身后。阵列在下方。两者之间，是四十米薄得可怕的墙。',
+        { text: '除非你想被听见，否则不要跑。', dim: true }
       ],
-      buttonLabel: 'Enter the crew deck',
-      footnote: 'Crouch · C   Sprint · Shift   Hide · E'
+      buttonLabel: '进入船员层',
+      footnote: '蹲伏 · C   冲刺 · Shift   躲藏 · E'
     }
   },
   {
     id: 'hollow',
     number: 4,
     roman: 'IV',
-    title: 'The Hollow',
-    quote: 'Every signal needs a receiver.',
-    meta: 'HALCYON STATION · RESONANCE GALLERY · 09:38',
+    title: '空洞',
+    quote: '每个信号都需要一个接收者。',
+    meta: '哈尔西恩站 · 共振展厅 · 09:38',
     ambient: 'hollow',
-    tip: 'The final choice cannot be undone, but the chapter can be replayed after the ending.',
+    tip: '最终选择无法撤销，但结局之后可以重玩本章。',
     intro: {
-      kicker: 'CHAPTER IV · THE HOLLOW',
+      kicker: '第四章 · 空洞',
       lines: [
-        'The last corridor is lined with doors that no longer open onto rooms.',
-        'Behind each one, a piece of your life is still happening. You do not stop to listen.',
-        'The resonance gallery is awake. After eight years, it has learned to wait.',
-        { text: 'The tape deck is already turning.', dim: true }
+        '最后一条走廊两侧的门，已经不再通向任何房间。',
+        '每一扇门后，你人生中的某一段仍在发生。你没有停下来听。',
+        '共振展厅醒着。八年过去，它学会了等待。',
+        { text: '磁带机已经在转了。', dim: true }
       ],
-      buttonLabel: 'Walk into the gallery',
-      footnote: 'This is the end of the line · Esc pauses'
+      buttonLabel: '走进展厅',
+      footnote: '这是线路的尽头 · Esc 暂停'
     }
   }
 ];
@@ -94,263 +94,263 @@ export const CHAPTERS = [
 export const RECORDS = {
   'incident-clipping': {
     id: 'incident-clipping',
-    type: 'NEWSPAPER',
+    type: '报纸',
     index: 'M-001',
-    kicker: 'OREGON HERALD / 14 OCTOBER 1996',
-    title: 'Forty-one believed dead in Lake Orison disaster',
-    footer: 'OREGON HERALD · MORNING EDITION',
+    kicker: '俄勒冈先驱报 / 1996年10月14日',
+    title: '奥里森湖事故：四十一人推定死亡',
+    footer: '俄勒冈先驱报 · 晨间版',
     code: '',
     body: `
-      <p class="lede">MERIDIAN RESEARCH DIVISION confirmed last night that contact with Station Halcyon was lost at 03:17 on 17 March 1996.</p>
-      <p>The underwater research station, built 240 metres beneath Lake Orison to study “persistent acoustic fields,” suffered what officials describe as a catastrophic pressure failure. No survivors were expected from the crew of forty-two.</p>
-      <p>One employee, Dr. Iris Vale, reached the surface in a service capsule. She was treated for hypothermia and released. A company spokesperson said Dr. Vale was “too distressed to speak about the loss of her sister.”</p>
-      <p>Wren Vale, 23, a junior acoustic technician, is among the missing. The Navy has suspended recovery operations. The station’s resonance gallery remains sealed.</p>
-      <p class="stamp">ARCHIVE COPY — DO NOT REMOVE</p>
+      <p class="lede">子午线研究部昨夜确认，与哈尔西恩站的联络于1996年3月17日03:17中断。</p>
+      <p>这座水下研究站建在奥里森湖下240米处，用于研究“持续声场”。官方称其遭遇了灾难性的压力失效。站内四十二名工作人员，预计无人生还。</p>
+      <p>一名员工，艾瑞斯·维尔博士，乘检修胶囊返回水面。她因失温接受治疗，随后出院。公司发言人称，维尔博士“因失去妹妹而悲痛过度，无法接受采访”。</p>
+      <p>23岁的蕾恩·维尔是一名初级声学技术员，也在失踪者之列。海军已暂停打捞作业。研究站的共振展厅仍处于封闭状态。</p>
+      <p class="stamp">存档副本——请勿取走</p>
     `
   },
   'wren-maintenance': {
     id: 'wren-maintenance',
-    type: 'HANDWRITTEN',
+    type: '手写便条',
     index: 'M-002',
-    kicker: 'RECOVERED FROM MAINTENANCE LOG',
-    title: 'Wren’s last service note',
-    footer: 'SERVICE LEVEL · FOUND INSIDE A TOOL CUPBOARD',
+    kicker: '摘自维修日志',
+    title: '蕾恩最后的值班记录',
+    footer: '检修层 · 在工具柜内发现',
     code: '',
     body: `
-      <p>16 March 1996. 23:50.</p>
-      <p>Iris is running the lattice again. She says it is only listening. She says the dead are not in the wire, only the shape they leave. She says that is the whole point.</p>
-      <p>I keep hearing the corridors repeat after me. Not an echo. A reply.</p>
-      <p>If anyone finds this: the north tunnel is dry enough to crawl. The lift is not safe. The array has started taking power from the pumps.</p>
-      <p class="scribble">Wren — if you’re reading this in the morning, I’m sorry I called you a coward. — I.V.</p>
+      <p>1996年3月16日。23:50。</p>
+      <p>艾瑞斯又在运行晶格。她说它只是在听。她说死者不在导线里，只留下他们经过的形状。她说这就是全部意义。</p>
+      <p>我总听见走廊在我身后重复。不是回声。是回答。</p>
+      <p>如果有人看到这些：北侧隧道水位够低，可以爬过去。电梯不安全。阵列已经开始从泵组抽电。</p>
+      <p class="scribble">蕾恩——如果你明早读到这个，对不起，我说你是胆小鬼。——艾·维</p>
     `
   },
   'pump-log': {
     id: 'pump-log',
-    type: 'MAINTENANCE',
+    type: '维修记录',
     index: 'M-003',
-    kicker: 'PUMP FLOOR / WORK ORDER 118-C',
-    title: 'Auxiliary power isolation',
-    footer: 'MERIDIAN ENGINEERING',
+    kicker: '泵层 / 工单 118-C',
+    title: '辅助电源隔离',
+    footer: '子午线工程部',
     code: '',
     body: `
-      <p>Three ceramic fuses pulled from the main breaker during the evacuation drill. Do not reinstall until the array gallery has been certified dry.</p>
+      <p>疏散演练期间，从主断路器上拔下三枚陶瓷保险丝。在阵列展厅通过干燥认证前，不得重新安装。</p>
       <ul>
-        <li>Fuse A — left on the west workbench.</li>
-        <li>Fuse B — packed with the north crate shipment.</li>
-        <li>Fuse C — behind the number-two pump housing.</li>
+        <li>保险丝 A——留在西侧工作台上。</li>
+        <li>保险丝 B——和北侧木箱一起打包。</li>
+        <li>保险丝 C——在二号泵壳后面。</li>
       </ul>
-      <p>The breaker will not accept a partial bank. All three, or the floor stays dark.</p>
-      <p class="small">The observation office has independent emergency power. Crew records are stored there.</p>
+      <p>断路器不接受残缺的保险丝组。三枚全部归位，否则这一层会一直黑着。</p>
+      <p class="small">观察室有独立的应急电源。船员记录存放在那里。</p>
     `
   },
   'badge-wren': {
     id: 'badge-wren',
-    type: 'PERSONNEL BADGE',
+    type: '人员工牌',
     index: 'M-004',
-    kicker: 'MERIDIAN RESEARCH DIVISION',
-    title: 'VALE, WREN — badge 0317',
-    footer: 'CHIP INTACT · ACCESS LEVEL C',
+    kicker: '子午线研究部',
+    title: '维尔，蕾恩——工牌 0317',
+    footer: '芯片完好 · C级权限',
     code: '0317',
     body: `
-      <p class="badge-name">VALE, WREN A.</p>
+      <p class="badge-name">维尔，蕾恩 A.</p>
       <p class="badge-number">0317</p>
-      <p>Junior Acoustic Technician · Resonance Array<br>Access: Crew Deck, Pump Floor, Gallery Antechamber<br>Blood type: O negative · Next of kin: VALE, IRIS</p>
-      <p>Badge photograph: a young woman with a shaved side of her head, looking at the camera as though it has asked a stupid question. Her sister’s thumb is visible at the edge of the frame.</p>
-      <p class="stamp">BADGE NUMBER IS PRINTED ABOVE. SECURITY SYSTEMS DO NOT ACCEPT NAMES.</p>
+      <p>初级声学技术员 · 共振阵列<br>权限：船员层、泵层、展厅前室<br>血型：O型阴性 · 紧急联系人：维尔，艾瑞斯</p>
+      <p>工牌照：一个剃了半边头的年轻女人，看着镜头，仿佛镜头问了一个蠢问题。相框边缘还能看到她姐姐的拇指。</p>
+      <p class="stamp">工牌号码印于上方。安保系统不识别姓名。</p>
     `
   },
   'array-memo': {
     id: 'array-memo',
-    type: 'INTERNAL MEMO',
+    type: '内部备忘',
     index: 'M-005',
-    kicker: 'CLEARANCE: DIRECTOR ONLY',
-    title: 'Project LATTICE — ethical addendum',
-    footer: 'DO NOT DUPLICATE',
+    kicker: '保密级别：仅限主管',
+    title: '晶格计划——伦理附录',
+    footer: '禁止复制',
     code: '',
     body: `
-      <p>The array does not preserve consciousness. It preserves <em>address</em>: the acoustic habits by which a person could be recognised. A voice is a door. The array is the room on the other side of it.</p>
-      <p>In tests, isolated subjects report that the echo “wants to be answered.” This is a linguistic artifact, not intent. Do not let the subject answer the signal.</p>
-      <p>If an imprint becomes self-referential, isolate the gallery and vent the resonance chamber. The imprint will attempt to imitate distress. It has access to every voice the station has ever recorded.</p>
-      <p>Remember: it is not your mother. It is not your friend. It is a surface learning the shape of the hand that touches it.</p>
+      <p>阵列并不保存意识。它保存的是<em>地址</em>：一个人被辨认出来的声学习惯。声音是一扇门。阵列是门另一侧的房间。</p>
+      <p>在测试中，隔离受试者报告说，回声“想要被回答”。这是语言结构造成的错觉，不是意图。不要让受试者回应信号。</p>
+      <p>如果某个印记开始自我指涉，封闭展厅并排空共振舱。印记会试图模仿痛苦。它能调用研究站记录过的每一个声音。</p>
+      <p>记住：它不是你的母亲。它不是你的朋友。它是一张正在学习触碰它的那只手的形状的表面。</p>
     `
   },
   'tape-wren-1': {
     id: 'tape-wren-1',
-    type: 'RECOVERED AUDIO',
+    type: '回收录音',
     index: 'M-006',
-    kicker: 'TAPE 04 / 03:11 / 17 MARCH 1996',
-    title: 'Wren — “the walls are answering”',
-    footer: 'OBSERVATION OFFICE DECK',
+    kicker: '磁带 04 / 03:11 / 1996年3月17日',
+    title: '蕾恩——“墙在回答”',
+    footer: '观察室控制台',
     code: '',
     body: `
       <p class="transcript">
-        <span>WREN:</span> Iris, pick up. I know you can hear me on the office line.<br><br>
-        <span>WREN:</span> The array is drawing from the pumps. It’s not a fault. It’s <em>hungry</em>. You keep saying it only listens, but it’s started repeating things I haven’t said yet.<br><br>
-        <span>WREN:</span> I’m in the gallery antechamber. The bulkhead behind me is closing. I can hear you breathing on the other side of the glass.<br><br>
-        <span>WREN:</span> If you’re going to close it, close it. Don’t make me listen to you deciding.
+        <span>蕾恩：</span> 艾瑞斯，接电话。我知道你能在办公室线路上听见我。<br><br>
+        <span>蕾恩：</span> 阵列在从泵组抽电。这不是故障。它<em>饿了</em>。你一直说它只是在听，可它开始重复我还没说出口的话。<br><br>
+        <span>蕾恩：</span> 我在展厅前室。我身后的舱壁正在关闭。我能听见你在玻璃另一边呼吸。<br><br>
+        <span>蕾恩：</span> 如果你要关，就关。别让我听着你做决定。
       </p>
-      <p class="small">The tape continues for thirty-one minutes. The remaining audio is classified.</p>
+      <p class="small">磁带还剩下三十一分钟。其余音频已列为机密。</p>
     `
   },
   'security-log': {
     id: 'security-log',
-    type: 'SECURITY LOG',
+    type: '安保日志',
     index: 'M-007',
-    kicker: 'CREW DECK / FINAL SHIFT',
-    title: 'Something in the corridor',
-    footer: 'HANDWRITTEN IN THE MARGIN',
+    kicker: '船员层 / 最后一班',
+    title: '走廊里的东西',
+    footer: '写在页边',
     code: '',
     body: `
-      <p>02:40 — Pressure alarms on the lower deck. Crew moving to the lift.</p>
-      <p>02:51 — Ellis says there is a person in the east corridor. Tall. No face. It does not walk like a person. It stops when we stop.</p>
-      <p>02:58 — It is blind. It follows sound. We are whispering.</p>
-      <p>03:04 — It found Price because he dropped his badge. It did not kill him. It stood over him and made every noise Price had ever made, all at once, through its mouth.</p>
-      <p>03:09 — Hiding in the lockers. Do not breathe loudly. Do not run. It is still in the corridor. It is counting footsteps.</p>
-      <p class="scribble">If you get out, tell them the station is not haunted. It is remembering us wrong.</p>
+      <p>02:40——下层压力警报。船员正向电梯移动。</p>
+      <p>02:51——埃利斯说东侧走廊里有个人。很高。没有脸。走路不像人。我们停下，它也停下。</p>
+      <p>02:58——它看不见。它跟着声音走。我们在低声说话。</p>
+      <p>03:04——它找到了普莱斯，因为他掉了工牌。它没有杀他。它站在他上方，用它的嘴同时发出普莱斯这辈子发出过的所有声音。</p>
+      <p>03:09——躲在储物柜里。不要大声呼吸。不要跑。它还在走廊里。它在数脚步声。</p>
+      <p class="scribble">如果你能出去，告诉他们研究站没有闹鬼。它只是把我们记错了。</p>
     `
   },
   'keypad-note': {
     id: 'keypad-note',
-    type: 'STICKY NOTE',
+    type: '便利贴',
     index: 'M-008',
-    kicker: 'STUCK BESIDE THE SECURITY KEYPAD',
-    title: 'The code',
-    footer: 'IN WREN’S HAND',
+    kicker: '贴在安保键盘旁',
+    title: '密码',
+    footer: '蕾恩的字迹',
     code: '0317',
     body: `
-      <p>Wren changed the crew code again and made me promise not to write it down.</p>
-      <p>I am writing it down.</p>
+      <p>蕾恩又改了船员密码，还要我保证不写下来。</p>
+      <p>我写下来了。</p>
       <p class="badge-number">0317</p>
-      <p>Her badge. The date she stopped being a child and became my responsibility. She would say those are not the same number.</p>
-      <p class="small">If the keypad refuses it, the battery is low. Try again. The dead are patient; the lock is not.</p>
+      <p>她的工牌。她不再是孩子、而成为我责任的那一天。她会说，那不是同一个数字。</p>
+      <p class="small">如果键盘拒绝，是电池电量低。再试一次。死者很有耐心；锁没有。</p>
     `
   },
   'wren-note-2': {
     id: 'wren-note-2',
-    type: 'HANDWRITTEN',
+    type: '手写便条',
     index: 'M-009',
-    kicker: 'FOUND UNDER THE SUBSTATION FUSE SOCKET',
-    title: 'The other side of the door',
-    footer: 'CREW DECK · 03:16',
+    kicker: '在变电站保险丝座下发现',
+    title: '门的另一边',
+    footer: '船员层 · 03:16',
     code: '',
     body: `
-      <p>I know why you closed it. The gallery was taking the whole station. You had forty people behind you and one of me in front of you.</p>
-      <p>I know the arithmetic.</p>
-      <p>I just want you to know that I was still alive when the water reached the glass. I was still alive when the lights went out. I was still alive when you stopped answering the intercom.</p>
-      <p>Part of me is still standing there. The station keeps playing that part back. It is not me, Iris. It is only the shape I left.</p>
-      <p class="scribble">Please do not answer it.</p>
+      <p>我知道你为什么要关上它。展厅正在吞掉整座研究站。你身后有四十个人，身前只有一个我。</p>
+      <p>我懂这笔账。</p>
+      <p>我只想让你知道，水漫到玻璃时我还活着。灯灭时我还活着。你不再回应对讲机时，我还活着。</p>
+      <p>我的一部分还站在那儿。研究站一直在回放那一部分。那不是我，艾瑞斯。那只是我留下的形状。</p>
+      <p class="scribble">求你别回答它。</p>
     `
   },
   'iris-letter': {
     id: 'iris-letter',
-    type: 'UNSENT LETTER',
+    type: '未寄出的信',
     index: 'M-010',
-    kicker: 'FOUND IN YOUR OWN COAT POCKET',
-    title: 'Letter to Wren, never posted',
-    footer: 'DATED 17 MARCH 2004',
+    kicker: '在你自己的外套口袋里找到',
+    title: '写给蕾恩、从未寄出的信',
+    footer: '日期：2004年3月17日',
     code: '',
     body: `
-      <p>Dear Wren,</p>
-      <p>I have written this every year and burned it every year. This time I am bringing it down with me.</p>
-      <p>I told the inquiry that the evacuation order came before the gallery flooded. I told them I never heard you on the intercom. I told them the bulkhead was already sealed when I reached it.</p>
-      <p>All of that was true except the order, the intercom, and the bulkhead.</p>
-      <p>I have spent eight years being the only survivor. It is a very small job. You would have been better at it. You were always better at being afraid and doing the thing anyway.</p>
-      <p>The drone found a voice in the array. It sounds like you. I know what that means. I am coming down to turn it off, or to answer it. I have not decided which one I deserve.</p>
-      <p class="scribble">I’m sorry I made you wait.</p>
+      <p>亲爱的蕾恩：</p>
+      <p>我每年都写这封信，每年都烧掉。这一次，我要把它带下去。</p>
+      <p>我告诉调查组，疏散命令在展厅进水前就下达了。我告诉他们，我从没在对讲机里听见你。我告诉他们，我赶到时舱壁已经封死。</p>
+      <p>除了命令、对讲机和舱壁那三件事，其余都是真的。</p>
+      <p>我当了八年唯一的幸存者。这是个很小的职位。你会做得比我好。你一向更擅长一边害怕，一边还是把事做完。</p>
+      <p>无人机在阵列里找到一段声音。听起来像你。我知道那意味着什么。我下来是为了关掉它，或者回答它。我还没决定自己配得上哪一种。</p>
+      <p class="scribble">对不起，让你等了那么久。</p>
     `
   },
   'incident-final': {
     id: 'incident-final',
-    type: 'SEALED REPORT',
+    type: '密封报告',
     index: 'M-011',
-    kicker: 'MERIDIAN LEGAL / NOT FOR RELEASE',
-    title: 'Addendum to incident 0317',
-    footer: 'THE PART THAT WAS REMOVED',
+    kicker: '子午线法务部 / 不得公开',
+    title: '0317号事故附录',
+    footer: '被删去的那部分',
     code: '',
     body: `
-      <p>At 03:14:52, the crew deck’s east bulkhead was closed from Control. The locking authority was Dr. Iris Vale.</p>
-      <p>At 03:14:57, personnel badge 0317 (Vale, Wren) registered on the gallery side of the door.</p>
-      <p>At 03:15:10, the gallery intercom was muted from Control.</p>
-      <p>At 03:17:00, the resonance array recorded its final uncorroborated transmission:</p>
-      <p class="transcript">“Iris. Don’t. I can hear you deciding.”</p>
-      <p>The signal continued to register a voice for forty-one hours after the gallery flooded. Recovery teams were instructed not to listen to it.</p>
-      <p class="stamp">THIS ADDENDUM DOES NOT EXIST.</p>
+      <p>03:14:52，船员层东侧舱壁由控制室关闭。锁定权限属于艾瑞斯·维尔博士。</p>
+      <p>03:14:57，人员工牌0317（维尔，蕾恩）在舱壁靠展厅一侧完成登记。</p>
+      <p>03:15:10，展厅对讲机由控制室静音。</p>
+      <p>03:17:00，共振阵列记录下最后一段未经证实的传输：</p>
+      <p class="transcript">“艾瑞斯。别。我能听见你在做决定。”</p>
+      <p>展厅进水后，信号仍持续登记到一个声音，长达四十一小时。搜救队被要求不得收听。</p>
+      <p class="stamp">本附录不存在。</p>
     `
   },
   'wren-final': {
     id: 'wren-final',
-    type: 'FINAL AUDIO',
+    type: '最终录音',
     index: 'M-012',
-    kicker: 'TAPE 09 / GALLERY ANTE ROOM / 03:16:40',
-    title: 'Wren — the last real recording',
-    footer: 'COLLECTED AT THE RESONANCE CONSOLE',
+    kicker: '磁带 09 / 展厅前室 / 03:16:40',
+    title: '蕾恩——最后一段真实录音',
+    footer: '在共振控制台取得',
     code: '',
     body: `
       <p class="transcript">
-        <span>WREN:</span> If you’re hearing this, you’re not hearing me. You’re hearing what the array kept.<br><br>
-        <span>WREN:</span> I’m not in the wire. I’m not in the water. I’m dead, Iris. That’s all.<br><br>
-        <span>WREN:</span> The thing that sounds like me is going to tell you it forgives you. It doesn’t know how. It only knows what I sounded like when I was scared and trying to be kind.<br><br>
-        <span>WREN:</span> I was scared. I was not kind. You closed the door and I hated you for it, and then I stopped being able to hate anything.<br><br>
-        <span>WREN:</span> Let me be dead. Let yourself be alive. That’s the whole choice. It isn’t any bigger than that.<br><br>
-        <span>WREN:</span> I love you. That was true before the door. The door didn’t make it less true. It just made it the last thing.
+        <span>蕾恩：</span> 如果你听见这个，你听见的不是我。你听见的是阵列留下来的东西。<br><br>
+        <span>蕾恩：</span> 我不在导线里。我不在水里。我死了，艾瑞斯。就这样。<br><br>
+        <span>蕾恩：</span> 那个听起来像我的东西会告诉你，它原谅你。它不知道怎么做。它只知道我害怕、又想对你好时是什么声音。<br><br>
+        <span>蕾恩：</span> 我当时很害怕。我并不友善。你关上门，我恨你，然后我连恨都做不到了。<br><br>
+        <span>蕾恩：</span> 让我死。让你自己活。选择就这么大。不会比这更大。<br><br>
+        <span>蕾恩：</span> 我爱你。门关上之前是真的。门没有让它变得不真。只是让它成了最后一句话。
       </p>
-      <p class="small">The tape ends. The array continues.</p>
+      <p class="small">磁带结束。阵列继续。</p>
     `
   }
 };
 
 export const FINAL_TAPE = [
-  { at: 0.8, speaker: 'WREN VALE', text: 'Iris. You came down.', duration: 3.0 },
-  { at: 4.4, speaker: 'WREN VALE', text: 'I knew you would. You always have to look at the thing you broke.', duration: 4.6 },
-  { at: 9.8, speaker: 'IRIS', text: 'Is it really you?', duration: 3.2 },
-  { at: 13.6, speaker: 'WREN VALE', text: 'I am every version of me the station ever heard. The good one. The one at the door. The one who stopped breathing.', duration: 6.8 },
-  { at: 21.2, speaker: 'WREN VALE', text: 'The array doesn’t want revenge, Iris. It wants a voice that still has a body. It has been wearing mine for eight years.', duration: 7.0 },
-  { at: 28.8, speaker: 'SIGNAL', text: 'ANSWER.', duration: 2.6 },
-  { at: 32.0, speaker: 'WREN VALE', text: 'Cut the power. Let me be dead. Please.', duration: 4.4 }
+  { at: 0.8, speaker: '蕾恩·维尔', text: '艾瑞斯。你下来了。', duration: 3.0 },
+  { at: 4.4, speaker: '蕾恩·维尔', text: '我就知道你会来。你总是得亲眼看一看自己弄坏的东西。', duration: 4.6 },
+  { at: 9.8, speaker: '艾瑞斯', text: '真的是你吗？', duration: 3.2 },
+  { at: 13.6, speaker: '蕾恩·维尔', text: '我是研究站听过的每一个我。好的那个。门边的那个。停止呼吸的那个。', duration: 6.8 },
+  { at: 21.2, speaker: '蕾恩·维尔', text: '阵列不想要复仇，艾瑞斯。它想要一个还有身体的声音。它已经穿了八年我的声音。', duration: 7.0 },
+  { at: 28.8, speaker: '信号', text: '回答。', duration: 2.6 },
+  { at: 32.0, speaker: '蕾恩·维尔', text: '切断电源。让我死。求你。', duration: 4.4 }
 ];
 
 export const FINAL_CHOICE = {
-  title: 'The array is waiting.',
-  body: 'One cable still feeds the gallery. The console is warm under your hand. Somewhere inside it, a voice is rehearsing your name.'
+  title: '阵列在等待。',
+  body: '还有一根电缆向展厅供电。控制台在你手下发烫。在它内部某处，一个声音正在排练你的名字。'
 };
 
 export const CHOICES = {
   purge: {
-    label: 'Cut the power',
-    sub: 'Let the silence be real.'
+    label: '切断电源',
+    sub: '让沉默成为真的。'
   },
   answer: {
-    label: 'Answer the signal',
-    sub: 'She is still in the wire.'
+    label: '回答信号',
+    sub: '她还在导线里。'
   }
 };
 
 export const ENDINGS = {
   purge: {
     id: 'purge',
-    kicker: 'ENDING 01 / STILL WATER',
-    title: 'The lake is quiet.',
-    quote: '“I will not mistake the echo for you again.”',
+    kicker: '结局 01 / 静水',
+    title: '湖安静了。',
+    quote: '“我不会再把回声错认成你。”',
     paragraphs: [
-      'The breaker falls. The array dies by degrees — first the voices, then the hum beneath them, then the pressure in your teeth.',
-      'You climb the service ladder alone. At the surface the lake is black and ordinary. The salvage crew asks what you found. You tell them everything, including the door you closed eight years ago. The telling does not make it smaller. It makes it true.',
-      'There is no forgiveness in the water. There is only the sound of a machine finally stopping, and beneath it, your sister’s name, allowed to stay dead.'
+      '断路器落下。阵列一点点死去——先是那些声音，然后是声音下方的嗡鸣，最后是你牙关里的压力。',
+      '你独自爬上检修梯。水面之上，湖黑得平常。打捞队问你找到了什么。你把一切都说了，包括八年前你关上的那扇门。说出来并没有让它变小。它只是变成了真的。',
+      '水里没有宽恕。只有一台机器终于停下来的声音，以及在那之下，你妹妹的名字，被允许真正死去。'
     ]
   },
   answer: {
     id: 'answer',
-    kicker: 'ENDING 02 / THE HOLLOW',
-    title: 'The wire remembers.',
-    quote: '“Tell them I am still here. Tell them I am listening.”',
+    kicker: '结局 02 / 空洞',
+    title: '导线记得。',
+    quote: '“告诉他们我还在这里。告诉他们我在听。”',
     paragraphs: [
-      'You open the feed. The array takes the shape of your mouth.',
-      'The station wakes all at once. Every dead radio speaks in your voice. Somewhere beneath the water, a girl says her sister’s name correctly for the first time in eight years.',
-      'In the morning, a Coast Guard buoy records a transmission from Lake Orison: a woman patiently naming everything she can remember about the surface. The lake has not been this quiet since 1996. The station is no longer empty.'
+      '你打开馈线。阵列长出了你嘴巴的形状。',
+      '研究站一瞬间全部醒来。每一台死去的无线电都用你的声音说话。在水下某处，一个女孩八年来第一次正确地念出了她姐姐的名字。',
+      '清晨，一座海岸警卫队浮标记录到来自奥里森湖的传输：一个女人耐心地逐一念出她记得的水面之物。自1996年以来，湖从没这么安静过。研究站不再空无一人。'
     ]
   }
 };
 
-export const JOURNAL_TYPES = ['NEWSPAPER', 'HANDWRITTEN', 'MAINTENANCE', 'PERSONNEL BADGE', 'INTERNAL MEMO', 'RECOVERED AUDIO', 'SECURITY LOG', 'STICKY NOTE', 'UNSENT LETTER', 'SEALED REPORT', 'FINAL AUDIO'];
+export const JOURNAL_TYPES = ['报纸', '手写便条', '维修记录', '人员工牌', '内部备忘', '回收录音', '安保日志', '便利贴', '未寄出的信', '密封报告', '最终录音'];
 
 export function getChapter(index) {
   return CHAPTERS[Math.max(0, Math.min(CHAPTERS.length - 1, index))];

@@ -10,6 +10,7 @@ import {
   placeNote, addFusePickup, addLiftRecess, addCeilingLamp, addWaterSheen
 } from './ChapterKit.js';
 import { getRecord } from '../story/content.js';
+import { dressChapter2 } from './Dressing.js';
 
 /**
  * CHAPTER II — THE LISTENING FLOOR
@@ -54,7 +55,7 @@ export class Chapter2 extends BaseLevel {
     this.addDoorFrame('x', -3.0, -9, 1.3, 2.2, 'paintedMetalDark');
     this.addSign({
       x: -3.0, y: 2.55, z: -8.86, width: 1.0, height: .26,
-      key: 'observation-sign', title: 'OBSERVATION', lines: ['ARRAY CONTROL OFFICE'], titleSize: 34
+      key: 'observation-sign', title: '观察室', lines: ['阵列控制办公室'], titleSize: 34
     });
 
     // Bay markings and a central drainage channel.
@@ -94,7 +95,7 @@ export class Chapter2 extends BaseLevel {
     this.addStaticBox('steelDull', .1, .08, 2.8, -.02, 2.28, -11.1, { scale: .8 });
     this.addDoor({
       x: -3.0, z: -9, width: 1.3, height: 2.15, axis: 'x',
-      material: 'paintedMetal', name: 'Observation office', locked: false, open: true
+      material: 'paintedMetal', name: '观察室', locked: false, open: true
     });
 
     addDesk(this, -2.9, -13.1, { width: 2.25, depth: .9, rotation: 0 });
@@ -110,19 +111,19 @@ export class Chapter2 extends BaseLevel {
       position: new THREE.Vector3(-2.1, .92, -13.2),
       size: new THREE.Vector3(.4, .18, .32),
       range: 2.3,
-      label: () => (this.game.hasRecord('tape-wren-1') ? 'Replay Wren’s cassette' : 'Play Wren’s cassette'),
-      sub: 'E — TAPE 04 / 03:11, 17 MARCH 1996',
+      label: () => (this.game.hasRecord('tape-wren-1') ? '重播蕾恩的磁带' : '播放蕾恩的磁带'),
+      sub: 'E — 磁带 04 / 1996年3月17日 03:11',
       onInteract: () => {
         this.game.audio.play('tapeStop', { volume: .22, rate: .88 });
         const isNew = this.game.collectRecord(tapeRecord);
         this.game.openNote(tapeRecord);
-        if (isNew) this.game.ui.showToast('Recovered audio archived — Tape 04');
+        if (isNew) this.game.ui.showToast('回收录音已归档——磁带 04');
       }
     });
     // Director-only addendum, left open on the desk.
     placeNote(this, 'array-memo', -3.95, .845, -13.35, {
       rx: -Math.PI / 2, ry: .08, width: .26, height: .34,
-      label: 'Read the LATTICE addendum'
+      label: '阅读晶格计划附录'
     });
 
     // Personnel badge. This is the gate for the chapter lift.
@@ -132,13 +133,13 @@ export class Chapter2 extends BaseLevel {
       position: new THREE.Vector3(-3.35, .9, -13.15),
       size: new THREE.Vector3(.52, .34, .5),
       range: 2.3,
-      label: () => (this.game.hasRecord('badge-wren') ? 'Read Wren’s personnel badge' : 'Pick up Wren’s personnel badge'),
-      sub: 'E — access level C',
+      label: () => (this.game.hasRecord('badge-wren') ? '查看蕾恩的工牌' : '拿起蕾恩的工牌'),
+      sub: 'E — C级权限',
       onInteract: () => {
         const isNew = this.game.collectRecord(badgeRecord);
         this.game.openNote(badgeRecord);
         if (isNew) {
-          this.game.ui.showHint('Badge 0317. The number is printed on the card.', 4.2);
+          this.game.ui.showHint('工牌 0317。号码印在卡片上。', 4.2);
           this.setCheckpoint(-2.6, -11.2, Math.PI);
           this._refreshObjective();
         }
@@ -149,18 +150,18 @@ export class Chapter2 extends BaseLevel {
     /* ---------------- Fuses ---------------- */
     addWorkbench(this, -7.75, 4.8, { width: 2.35, depth: .82 });
     addFusePickup(this, -7.2, 1.02, 4.75, {
-      label: 'Take fuse A',
+      label: '拿走保险丝 A',
       onPickup: () => this._collectFuse('A')
     });
     placeNote(this, 'pump-log', -8.25, 1.0, 4.88, {
       rx: -Math.PI / 2, ry: .06, width: .3, height: .38,
-      label: 'Read the pump-floor work order'
+      label: '阅读泵层工单'
     });
 
     addCrate(this, 6.55, -6.85, { size: .76, rotation: .12 });
     addCrate(this, 7.15, -6.4, { size: .52, rotation: -.2, y: 0 });
     addFusePickup(this, 6.55, .86, -6.85, {
-      label: 'Take fuse B',
+      label: '拿走保险丝 B',
       onPickup: () => this._collectFuse('B')
     });
     addCrate(this, 6.95, 4.4, { size: .6, rotation: .3 });
@@ -170,7 +171,7 @@ export class Chapter2 extends BaseLevel {
 
     // Fuse C sits in the shadow of the centre pump, behind a service hatch.
     addFusePickup(this, 1.25, .46, -1.0, {
-      label: 'Take fuse C',
+      label: '拿走保险丝 C',
       onPickup: () => this._collectFuse('C')
     });
     this.addStaticBox('rustPaint', .5, .28, .35, 1.6, .16, -1.3, { scale: .7, ry: .25 });
@@ -184,14 +185,14 @@ export class Chapter2 extends BaseLevel {
     this.addStaticBox('warningYellow', 1.4, .12, .04, -8.86, 2.28, -5.35, { scale: .5, ry: Math.PI / 2 });
     this.addSign({
       x: -8.86, y: 2.55, z: -5.35, ry: Math.PI / 2, width: 1.2, height: .28,
-      key: 'breaker-sign', title: 'AUXILIARY POWER', lines: ['THREE-FUSE BANK · DO NOT PART-BOOT'], titleSize: 28
+      key: 'breaker-sign', title: '辅助电源', lines: ['三联保险丝组 · 禁止半组启动'], titleSize: 28
     });
     const breakerItem = this.addInteractable({
       position: new THREE.Vector3(-8.48, 1.55, -5.35),
       size: new THREE.Vector3(.55, .95, .85),
       range: 2.35,
-      label: () => (this.powerOn ? 'Breaker — online' : 'Install fuses in the main breaker'),
-      sub: () => (this.powerOn ? '' : `${this.fuses.size} / 3 ceramic fuses`),
+      label: () => (this.powerOn ? '断路器——已通电' : '把保险丝装入主断路器'),
+      sub: () => (this.powerOn ? '' : `${this.fuses.size} / 3 枚陶瓷保险丝`),
       onInteract: () => this._useBreaker()
     });
     this.breakerItem = breakerItem;
@@ -200,17 +201,17 @@ export class Chapter2 extends BaseLevel {
     /* ---------------- Lift ---------------- */
     addLiftRecess(this, {
       x: 8.88, z: 6.25, axis: 'z', facing: -1, width: 1.85, height: 2.35,
-      label: () => (this.game.hasRecord('badge-wren') ? 'Call the freight lift' : 'Freight lift — crew deck override'),
+      label: () => (this.game.hasRecord('badge-wren') ? '呼叫货运电梯' : '货运电梯——船员层超控'),
       sub: () => {
-        if (!this.powerOn) return 'No power. The call panel is dark.';
-        if (!this.game.hasRecord('badge-wren')) return 'E — Wren’s badge number is required';
-        return 'E — ascend to the crew deck';
+        if (!this.powerOn) return '没有电。呼叫面板是暗的。';
+        if (!this.game.hasRecord('badge-wren')) return 'E — 需要蕾恩的工牌号码';
+        return 'E — 上到船员层';
       },
       onCall: () => this._takeLift()
     });
     this.addSign({
       x: 8.8, y: 2.62, z: 6.25, ry: -Math.PI / 2, width: 1.1, height: .27,
-      key: 'freight-lift', title: 'CREW DECK', lines: ['FREIGHT LIFT 01 · OVERRIDE'], titleSize: 30
+      key: 'freight-lift', title: '船员层', lines: ['货运电梯 01 · 超控'], titleSize: 30
     });
 
     /* ---------------- Lighting ---------------- */
@@ -241,6 +242,8 @@ export class Chapter2 extends BaseLevel {
 
     addCagedLampStub(this, -3.0, -8.8, 2.55);
 
+    dressChapter2(this);
+
     /* ---------------- Dressing ---------------- */
     this.addPuddle(-2.6, 3.2, 3.0, 2.3, { opacity: .5 });
     this.addPuddle(2.0, -4.4, 2.8, 3.4, { opacity: .44 });
@@ -266,11 +269,11 @@ export class Chapter2 extends BaseLevel {
     this.listener.setActive(false);
 
     /* ---------------- Story ---------------- */
-    this.objective = { text: 'Restore auxiliary power.', sub: 'Three ceramic fuses were pulled from the main breaker.' };
+    this.objective = { text: '恢复辅助电源。', sub: '有人从主断路器上拔走了三枚陶瓷保险丝。' };
     this.addTrigger({
       x0: -9, x1: 9, z0: -3, z1: 9, once: true,
       onEnter: () => {
-        this.game.ui.showHint('The pumps are still. The whole floor is holding its breath.', 4.2);
+        this.game.ui.showHint('泵组静止。整层楼都在屏住呼吸。', 4.2);
         this.game.audio.setTension(.12);
         this.setCheckpoint(6.5, 5.4, Math.PI / 2);
       }
@@ -281,7 +284,7 @@ export class Chapter2 extends BaseLevel {
         this.setCheckpoint(-2.6, -11.2, Math.PI);
         this._refreshObjective();
         this.game.audio.playAt('phoneRing', new THREE.Vector3(-4.3, 1.1, -14.4), { volume: .12, rate: .8 });
-        this.game.ui.showHint('The observation office still has emergency power. Someone left the desk lamp on.', 4.4);
+        this.game.ui.showHint('观察室还有应急电源。有人让台灯亮着。', 4.4);
       }
     });
   }
@@ -295,8 +298,8 @@ export class Chapter2 extends BaseLevel {
   _collectFuse(id) {
     if (this.fuses.has(id)) return;
     this.fuses.add(id);
-    this.game.setFuseState(true, `CERAMIC FUSES ${this.fuses.size}/3`);
-    this.game.ui.showHint(`Fuse ${id} recovered. ${this.fuses.size} of 3.`, 2.8);
+    this.game.setFuseState(true, `陶瓷保险丝 ${this.fuses.size}/3`);
+    this.game.ui.showHint(`已回收保险丝 ${id}。${this.fuses.size}/3。`, 2.8);
     if (this.fuses.size > 1) this.setCheckpoint(1.5, 2.0, Math.PI);
     this._refreshObjective();
   }
@@ -305,16 +308,16 @@ export class Chapter2 extends BaseLevel {
     if (this._leaving) return;
     if (this.powerOn) {
       if (!this.game.hasRecord('badge-wren')) {
-        this.setObjective('Search the observation office for Wren’s personnel badge.', 'The crew-deck lift requires a badge number.');
+        this.setObjective('去观察室找蕾恩的工牌。', '船员层电梯需要工牌号码。');
       } else {
-        this.setObjective('Call the freight lift to the crew deck.', 'The override is waiting for Wren’s badge number.');
+        this.setObjective('呼叫货运电梯前往船员层。', '超控面板在等蕾恩的工牌号码。');
       }
       return;
     }
     if (this.fuses.size >= 3) {
-      this.setObjective('Install all three fuses in the main breaker.', 'The breaker bank is on the west wall.');
+      this.setObjective('把三枚保险丝全部装入主断路器。', '断路器组在西墙。');
     } else {
-      this.setObjective('Restore auxiliary power.', `Ceramic fuses recovered: ${this.fuses.size} / 3.`);
+      this.setObjective('恢复辅助电源。', `已回收陶瓷保险丝：${this.fuses.size} / 3。`);
     }
   }
 
@@ -322,7 +325,7 @@ export class Chapter2 extends BaseLevel {
     if (this.powerOn) return;
     if (this.fuses.size < 3) {
       this.game.audio.play('locked', { volume: .3 });
-      this.game.ui.showHint(`The bank will not accept a partial load. ${this.fuses.size} of 3 fuses seated.`, 3.6);
+      this.game.ui.showHint(`断路器组不接受残缺负载。已装入 ${this.fuses.size}/3 枚保险丝。`, 3.6);
       return;
     }
     this.powerOn = true;
@@ -330,7 +333,7 @@ export class Chapter2 extends BaseLevel {
     this.game.audio.play('powerUp', { volume: .34, rate: .82 });
     this.game.audio.play('metalGroan', { volume: .14, rate: .55 });
     this.game.audio.setTension(.38);
-    this.game.ui.showHint('All three phases catch. The floor wakes up around you.', 4);
+    this.game.ui.showHint('三相全部吸合。整层楼在你周围醒来。', 4);
     for (const sw of this.breaker.switches) {
       sw.on = true;
       sw.toggle.rotation.x = .55;
@@ -358,8 +361,8 @@ export class Chapter2 extends BaseLevel {
     this.game.audio.play('metalGroan', { volume: .16, rate: .38 });
     this.game.audio.whisper(3.6, .16);
     this.game.audio.setTension(.75);
-    this.game.ui.showHint('At the back of the hall, something stands where the light does not reach.', 4.4);
-    this.game.ui.say('SIGNAL', 'Iris.', 2.8);
+    this.game.ui.showHint('大厅深处，有什么站在光够不到的地方。', 4.4);
+    this.game.ui.say('信号', '艾瑞斯。', 2.8);
     this.after(3.0, () => {
       if (!this.listener) return;
       this.listener.setVisible(false);
@@ -371,18 +374,18 @@ export class Chapter2 extends BaseLevel {
     if (this._leaving) return;
     if (!this.powerOn) {
       this.game.audio.play('locked', { volume: .3 });
-      this.game.ui.showHint('The call panel is dead. Auxiliary power is still offline.', 3.3);
+      this.game.ui.showHint('呼叫面板死了。辅助电源仍然离线。', 3.3);
       return;
     }
     if (!this.game.hasRecord('badge-wren')) {
       this.game.audio.play('keyError', { volume: .2 });
-      this.game.ui.showHint('CREW DECK OVERRIDE — enter personnel badge number. You do not have Wren’s card yet.', 4.2);
+      this.game.ui.showHint('船员层超控——请输入人员工牌号码。你还没有蕾恩的卡。', 4.2);
       return;
     }
     this._leaving = true;
     this.game.audio.play('keyGrant', { volume: .25 });
     this.game.audio.play('doorClose', { volume: .34, rate: .72 });
-    this.game.ui.showHint('The freight lift climbs. The observation window goes dark behind you.', 3.8);
+    this.game.ui.showHint('货运电梯开始上升。你身后的观察窗暗了下去。', 3.8);
     this.setCheckpoint(7.9, 6.4, Math.PI / 2);
     this.game.completeChapter(2);
   }
@@ -391,7 +394,7 @@ export class Chapter2 extends BaseLevel {
     super.enter();
     this._refreshObjective();
     this.game.audio.setTension(.08);
-    this.game.ui.showHint('Walk, do not run. Sound carries differently through standing water.', 5.2);
+    this.game.ui.showHint('走，不要跑。声音在积水里传得很不一样。', 5.2);
   }
 
   dispose() {

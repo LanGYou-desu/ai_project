@@ -84,6 +84,11 @@ export class MaterialLibrary {
     this.set('blackFabric', new THREE.MeshStandardMaterial({ color: 0x111412, roughness: 1, metalness: 0 }));
     this.set('rustPaint', new THREE.MeshStandardMaterial({ color: 0x6b4632, roughness: .83, metalness: .1 }));
     this.set('warningYellow', new THREE.MeshStandardMaterial({ color: 0x9c8950, roughness: .68, metalness: .1 }));
+    this.set('safetyRed', new THREE.MeshStandardMaterial({ color: 0x8f3028, roughness: .54, metalness: .22 }));
+    this.set('bluePaint', new THREE.MeshStandardMaterial({ color: 0x40595e, roughness: .66, metalness: .24 }));
+    this.set('copper', new THREE.MeshStandardMaterial({ color: 0x8a5c3d, roughness: .33, metalness: .82, envMapIntensity: .8 }));
+    this.set('porcelain', new THREE.MeshStandardMaterial({ color: 0xc7c4b2, roughness: .2, metalness: .02, envMapIntensity: .55 }));
+    this.set('cork', new THREE.MeshStandardMaterial({ color: 0x826b49, roughness: .96, metalness: 0 }));
     this.set('emissiveWarm', new THREE.MeshStandardMaterial({ color: 0x8a8268, emissive: 0xffcf96, emissiveIntensity: 1.45, roughness: .35 }));
     this.set('emissiveWhite', new THREE.MeshStandardMaterial({ color: 0xa5a899, emissive: 0xcfe1d2, emissiveIntensity: 1.25, roughness: .4 }));
     this.set('emissiveRed', new THREE.MeshStandardMaterial({ color: 0x4c211f, emissive: 0xc24a3b, emissiveIntensity: 1.15, roughness: .5 }));

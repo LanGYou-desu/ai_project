@@ -8,6 +8,7 @@ import { Listener } from './Listener.js';
 import {
   placeNote, addFusePickup, addLiftRecess, addCeilingLamp, addWaterSheen
 } from './ChapterKit.js';
+import { dressChapter3 } from './Dressing.js';
 
 /**
  * CHAPTER III — SKINNY WALLS
@@ -53,7 +54,7 @@ export class Chapter3 extends BaseLevel {
     });
     this.addSign({
       x: 0, y: 2.52, z: 6.86, width: 1.05, height: .28,
-      key: 'crew-deck-sign', title: 'CREW DECK', lines: ['SECURITY · SUBSTATION · LIFT'], titleSize: 32
+      key: 'crew-deck-sign', title: '船员层', lines: ['安保 · 变电站 · 电梯'], titleSize: 32
     });
 
     /* ---------------- Corridor ---------------- */
@@ -66,14 +67,14 @@ export class Chapter3 extends BaseLevel {
     this.addDoorFrame('z', 1.5, -5.0, 1.4, 2.14, 'paintedMetalDark');
     this.addSign({
       x: 1.34, y: 2.2, z: -5.0, ry: -Math.PI / 2, width: .85, height: .24,
-      key: 'security-door-sign', title: 'SECURITY', lines: ['OFFICE 03'], titleSize: 34
+      key: 'security-door-sign', title: '安保', lines: ['03号办公室'], titleSize: 34
     });
 
     const door = this.addDoor({
       x: 1.5, z: -5.0, width: 1.4, height: 2.14, axis: 'z',
       material: 'paintedMetal', locked: true,
-      lockedText: 'A keypad blinks beside the frame. Four digits.',
-      name: 'Security office door', openAngle: 1.55
+      lockedText: '门框旁的键盘闪着光。四位数字。',
+      name: '安保办公室门', openAngle: 1.55
     });
     this.securityDoor = door;
 
@@ -106,17 +107,17 @@ export class Chapter3 extends BaseLevel {
 
     // Ceramic fuse, left on the desk in its cradle.
     addFusePickup(this, 4.35, .86, -6.65, {
-      label: 'Take the substation fuse',
+      label: '拿走变电站保险丝',
       onPickup: () => {
-        this.game.giveItem('fuse', 'CERAMIC FUSE');
-        this.game.ui.showHint('The only fuse on the deck. Someone pulled it from the substation before they ran.', 4.2);
+        this.game.giveItem('fuse', '陶瓷保险丝');
+        this.game.ui.showHint('这一层仅剩的保险丝。有人逃跑前把它从变电站里拔了出来。', 4.2);
         this.setCheckpoint(0, -4.55, -Math.PI / 2);
         this._refreshObjective();
       }
     });
     placeNote(this, 'security-log', 5.55, .84, -6.3, {
       rx: -Math.PI / 2, ry: -.08, width: .3, height: .38,
-      label: 'Read the last security log'
+      label: '阅读最后一篇安保日志'
     });
     this.addStaticBox('paper', .3, .008, .4, 3.9, .81, -6.45, { scale: .4 });
     this.addStaticBox('paper', .26, .006, .34, 3.7, .808, -6.9, { scale: .4 });
@@ -128,15 +129,15 @@ export class Chapter3 extends BaseLevel {
       position: new THREE.Vector3(1.22, 1.28, -6.15),
       size: new THREE.Vector3(.42, .55, .6),
       range: 2.15,
-      label: () => (this.officeOpened ? 'Security keypad — unlocked' : 'Use the security keypad'),
-      sub: () => (this.officeOpened ? '' : 'E — four-digit personnel code'),
+      label: () => (this.officeOpened ? '安保键盘——已解锁' : '使用安保键盘'),
+      sub: () => (this.officeOpened ? '' : 'E — 四位人员密码'),
       onInteract: () => this._openKeypad()
     });
     this.keypadItem = keypadItem;
     this.keypadMesh = keypad;
     placeNote(this, 'keypad-note', 1.38, 1.55, -6.92, {
       ry: -Math.PI / 2, width: .2, height: .28,
-      label: 'Read the sticky note'
+      label: '阅读便利贴'
     });
     this.game.ui.setItem('keycard', false);
 
@@ -152,7 +153,7 @@ export class Chapter3 extends BaseLevel {
     this.addDoorFrame('x', 0, -15, 3.0, 2.3, 'paintedMetalDark');
     this.addSign({
       x: 0, y: 2.72, z: -14.86, width: .9, height: .25,
-      key: 'substation-sign', title: 'SUBSTATION', lines: ['CREW DECK / HIGH VOLTAGE'], titleSize: 30
+      key: 'substation-sign', title: '变电站', lines: ['船员层 / 高压'], titleSize: 30
     });
 
     // Main substation cabinet.
@@ -171,7 +172,7 @@ export class Chapter3 extends BaseLevel {
     addCrate(this, 2.7, -16.3, { size: .62, rotation: .2 });
     placeNote(this, 'wren-note-2', 1.48, 1.22, -21.82, {
       ry: 0, width: .25, height: .34,
-      label: 'Read the note under the fuse socket'
+      label: '阅读保险丝座下的便条'
     });
     this.addStaticBox('steelDull', .38, .05, .25, 1.3, .94, -21.7, { scale: .5 });
 
@@ -179,8 +180,8 @@ export class Chapter3 extends BaseLevel {
       position: new THREE.Vector3(0, 1.35, -21.1),
       size: new THREE.Vector3(1.5, 1.6, .8),
       range: 2.6,
-      label: () => (this.powerOn ? 'Substation — online' : 'Install the ceramic fuse'),
-      sub: () => (this.powerOn ? '' : (this.game.hasItem('fuse') ? 'E — close the circuit' : 'The fuse socket is empty')),
+      label: () => (this.powerOn ? '变电站——已通电' : '装入陶瓷保险丝'),
+      sub: () => (this.powerOn ? '' : (this.game.hasItem('fuse') ? 'E — 闭合电路' : '保险丝座是空的')),
       onInteract: () => this._useSubstation()
     });
 
@@ -195,20 +196,20 @@ export class Chapter3 extends BaseLevel {
     /* ---------------- Lift ---------------- */
     addLiftRecess(this, {
       x: 0, z: 12.84, axis: 'x', facing: -1, width: 1.8, height: 2.32,
-      label: 'Call the crew lift',
-      sub: () => (this.chaseActive ? 'E — not yet. Reach it first.' : 'The lift does not answer.'),
+      label: '呼叫船员电梯',
+      sub: () => (this.chaseActive ? 'E — 还不行。先跑到那里。' : '电梯没有回应。'),
       onCall: () => {
         if (this.chaseActive) {
-          this.game.ui.showHint('The doors will open when you reach them. Keep running.', 2.6);
+          this.game.ui.showHint('跑到跟前，门就会开。继续跑。', 2.6);
         } else {
           this.game.audio.play('locked', { volume: .26 });
-          this.game.ui.showHint('The lift has locked itself. The substation at the north end of the corridor controls it.', 4);
+          this.game.ui.showHint('电梯把自己锁死了。走廊北端的变电站控制着它。', 4);
         }
       }
     });
     this.addSign({
       x: 0, y: 2.47, z: 12.72, ry: Math.PI, width: .9, height: .27,
-      key: 'lift-surface-sign', title: 'SERVICE LIFT', lines: ['SURFACE · AUTHORISED ONLY'], titleSize: 32
+      key: 'lift-surface-sign', title: '检修电梯', lines: ['水面 · 仅限授权'], titleSize: 32
     });
 
     /* ---------------- Lighting ---------------- */
@@ -244,6 +245,8 @@ export class Chapter3 extends BaseLevel {
     this.addSoundEmitter(0, 2.4, -10.8, { sound: 'metalGroan', min: 9, max: 18, volume: .12, rateMin: .42, rateMax: .6, maxDistance: 20 });
     this.addSoundEmitter(3.6, 1.1, -6.4, { sound: 'phoneRing', min: 24, max: 48, volume: .035, rateMin: .55, rateMax: .7, maxDistance: 6 });
 
+    dressChapter3(this);
+
     /* ---------------- Listener ---------------- */
     this.listener = new Listener(this, {
       waypoints: [[0, -12.2], [0, -1.6]],
@@ -255,13 +258,13 @@ export class Chapter3 extends BaseLevel {
     });
 
     /* ---------------- Story triggers ---------------- */
-    this.objective = { text: 'Find the security office.', sub: 'The crew deck is not empty. Move quietly.' };
+    this.objective = { text: '找到安保办公室。', sub: '船员层不是空的。安静移动。' };
 
     this.addTrigger({
       x0: -2, x1: 2, z0: 6.6, z1: 7.2, once: true,
       onEnter: () => {
         if (this.listener.state !== 'dormant') {
-          this.game.ui.showHint('Something is walking the corridor. It has no eyes. Crouch, or hide.', 5.0);
+          this.game.ui.showHint('有东西在走廊里走动。它没有眼睛。蹲下，或者躲起来。', 5.0);
           this.game.audio.whisper(3.2, .1);
           this.setCheckpoint(0, 5.6, 0);
         }
@@ -271,7 +274,7 @@ export class Chapter3 extends BaseLevel {
     this.addTrigger({
       x0: -5, x1: 8, z0: -8.6, z1: -1.9, once: true,
       onEnter: () => {
-        this.game.ui.showHint('The security office. The crew log is still on the desk.', 3.4);
+        this.game.ui.showHint('安保办公室。船员日志还在桌上。', 3.4);
         this.game.audio.setTension(.14);
       }
     });
@@ -279,7 +282,7 @@ export class Chapter3 extends BaseLevel {
       x0: -4, x1: 4, z0: -22, z1: -15, once: false,
       onEnter: () => {
         if (this.powerOn) return;
-        this.game.ui.showHint('The substation. One fuse socket, open like a mouth.', 3.2);
+        this.game.ui.showHint('变电站。一个保险丝座，像张开的嘴。', 3.2);
       }
     });
 
@@ -292,14 +295,14 @@ export class Chapter3 extends BaseLevel {
 
   _openKeypad() {
     if (this.officeOpened) {
-      this.game.ui.showHint('The door is already open.', 2);
+      this.game.ui.showHint('门已经开了。', 2);
       return;
     }
     this.game.openKeypad({
       code: '0317',
-      title: 'CREW DECK SECURITY',
-      hint: 'Personnel reset code. Four digits.',
-      brand: 'HALCYON SECURITY / OFFICE 03',
+      title: '船员层安保',
+      hint: '人员重置密码。四位数字。',
+      brand: '哈尔西恩安保 / 03号办公室',
       onSuccess: () => {
         this.officeOpened = true;
         this.securityDoor.unlock();
@@ -309,7 +312,7 @@ export class Chapter3 extends BaseLevel {
         this.keypadItem.setEnabled(false);
         this.game.audio.play('doorOpen', { volume: .3, rate: .9 });
         this.game.makeNoise(new THREE.Vector3(1.5, .2, -5), .5);
-        this.game.ui.showHint('ACCESS GRANTED. The office door swings inward.', 3);
+        this.game.ui.showHint('访问通过。办公室的门向内打开。', 3);
         this.setCheckpoint(0, -4.55, -Math.PI / 2);
         this._refreshObjective();
       },
@@ -322,25 +325,25 @@ export class Chapter3 extends BaseLevel {
   _refreshObjective() {
     if (this._leaving || this.completed) return;
     if (this.powerOn) {
-      this.setObjective('RUN. Reach the lift.', 'Do not stop. Do not look back.');
+      this.setObjective('快跑。到达电梯。', '不要停。不要回头。');
       return;
     }
     if (this.game.hasItem('fuse')) {
-      this.setObjective('Carry the fuse to the crew-deck substation.', 'It is at the north end of the corridor.');
+      this.setObjective('把保险丝送到船员层变电站。', '在走廊北端。');
       return;
     }
     if (this.officeOpened) {
-      this.setObjective('Search the security office for a fuse.', 'Wren’s crew log might explain what happened here.');
+      this.setObjective('在安保办公室里找一枚保险丝。', '蕾恩的船员日志也许能解释这里发生了什么。');
       return;
     }
-    this.setObjective('Find the security office.', 'The keypad wants a four-digit personnel code. Wren’s badge was 0317.');
+    this.setObjective('找到安保办公室。', '键盘需要四位人员密码。蕾恩的工牌号码是 0317。');
   }
 
   _useSubstation() {
     if (this.powerOn) return;
     if (!this.game.hasItem('fuse')) {
       this.game.audio.play('locked', { volume: .3 });
-      this.game.ui.showHint('The fuse socket is empty. One ceramic fuse is all it needs.', 3.4);
+      this.game.ui.showHint('保险丝座是空的。只需要一枚陶瓷保险丝。', 3.4);
       return;
     }
     this.powerOn = true;
@@ -349,7 +352,7 @@ export class Chapter3 extends BaseLevel {
     this.game.audio.play('alarm', { volume: .13, rate: .7 });
     this.game.audio.play('metalGroan', { volume: .19, rate: .5 });
     this.game.audio.setTension(1);
-    this.game.ui.showHint('The substation closes. Every light on the deck turns red.', 3.6);
+    this.game.ui.showHint('变电站闭合。这一层所有的灯都变成了红色。', 3.6);
     for (const light of this.chaseLights) light.intensity = 3.0;
     this.setCheckpoint(0, -13.0, Math.PI);
     this._refreshObjective();
@@ -369,8 +372,8 @@ export class Chapter3 extends BaseLevel {
     this.listener.setActive(true);
     this.listener.startChase();
     this.game.audio.setTension(1);
-    this.game.ui.showHint('RUN. The thing in the corridor has stopped pretending.', 4.5);
-    this.game.ui.say('SIGNAL', 'Iris. Don\'t.', 3.0);
+    this.game.ui.showHint('快跑。走廊里的东西不再伪装了。', 4.5);
+    this.game.ui.say('信号', '艾瑞斯。别。', 3.0);
     this.game.player.addShake(.35);
     this.escapeTrigger.enabled = true;
     this.escapeTrigger.fired = false;
@@ -386,7 +389,7 @@ export class Chapter3 extends BaseLevel {
     this.game.audio.setTension(.25);
     this.game.audio.play('keyGrant', { volume: .28 });
     this.game.audio.play('doorOpen', { volume: .34 });
-    this.game.ui.showHint('The lift doors open. You fall inside. You do not look back.', 4);
+    this.game.ui.showHint('电梯门开了。你跌进去。你没有回头。', 4);
     this.after(1.1, () => {
       if (this._leaving) return;
       this._leaving = true;
@@ -403,7 +406,7 @@ export class Chapter3 extends BaseLevel {
     this.setCheckpoint(0, 11.4, 0);
     this._refreshObjective();
     this.game.audio.setTension(.18);
-    this.game.ui.showHint('Crouch to move quietly. Hide in lockers when the corridor listens back.', 5.5);
+    this.game.ui.showHint('蹲伏可以安静移动。走廊开始回听时，躲进储物柜。', 5.5);
   }
 
   onRespawn() {
@@ -423,7 +426,7 @@ export class Chapter3 extends BaseLevel {
       this.after(1.5, () => {
         if (!this.completed && this.powerOn) this._beginChase();
       });
-      this.game.ui.showHint('It is still coming. Run again. Do not stop at the sound.', 4.2);
+      this.game.ui.showHint('它还在追。再跑一次。不要停在声音前。', 4.2);
     } else {
       this.chaseActive = false;
       this.allowHiding = true;

@@ -7,6 +7,7 @@ import {
 import {
   placeNote, addKeycardPickup, addLiftRecess, addCeilingLamp, addWaterSheen
 } from './ChapterKit.js';
+import { dressChapter1 } from './Dressing.js';
 
 /**
  * CHAPTER I — LOW WATER
@@ -66,11 +67,11 @@ export class Chapter1 extends BaseLevel {
       ry: Math.PI / 2,
       width: .36,
       height: .5,
-      label: 'Read the water-stained clipping'
+      label: '阅读被水浸皱的剪报'
     });
     this.addSign({
       x: -2.9, y: 2.02, z: 11.7, ry: Math.PI / 2, width: .62, height: .22,
-      key: 'tunnel-news', title: 'INCIDENT ARCHIVE', lines: ['17 MARCH 1996'], titleSize: 34
+      key: 'tunnel-news', title: '事故档案', lines: ['1996年3月17日'], titleSize: 34
     });
     this.addBakeLight(-2.5, 1.85, 11.7, { color: 0xffc98c, intensity: .55, range: 4.2 });
 
@@ -88,11 +89,11 @@ export class Chapter1 extends BaseLevel {
     this.addDoorFrame('x', 1.0, -4, 1.4, 2.14, 'paintedMetalDark');
     this.addSign({
       x: -2.4, y: 2.22, z: 3.86, width: 1.45, height: .32,
-      key: 'office-sign', title: 'MAINTENANCE', lines: ['SERVICE ACCESS · AUTHORISED PERSONNEL'], titleSize: 38
+      key: 'office-sign', title: '维修部', lines: ['检修通道 · 仅限授权人员'], titleSize: 38
     });
     this.addSign({
       x: 1.0, y: 2.36, z: -3.86, width: .78, height: .24,
-      key: 'security-sign', title: 'SECURITY', lines: ['LIFT LOBBY'], titleSize: 36
+      key: 'security-sign', title: '安保', lines: ['电梯厅'], titleSize: 36
     });
 
     // Furniture.
@@ -115,17 +116,17 @@ export class Chapter1 extends BaseLevel {
       ry: .08,
       width: .3,
       height: .38,
-      label: 'Read the service note'
+      label: '阅读值班记录'
     });
     const radio = this.addStaticBox('darkMetal', .38, .22, .22, 2.0, 1.04, 1.9, { scale: .6 });
     this.addStaticBox('blackGloss', .16, .08, .012, 2.0, 1.09, 2.02, { scale: .4 });
 
     // The access card, deliberately small and easy to miss.
     addKeycardPickup(this, -3.2, .82, -1.5, {
-      label: 'Take Wren’s service access card',
+      label: '拿走蕾恩的检修卡',
       onPickup: () => {
-        this.game.giveItem('keycard', 'SERVICE CARD');
-        this.game.ui.showHint('WREN VALE — SERVICE ACCESS. The photograph has been scratched out.', 4.4);
+        this.game.giveItem('keycard', '检修卡');
+        this.game.ui.showHint('蕾恩·维尔——检修权限。照片已经被刮花。', 4.4);
         this._refreshObjective();
         this.game.makeNoise(new THREE.Vector3(-3.2, .2, -1.5), .25);
       }
@@ -151,8 +152,8 @@ export class Chapter1 extends BaseLevel {
       style: 'swing',
       material: 'paintedMetal',
       locked: true,
-      lockedText: 'The frame reader blinks red. A service card is required.',
-      name: 'Security door',
+      lockedText: '门框上的读卡器闪着红光。需要一张检修卡。',
+      name: '安保门',
       openAngle: 1.5
     });
     this.securityDoor = door;
@@ -178,13 +179,13 @@ export class Chapter1 extends BaseLevel {
       position: new THREE.Vector3(1.98, 1.24, -3.72),
       size: new THREE.Vector3(.5, .55, .45),
       range: 2.1,
-      label: () => (this.cardUsed ? 'Card reader — accepted' : 'Use the card reader'),
-      sub: () => (this.cardUsed ? '' : 'E — present access card'),
+      label: () => (this.cardUsed ? '读卡器——已通过' : '使用读卡器'),
+      sub: () => (this.cardUsed ? '' : 'E — 出示检修卡'),
       onInteract: () => {
         if (this.cardUsed) return;
         if (!this.game.hasItem('keycard')) {
           this.game.audio.play('locked', { volume: .3 });
-          this.game.ui.showHint('The slot is dark. It wants a service card.', 3.2);
+          this.game.ui.showHint('插槽是暗的。它需要一张检修卡。', 3.2);
           return;
         }
         this.cardUsed = true;
@@ -194,7 +195,7 @@ export class Chapter1 extends BaseLevel {
         door.unlock();
         door.open();
         this.game.audio.play('keyGrant', { volume: .3 });
-        this.game.ui.showHint('The lock withdraws. Beyond it, the lift lobby breathes cold air.', 4.5);
+        this.game.ui.showHint('锁舌缩回。门后，电梯厅呼出一口冷气。', 4.5);
         this.setCheckpoint(1.0, -5.1, Math.PI);
         this._refreshObjective();
       }
@@ -203,13 +204,13 @@ export class Chapter1 extends BaseLevel {
     // Lift recess and call panel.
     addLiftRecess(this, {
       x: 0, z: -9.78, axis: 'x', width: 1.8, height: 2.28,
-      label: 'Call the service lift',
-      sub: 'E — descend to the pump floor',
+      label: '呼叫检修电梯',
+      sub: 'E — 下到泵层',
       onCall: () => this._takeLift()
     });
     this.addSign({
       x: 0, y: 2.4, z: -9.85, width: .9, height: .24,
-      key: 'lift-pump', title: 'PUMP FLOOR', lines: ['SERVICE LIFT 02'], titleSize: 36, glowing: true
+      key: 'lift-pump', title: '泵层', lines: ['检修电梯 02'], titleSize: 36, glowing: true
     });
     this.addDynamicPointLight(0, 2.2, -8.4, { color: 0x9db6a4, intensity: 1.3, distance: 5, decay: 1.7 });
     this.addBakeLight(0, 2.2, -8.5, { color: 0x8fa89a, intensity: .55, range: 5.5 });
@@ -236,8 +237,10 @@ export class Chapter1 extends BaseLevel {
     this.addSoundEmitter(-2.7, 1.2, 11.8, { sound: 'drip', min: 7, max: 15, volume: .1, maxDistance: 12 });
     this.addSoundEmitter(-1.2, 1.1, -2.2, { sound: 'metalGroan', min: 17, max: 35, volume: .075, rateMin: .38, rateMax: .55, maxDistance: 18 });
 
+    dressChapter1(this);
+
     /* ---------------- Objectives & story triggers ---------------- */
-    this.objective = { text: 'Follow the service tunnel to the maintenance office.', sub: 'The lift to the pump floor is beyond the security door.' };
+    this.objective = { text: '沿检修隧道前往维修办公室。', sub: '通往泵层的电梯在安保门后。' };
 
     this.addTrigger({
       x0: -5, x1: 5, z0: -4, z1: 4.35, once: true,
@@ -254,9 +257,9 @@ export class Chapter1 extends BaseLevel {
         if (this.phoneRang) return;
         this.phoneRang = true;
         this.game.audio.playAt('phoneRing', new THREE.Vector3(-2.7, 1.05, -1.4), { volume: .18, rate: .92 });
-        this.game.ui.showHint('A telephone is ringing in the maintenance office. The line has been dead for eight years.', 4.6);
+        this.game.ui.showHint('维修办公室里有一部电话在响。这条线路已经断了八年。', 4.6);
         this.after(1.35, () => {
-          if (this.game.state === 'playing') this.game.ui.say('INTERCOM', 'You took your time, Iris.', 3.4);
+          if (this.game.state === 'playing') this.game.ui.say('对讲机', '你来得真慢，艾瑞斯。', 3.4);
         });
       }
     });
@@ -264,7 +267,7 @@ export class Chapter1 extends BaseLevel {
       x0: -3, x1: -1.4, z0: 10.1, z1: 13.3, once: true,
       onEnter: () => {
         this.game.audio.play('pickup', { volume: .08, rate: .7 });
-        this.game.ui.showHint('Someone has been keeping this article dry.', 2.6);
+        this.game.ui.showHint('有人一直让这篇报道保持干燥。', 2.6);
       }
     });
   }
@@ -291,19 +294,19 @@ export class Chapter1 extends BaseLevel {
     this.setCheckpoint(this.spawn.x, this.spawn.z, this.spawn.yaw);
     this._refreshObjective();
     this.game.audio.setTension(.06);
-    this.game.ui.showHint('The flashlight is your only reliable light. F toggles it.', 5.5);
+    this.game.ui.showHint('手电筒是你唯一可靠的光源。按 F 开关。', 5.5);
   }
 
   _refreshObjective() {
     if (this._leaving) return;
     if (this.cardUsed) {
-      this.setObjective('Take the service lift to the pump floor.', 'The lobby is open. The station is listening.');
+      this.setObjective('乘检修电梯下到泵层。', '电梯厅已经打开。研究站在听。');
     } else if (this.game.hasItem('keycard')) {
-      this.setObjective('Use Wren’s card on the security door reader.', 'The reader is mounted beside the lift lobby door.');
+      this.setObjective('用蕾恩的卡刷开安保门。', '读卡器装在电梯厅门边。');
     } else if (this.enteredOffice) {
-      this.setObjective('Find Wren’s service access card.', 'Search the maintenance office. The desk lamp is still warm.');
+      this.setObjective('找到蕾恩的检修卡。', '搜查维修办公室。台灯还是温的。');
     } else {
-      this.setObjective('Follow the service tunnel to the maintenance office.', 'The lift to the pump floor is beyond the security door.');
+      this.setObjective('沿检修隧道前往维修办公室。', '通往泵层的电梯在安保门后。');
     }
   }
 
@@ -312,7 +315,7 @@ export class Chapter1 extends BaseLevel {
     this._leaving = true;
     this.game.audio.play('doorClose', { volume: .3, rate: .72 });
     this.game.audio.play('metalGroan', { volume: .18, rate: .5 });
-    this.game.ui.showHint('The lift takes your weight without complaint. Somewhere below, water is moving.', 4);
+    this.game.ui.showHint('电梯默默承受你的重量。下方某处，水在移动。', 4);
     this.setCheckpoint(0, -7.6, Math.PI);
     this.game.completeChapter(1);
   }

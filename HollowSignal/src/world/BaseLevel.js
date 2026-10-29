@@ -56,13 +56,13 @@ export class BaseLevel {
   }
 
   async finalize(onProgress = null) {
-    onProgress?.(0.6, 'Baking static illumination');
+    onProgress?.(0.6, '正在烘焙静态照明……');
     await waitFrame();
     if (this.groundless !== true) {
       if (!this.bounds) this.computeBoundsFromColliders();
     }
     this.staticBatch.finalize(this.bakeLights, this.colliders);
-    onProgress?.(0.8, 'Seeding acoustic field');
+    onProgress?.(0.8, '正在播种声场……');
     await waitFrame();
     if (this.dustVolumes.length) {
       this.dust = new DustField(this.scene, this.dustVolumes, this.game.settings.quality, this.game.textures.makeDustSprite());
@@ -73,7 +73,7 @@ export class BaseLevel {
     this.scene.environment = this.game.materials.environment;
     this._staticFinalized = true;
     this.applyQuality(this.game.settings.quality);
-    onProgress?.(1, 'Archive ready');
+    onProgress?.(1, '档案就绪');
     await waitFrame();
   }
 
@@ -176,6 +176,7 @@ export class BaseLevel {
       if (opening.x0 > cursor) {
         const w = opening.x0 - cursor;
         this.addWallBox(material, w, height, thickness, cursor + w / 2, height / 2, z);
+        this._dressWallSegment('x', material, cursor, opening.x0, z, height, thickness);
       }
       const ow = opening.x1 - opening.x0;
       const top = opening.height ?? 2.15;
@@ -191,6 +192,7 @@ export class BaseLevel {
     if (cursor < x1) {
       const w = x1 - cursor;
       this.addWallBox(material, w, height, thickness, cursor + w / 2, height / 2, z);
+      this._dressWallSegment('x', material, cursor, x1, z, height, thickness);
     }
   }
 
@@ -201,6 +203,7 @@ export class BaseLevel {
       if (opening.z0 > cursor) {
         const d = opening.z0 - cursor;
         this.addWallBox(material, thickness, height, d, x, height / 2, cursor + d / 2);
+        this._dressWallSegment('z', material, cursor, opening.z0, x, height, thickness);
       }
       const od = opening.z1 - opening.z0;
       const top = opening.height ?? 2.15;
@@ -215,6 +218,74 @@ export class BaseLevel {
     if (cursor < z1) {
       const d = z1 - cursor;
       this.addWallBox(material, thickness, height, d, x, height / 2, cursor + d / 2);
+      this._dressWallSegment('z', material, cursor, z1, x, height, thickness);
+    }
+  }
+
+  /**
+   * Layered, non-colliding wall trim: skirting, panel seams, rivets and a
+   * bumper rail on industrial surfaces. All pieces are merged into the static
+   * batch, so the silhouette gains depth without adding draw calls.
+   */
+  _dressWallSegment(axis, material, a0, a1, fixed, height, thickness) {
+    const len = a1 - a0;
+    if (len < .3 || height < .5) return;
+    const mid = (a0 + a1) / 2;
+    const industrial = /metal|paint|rust|steel|pipe/i.test(material);
+    const concrete = /concrete|stone|plaster/i.test(material);
+    const trimDepth = thickness + .05;
+    const faceA = fixed - thickness / 2 - .008;
+    const faceB = fixed + thickness / 2 + .008;
+
+    // A continuous dark skirting gives the wall a floor junction instead of
+    // letting it dissolve into the slab.
+    if (axis === 'x') {
+      this.addStaticBox('blackMetal', len, .105, trimDepth, mid, .0525, fixed, { scale: .55 });
+    } else {
+      this.addStaticBox('blackMetal', trimDepth, .105, len, fixed, .0525, mid, { scale: .55 });
+    }
+
+    if (industrial) {
+      // Horizontal bumper at hand height, plus a thin top rail against the
+      // ceiling. Both catch the flashlight at grazing angles.
+      for (const y of [1.02, height - .22]) {
+        if (y > height - .12) continue;
+        if (axis === 'x') {
+          this.addStaticBox('steelDull', len, .042, trimDepth + .012, mid, y, fixed, { scale: .65 });
+        } else {
+          this.addStaticBox('steelDull', trimDepth + .012, .042, len, fixed, y, mid, { scale: .65 });
+        }
+      }
+    } else if (concrete) {
+      // A recessed control joint at waist height breaks up large slabs.
+      if (height > 2) {
+        if (axis === 'x') {
+          this.addStaticBox('blackHole', len, .018, .012, mid, 1.15, fixed - thickness / 2 - .002, { scale: .25 });
+        } else {
+          this.addStaticBox('blackHole', .012, .018, len, fixed - thickness / 2 - .002, 1.15, mid, { scale: .25 });
+        }
+      }
+    }
+
+    // Panel seams every few metres, with paired fasteners on both faces.
+    const spacing = concrete ? 3.2 : 2.25;
+    for (let p = a0 + spacing; p < a1 - .25; p += spacing) {
+      if (axis === 'x') {
+        this.addStaticBox('darkMetal', .018, Math.min(2.02, height - .32), trimDepth + .006, p, Math.min(1.28, height / 2), fixed, { scale: .4 });
+      } else {
+        this.addStaticBox('darkMetal', trimDepth + .006, Math.min(2.02, height - .32), .018, fixed, Math.min(1.28, height / 2), p, { scale: .4 });
+      }
+      if (industrial) {
+        for (const y of [.42, Math.min(height - .42, 1.94)]) {
+          for (const face of [faceA, faceB]) {
+            if (axis === 'x') {
+              this.addStaticBox('steelDull', .034, .034, .014, p, y, face, { scale: .25 });
+            } else {
+              this.addStaticBox('steelDull', .014, .034, .034, face, y, p, { scale: .25 });
+            }
+          }
+        }
+      }
     }
   }
 
@@ -438,8 +509,8 @@ export class BaseLevel {
     style = 'swing',
     material = 'paintedMetal',
     locked = false,
-    lockedText = 'Locked.',
-    name = 'Door',
+    lockedText = '已锁。',
+    name = '门',
     sign = null,
     openAngle = 1.65,
     hinge = 1,
@@ -516,10 +587,10 @@ export class BaseLevel {
       hitbox: null, level: this,
       isOpen() { return this.openState > .92; },
       getLabel() {
-        if (this.locked) return `${this.name} — Locked`;
-        return `Open ${this.name}`;
+        if (this.locked) return `${this.name} — 已锁`;
+        return `打开${this.name}`;
       },
-      getSub() { return this.locked ? this.lockedText : 'E'; },
+      getSub() { return this.locked ? this.lockedText : 'E — 打开'; },
       unlock() {
         this.locked = false;
       },
@@ -577,7 +648,7 @@ export class BaseLevel {
         size: axis === 'x' ? new THREE.Vector3(width * .9, height * .9, .38) : new THREE.Vector3(.38, height * .9, width * .9),
         range: 2.35,
         label: () => door.getLabel(),
-        sub: () => door.locked ? door.lockedText : 'E — open',
+        sub: () => door.locked ? door.lockedText : 'E — 打开',
         onInteract: () => {
           if (door.onInteract) {
             door.onInteract(door);

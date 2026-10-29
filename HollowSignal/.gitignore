@@ -1,4 +1,5 @@
 node_modules/
 qa-output/
 .edge-cdp/
+assets/fonts/.src/
 *.log

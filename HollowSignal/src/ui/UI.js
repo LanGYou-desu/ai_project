@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const CN_CHAPTER = { I: '一', II: '二', III: '三', IV: '四' };
 
 export class UI {
   constructor(settings) {
@@ -264,10 +265,10 @@ export class UI {
     });
     this.el.subtitlesToggle.classList.toggle('is-on', v.subtitles);
     this.el.subtitlesToggle.setAttribute('aria-checked', String(v.subtitles));
-    this.el.subtitlesToggle.lastChild.textContent = v.subtitles ? 'ON' : 'OFF';
+    this.el.subtitlesToggle.lastChild.textContent = v.subtitles ? '开' : '关';
     this.el.motionToggle.classList.toggle('is-on', v.reducedMotion);
     this.el.motionToggle.setAttribute('aria-checked', String(v.reducedMotion));
-    this.el.motionToggle.lastChild.textContent = v.reducedMotion ? 'ON' : 'OFF';
+    this.el.motionToggle.lastChild.textContent = v.reducedMotion ? '开' : '关';
     this.syncSettingsLabels();
   }
 
@@ -275,7 +276,7 @@ export class UI {
     const v = this.settings.values;
     this.el.sensitivityValue.textContent = Number(v.sensitivity).toFixed(2).replace(/0$/, '');
     this.el.volumeValue.textContent = `${Math.round(v.volume * 100)}%`;
-    const grainLabels = ['Off', 'Soft', 'Normal', 'Heavy'];
+    const grainLabels = ['关闭', '柔和', '标准', '浓重'];
     this.el.grainValue.textContent = grainLabels[Math.min(3, Math.round(v.grain * 3))];
     this.el.fovValue.textContent = `${v.fov}°`;
   }
@@ -286,7 +287,7 @@ export class UI {
       return;
     }
     this.el.continueButton.hidden = false;
-    this.el.continueChapter.textContent = `CH. ${String(chapterNumber).padStart(2, '0')}`;
+    this.el.continueChapter.textContent = `第${String(chapterNumber).padStart(2, '0')}章`;
     this.el.continueButton.title = chapterTitle;
   }
 
@@ -323,7 +324,7 @@ export class UI {
     }, 1200);
   }
 
-  showLoading(status = 'Mounting archive...') {
+  showLoading(status = '正在挂载档案……') {
     this.el.loadingStatus.textContent = status;
     this.el.loadingBar.style.width = '4%';
     this.el.loadingPercent.textContent = '4%';
@@ -351,8 +352,8 @@ export class UI {
 
   showIntro({ kicker, lines, buttonLabel, footnote }) {
     this.el.introKicker.textContent = kicker || '';
-    this.el.introFootnote.textContent = footnote || 'Click to capture mouse · Esc to pause';
-    this.el.enterButton.querySelector('span').textContent = buttonLabel || 'Enter the station';
+    this.el.introFootnote.textContent = footnote || '点击以捕获鼠标 · Esc 暂停';
+    this.el.enterButton.querySelector('span').textContent = buttonLabel || '进入研究站';
     this.el.introLines.replaceChildren();
     lines.forEach((line, index) => {
       const p = document.createElement('p');
@@ -385,8 +386,9 @@ export class UI {
   }
 
   setChapter(number, title, roman) {
-    this.el.chapterIndex.textContent = `CHAPTER ${roman || String(number).padStart(2, '0')}`;
-    this.el.pauseChapter.textContent = `${number ? `CHAPTER ${roman} · ` : ''}${title.toUpperCase()}`;
+    const cn = CN_CHAPTER[roman] || String(number).padStart(2, '0');
+    this.el.chapterIndex.textContent = `第 ${cn} 章`;
+    this.el.pauseChapter.textContent = `${number ? `第${cn}章 · ` : ''}${title}`;
   }
 
   setObjective(text, sub = '') {
@@ -426,7 +428,7 @@ export class UI {
   }
 
   setFlashlightState(on) {
-    this.el.flashlightState.textContent = on ? 'ON' : 'OFF';
+    this.el.flashlightState.textContent = on ? '开' : '关';
     this.el.flashlightState.style.color = on ? 'rgba(141,168,155,.8)' : 'rgba(216,209,192,.34)';
   }
 
@@ -608,11 +610,11 @@ export class UI {
   }
 
   showNote(note) {
-    this.el.noteKicker.textContent = note.kicker || 'RECOVERED DOCUMENT';
+    this.el.noteKicker.textContent = note.kicker || '回收文件';
     this.el.noteIndex.textContent = note.index || '';
     this.el.noteTitle.textContent = note.title || '';
     this.el.noteBody.innerHTML = note.body || '';
-    this.el.noteFooter.textContent = note.footer || 'HALCYON RESEARCH STATION';
+    this.el.noteFooter.textContent = note.footer || '哈尔西恩研究站';
     this.el.noteModal.classList.remove('is-hidden');
   }
 
@@ -620,7 +622,7 @@ export class UI {
     this.el.noteModal.classList.add('is-hidden');
   }
 
-  openKeypad({ title = 'ENTER ACCESS CODE', hint = 'Four digits.', brand = 'SECURITY — HALCYON', length = 4 } = {}) {
+  openKeypad({ title = '输入访问密码', hint = '四位数字。', brand = '哈尔西恩安保', length = 4 } = {}) {
     this.keypadState.open = true;
     this.keypadState.digits = '';
     this.keypadState.length = length;
@@ -648,7 +650,7 @@ export class UI {
     if (!this.keypadState.open || this.keypadState.locked) return;
     if (key === 'clear') {
       this.keypadState.digits = '';
-      this.el.keypadHint.textContent = 'Cleared.';
+      this.el.keypadHint.textContent = '已清除。';
       this._renderKeypad();
       return;
     }
@@ -659,7 +661,7 @@ export class UI {
     }
     if (key === 'enter') {
       if (this.keypadState.digits.length < this.keypadState.length) {
-        this.keypadError('INCOMPLETE CODE');
+        this.keypadError('密码不完整');
         return;
       }
       this.keypadState.locked = true;
@@ -669,15 +671,15 @@ export class UI {
     if (!/^\d$/.test(key)) return;
     if (this.keypadState.digits.length < this.keypadState.length) {
       this.keypadState.digits += key;
-      this.el.keypadHint.textContent = 'Press ENT to submit.';
+      this.el.keypadHint.textContent = '按“确认”提交。';
       this._renderKeypad();
       if (this.keypadState.digits.length === this.keypadState.length) {
-        this.el.keypadHint.textContent = 'Code ready. Press ENT.';
+        this.el.keypadHint.textContent = '密码已就绪。按“确认”。';
       }
     }
   }
 
-  keypadError(message = 'ACCESS DENIED') {
+  keypadError(message = '访问被拒') {
     this.keypadState.locked = false;
     this.el.keypadHint.textContent = message;
     this.el.keypadDisplay.classList.remove('is-error');
@@ -690,7 +692,7 @@ export class UI {
     }, 600);
   }
 
-  keypadSuccess(message = 'ACCESS GRANTED') {
+  keypadSuccess(message = '访问通过') {
     this.keypadState.locked = true;
     this.el.keypadHint.textContent = message;
     this.el.keypadLed.classList.add('is-ok');
@@ -709,7 +711,7 @@ export class UI {
     if (!records.length) {
       const empty = document.createElement('div');
       empty.className = 'journal-entry';
-      empty.innerHTML = '<small>NO RECORDS</small><span>Nothing recovered yet.</span>';
+      empty.innerHTML = '<small>暂无记录</small><span>还没有找到任何东西。</span>';
       this.el.journalList.appendChild(empty);
     } else {
       records.forEach((record, i) => {
@@ -718,7 +720,7 @@ export class UI {
         button.className = 'journal-entry';
         button.dataset.recordId = record.id;
         const small = document.createElement('small');
-        small.textContent = record.type || 'DOCUMENT';
+        small.textContent = record.type || '文档';
         const span = document.createElement('span');
         span.textContent = record.title;
         button.append(small, span);
@@ -727,7 +729,7 @@ export class UI {
         if (i === 0) setTimeout(() => this.showJournalRecord(record.id), 0);
       });
     }
-    this.el.journalCount.textContent = `${records.length} RECORD${records.length === 1 ? '' : 'S'}`;
+    this.el.journalCount.textContent = `${records.length} 份记录`;
     this.el.journal.classList.remove('is-hidden');
   }
 
@@ -735,7 +737,7 @@ export class UI {
     const record = this.journalRecords.find((r) => r.id === id);
     if (!record) return;
     this.el.journalList.querySelectorAll('.journal-entry').forEach((b) => b.classList.toggle('is-active', b.dataset.recordId === id));
-    this.el.journalKicker.textContent = `${record.type || 'DOCUMENT'} / ${record.index || ''}`;
+    this.el.journalKicker.textContent = `${record.type || '文档'} / ${record.index || ''}`;
     this.el.journalEntryTitle.textContent = record.title;
     this.el.journalEntryBody.innerHTML = record.body;
     this.el.journalCode.textContent = record.code || '';
@@ -782,7 +784,7 @@ export class UI {
     this.el.ending.classList.add('is-hidden');
   }
 
-  showDeath(message = 'Returning to the last safe moment...') {
+  showDeath(message = '正在返回上一个安全时刻……') {
     this.el.deathHint.textContent = message;
     this.el.death.classList.remove('is-hidden');
   }

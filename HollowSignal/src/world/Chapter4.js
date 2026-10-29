@@ -8,6 +8,7 @@ import {
   placeNote, addCeilingLamp, addRailing, addWaterSheen
 } from './ChapterKit.js';
 import { FINAL_TAPE, getRecord } from '../story/content.js';
+import { dressChapter4 } from './Dressing.js';
 
 /**
  * CHAPTER IV — THE HOLLOW
@@ -59,8 +60,8 @@ export class Chapter4 extends BaseLevel {
 
     this.addSign({
       x: 0, y: 2.68, z: 2.1, width: 1.35, height: .31,
-      key: 'gallery-threshold-sign', title: 'RESONANCE GALLERY',
-      lines: ['AUTHORISED PERSONNEL ONLY · LATTICE 01'], titleSize: 31
+      key: 'gallery-threshold-sign', title: '共振展厅',
+      lines: ['仅限授权人员 · 晶格 01'], titleSize: 31
     });
 
     addPipeRun(this, [[-1.42, 2.66, 14.7], [-1.42, 2.66, 2.2]], { radius: .055, material: 'pipeGreen' });
@@ -70,10 +71,10 @@ export class Chapter4 extends BaseLevel {
     this.addStaticBox('blackMetal', .62, .022, 12.7, 0, .012, 8.5, { scale: 1.1 });
 
     // Four doors that are only shapes now. The corridor remembers the rooms.
-    this._buildMemoryDoor(1, 10.45, 'M-03', 'I WAS HERE');
-    this._buildMemoryDoor(-1, 8.25, 'M-07', 'DO NOT OPEN');
-    this._buildMemoryDoor(1, 6.05, 'M-12', '17 MARCH 1996');
-    this._buildMemoryDoor(-1, 4.1, 'M-00', 'THE ROOM BELOW');
+    this._buildMemoryDoor(1, 10.45, 'M-03', '我曾在这里');
+    this._buildMemoryDoor(-1, 8.25, 'M-07', '不要打开');
+    this._buildMemoryDoor(1, 6.05, 'M-12', '1996年3月17日');
+    this._buildMemoryDoor(-1, 4.1, 'M-00', '下面的房间');
 
     // Iris's unsent letter, left in the coat she wore to the inquiry.
     this.addStaticBox('fabricDark', .08, .86, .48, -1.55, 1.27, 12.55, { scale: 1.2 });
@@ -82,7 +83,7 @@ export class Chapter4 extends BaseLevel {
     this.addStaticBox('darkMetal', .05, .88, .05, -1.58, .44, 12.55, { scale: .5 });
     placeNote(this, 'iris-letter', -1.47, 1.35, 12.55, {
       ry: Math.PI / 2, rx: 0, width: .24, height: .32,
-      label: 'Read the letter in the coat pocket', pin: false
+      label: '阅读外套口袋里的信', pin: false
     });
     this.addBakeLight(-1.2, 2.35, 12.5, { color: 0xffc28c, intensity: .54, range: 4.4 });
 
@@ -102,8 +103,8 @@ export class Chapter4 extends BaseLevel {
     this.addStaticBox('steelDull', 5.4, .2, .28, 0, 3.5, -10.82, { scale: 1 });
     this.addSign({
       x: 0, y: 3.08, z: -10.72, width: 1.25, height: .28,
-      key: 'gallery-lattice-sign', title: 'LATTICE CONTROL',
-      lines: ['RESONANCE CHAMBER · SEALED 1996'], titleSize: 30, glowing: true
+      key: 'gallery-lattice-sign', title: '晶格控制室',
+      lines: ['共振舱 · 1996年封闭'], titleSize: 30, glowing: true
     });
 
     for (const [x, z] of [[-6.5, -3.1], [6.5, -3.1], [-6.5, -8.2], [6.5, -8.2]]) {
@@ -139,14 +140,16 @@ export class Chapter4 extends BaseLevel {
     this.addCollider(-5.5, -4.8, 0, 1.0, -4.55, -3.85, { occluder: false, bakeOccluder: false });
     placeNote(this, 'incident-final', -5.15, .93, -4.2, {
       rx: -Math.PI / 2, width: .3, height: .4,
-      label: 'Read the sealed incident addendum'
+      label: '阅读密封的事故附录'
     });
     this.addBakeLight(-5.2, 2.05, -4.4, { color: 0xd6c596, intensity: .72, range: 4.6 });
     this.addSign({
       x: -5.15, y: 2.2, z: -4.9, width: .9, height: .26,
-      key: 'incident-lectern-sign', title: 'INCIDENT 0317',
-      lines: ['ADDENDUM · LEGAL SEAL'], titleSize: 30
+      key: 'incident-lectern-sign', title: '0317号事故',
+      lines: ['附录 · 法律封存'], titleSize: 30
     });
+
+    dressChapter4(this);
 
     /* ---------------- Side dressing ---------------- */
     addChair(this, -4.8, -2.4, { rotation: Math.PI * .45 });
@@ -211,15 +214,15 @@ export class Chapter4 extends BaseLevel {
 
     /* ---------------- Story beats ---------------- */
     this.objective = {
-      text: 'Follow the memory corridor to the resonance gallery.',
-      sub: 'The final tape is waiting where the array can hear it.'
+      text: '沿记忆走廊前往共振展厅。',
+      sub: '最终磁带正在阵列能听见的地方等着。'
     };
 
     this.addTrigger({
       x0: -1.6, x1: 1.6, z0: 10.7, z1: 11.9, once: true,
       onEnter: () => {
         this.game.audio.whisper(3.8, .13);
-        this.game.ui.say('WREN VALE', 'Iris? The lights are going out.', 3.8);
+        this.game.ui.say('蕾恩·维尔', '艾瑞斯？灯要灭了。', 3.8);
         this.game.audio.setTension(.22);
         this.setCheckpoint(0, 12.9, 0);
       }
@@ -228,7 +231,7 @@ export class Chapter4 extends BaseLevel {
       x0: -1.6, x1: 1.6, z0: 5.9, z1: 7.0, once: true,
       onEnter: () => {
         this.game.audio.play('staticBurst', { volume: .08, rate: .45 });
-        this.game.ui.say('SIGNAL', 'You are almost at the room where you left me.', 4.1);
+        this.game.ui.say('信号', '你快到那个把我留下的房间了。', 4.1);
         this.game.audio.setTension(.38);
         this.game.player.addShake(.13);
       }
@@ -239,7 +242,7 @@ export class Chapter4 extends BaseLevel {
         this.inGallery = true;
         this.game.audio.play('metalGroan', { volume: .16, rate: .42 });
         this.game.audio.whisper(4.4, .12);
-        this.game.ui.showHint('The gallery is awake. The array has been waiting eight years for someone to sit down at the console.', 5.2);
+        this.game.ui.showHint('展厅醒着。阵列等了八年，等一个人坐到控制台前。', 5.2);
         this.game.audio.setTension(.3);
         this.setCheckpoint(0, 1.5, 0);
         this._refreshObjective();
@@ -248,9 +251,9 @@ export class Chapter4 extends BaseLevel {
     this.addTrigger({
       x0: -3.8, x1: 3.8, z0: -9.8, z1: -3.6, once: true,
       onEnter: () => {
-        this.game.ui.say('SIGNAL', 'Say my name. Say it the way you did before the door.', 4.6);
+        this.game.ui.say('信号', '叫我的名字。像门关上之前那样叫。', 4.6);
         this.game.audio.whisper(4.0, .16);
-        this.game.ui.showHint('The rings are turning against the current. There is a cassette in the console.', 4.2);
+        this.game.ui.showHint('圆环正逆着水流转动。控制台上有一盘磁带。', 4.2);
         this.game.audio.setTension(.55);
         this.game.player.addShake(.2);
       }
@@ -258,7 +261,7 @@ export class Chapter4 extends BaseLevel {
     this.addTrigger({
       x0: -1.3, x1: 1.3, z0: -2.0, z1: -0.5, once: true,
       onEnter: () => {
-        this.game.ui.showHint('The console is warm. The tape deck is already threaded.', 3.6);
+        this.game.ui.showHint('控制台是温的。磁带机已经穿好带。', 3.6);
         this.game.audio.play('phoneRing', { volume: .035, rate: .5 });
         this.setCheckpoint(0, 0.9, 0);
       }
@@ -384,8 +387,8 @@ export class Chapter4 extends BaseLevel {
     this.addStaticBox('darkMetal', .5, .4, .35, .43, 1.15, -1.4, { scale: .8 });
     this.addStaticBox('blackGloss', .4, .27, .02, .43, 1.17, -1.215, { scale: .5 });
     const screenMat = this.game.materials.glowingSignMaterial('final-console-screen', {
-      title: 'RESONANCE LATTICE',
-      lines: ['TAPE 09 / QUEUED', 'INPUT: OPEN'],
+      title: '共振晶格',
+      lines: ['磁带 09 / 已排队', '输入：开启'],
       titleSize: 35,
       lineSize: 20,
       bg: '#17221a',
@@ -411,14 +414,14 @@ export class Chapter4 extends BaseLevel {
       size: new THREE.Vector3(1.3, 1.05, .65),
       range: 2.35,
       label: () => {
-        if (this.tapeStarted) return 'Final tape — playing';
-        if (!this.game.hasRecord('wren-final')) return 'Examine the final cassette';
-        return 'Start the final playback';
+        if (this.tapeStarted) return '最终磁带——播放中';
+        if (!this.game.hasRecord('wren-final')) return '查看最终磁带';
+        return '开始最终播放';
       },
       sub: () => {
         if (this.tapeStarted) return '';
-        if (!this.game.hasRecord('wren-final')) return 'E — TAPE 09 / WREN VALE';
-        return 'E — play the last thing she recorded';
+        if (!this.game.hasRecord('wren-final')) return 'E — 磁带 09 / 蕾恩·维尔';
+        return 'E — 播放她最后的录音';
       },
       onInteract: () => this._useConsole()
     });
@@ -437,7 +440,7 @@ export class Chapter4 extends BaseLevel {
     if (!this.game.hasRecord('wren-final')) {
       this.game.collectRecord(record);
       this.game.openNote(record);
-      this.game.ui.showHint('The tape is labelled in Wren’s hand. The console wants you to hear it before you decide anything.', 4.2);
+      this.game.ui.showHint('磁带上写着蕾恩的字。控制台要你先听完，再做决定。', 4.2);
       this.game.audio.play('pickup', { volume: .16, rate: .8 });
       this.setCheckpoint(0, .9, 0);
       this._refreshObjective();
@@ -454,8 +457,8 @@ export class Chapter4 extends BaseLevel {
     this.game.audio.play('tapeStop', { volume: .22, rate: .62 });
     this.game.audio.play('staticBurst', { volume: .1, rate: .32 });
     this.game.audio.setTension(.72);
-    this.game.ui.showTape('FINAL PLAYBACK · TAPE 09');
-    this.game.ui.showHint('The tape deck takes the cassette. The array turns toward the sound.', 4);
+    this.game.ui.showTape('最终播放 · 磁带 09');
+    this.game.ui.showHint('磁带机吞下卡带。阵列转向声音的方向。', 4);
     this.game.audio.play('metalGroan', { volume: .14, rate: .3 });
     this.game.player.addShake(.25);
     this.setCheckpoint(0, .7, 0);
@@ -468,9 +471,9 @@ export class Chapter4 extends BaseLevel {
       const duration = Math.max(2.2, line.duration * scale);
       this.after(at, () => {
         if (this.choiceMade || this._leaving) return;
-        const rate = line.speaker === 'IRIS' ? .74 : line.speaker === 'SIGNAL' ? .48 : .62;
-        this.game.audio.play('staticBurst', { volume: line.speaker === 'SIGNAL' ? .16 : .055, rate });
-        if (line.speaker === 'SIGNAL') {
+        const rate = line.speaker === '艾瑞斯' ? .74 : line.speaker === '信号' ? .48 : .62;
+        this.game.audio.play('staticBurst', { volume: line.speaker === '信号' ? .16 : .055, rate });
+        if (line.speaker === '信号') {
           this.game.audio.tone({ frequency: 43, duration: 1.8, volume: .045, type: 'sawtooth' });
           this.game.player.addShake(.4);
         }
@@ -482,7 +485,7 @@ export class Chapter4 extends BaseLevel {
     this.after(finishAt, () => {
       if (this.choiceMade || this._leaving) return;
       this.game.ui.hideTape();
-      this.game.ui.showHint('The tape reaches its end and keeps turning. One cable still feeds the gallery.', 3.6);
+      this.game.ui.showHint('磁带到了尽头，却还在转。仍有一根电缆向展厅供电。', 3.6);
       this._refreshObjective();
       this.game.audio.setTension(.8);
       this.game.openFinalChoice();
@@ -492,22 +495,22 @@ export class Chapter4 extends BaseLevel {
   _refreshObjective() {
     if (this._leaving) return;
     if (this.choiceMade) {
-      this.setObjective('The choice is made.', 'There is no signal left to answer.');
+      this.setObjective('选择已经做出。', '没有信号需要回答了。');
       return;
     }
     if (this.tapeStarted) {
-      this.setObjective('Listen to the final tape.', 'The console is still running. Do not answer it until you have heard everything.');
+      this.setObjective('听完最终磁带。', '控制台还在运行。在听完一切之前，不要回答它。');
       return;
     }
     if (this.game.hasRecord('wren-final')) {
-      this.setObjective('Start the final playback at the console.', 'One cable feeds the gallery. The tape deck is already threaded.');
+      this.setObjective('在控制台开始最终播放。', '一根电缆向展厅供电。磁带机已经装好。');
       return;
     }
     if (this.inGallery) {
-      this.setObjective('Find the resonance console.', 'Wren’s final tape is waiting beneath the array.');
+      this.setObjective('找到共振控制台。', '蕾恩的最终磁带就在阵列下方等着。');
       return;
     }
-    this.setObjective('Follow the memory corridor to the resonance gallery.', 'The final tape is waiting where the array can hear it.');
+    this.setObjective('沿记忆走廊前往共振展厅。', '最终磁带正在阵列能听见的地方等着。');
   }
 
   /* ------------------------------------------------------------------ */
@@ -519,7 +522,7 @@ export class Chapter4 extends BaseLevel {
     this.setCheckpoint(this.spawn.x, this.spawn.z, this.spawn.yaw);
     this._refreshObjective();
     this.game.audio.setTension(.14);
-    this.game.ui.showHint('There is nothing left to run from. Keep walking until the corridor opens.', 5.2);
+    this.game.ui.showHint('已经没有什么可逃的了。一直走，直到走廊打开。', 5.2);
   }
 
   onRespawn() {
@@ -527,7 +530,7 @@ export class Chapter4 extends BaseLevel {
     this.game.player.staminaLocked = false;
     this._refreshObjective();
     if (this.tapeStarted && !this.choiceMade) {
-      this.game.ui.showHint('The tape is still turning. Find the console.', 3.4);
+      this.game.ui.showHint('磁带还在转。找到控制台。', 3.4);
     }
   }
 

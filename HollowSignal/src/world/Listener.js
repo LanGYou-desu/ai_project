@@ -223,7 +223,7 @@ export class Listener {
       this._setDanger(dist < 12);
       this.game.audio?.setTension?.(Math.min(.62, .25 + intensity * .35));
       if (dist < 13) {
-        this.game.ui?.showHint?.('Something in the corridor changes direction.', 2.4);
+        this.game.ui?.showHint?.('走廊里的某个东西改变了方向。', 2.4);
       }
     } else if (this.state === LISTENER_STATE.INVESTIGATE) {
       this._lostTimer = 4.0;
@@ -246,7 +246,7 @@ export class Listener {
     this._setDanger(true);
     this.game.audio?.setTension?.(.86);
     this.game.player?.addShake?.(.32);
-    this.game.ui?.showHint?.('It heard you. Do not be where the sound was.', 3.4);
+    this.game.ui?.showHint?.('它听见你了。别待在声音响起的地方。', 3.4);
   }
 
   startChase() {

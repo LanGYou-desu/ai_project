@@ -17,6 +17,8 @@ import { Chapter4 } from '../world/Chapter4.js';
 const CHAPTER_CLASSES = [Chapter1, Chapter2, Chapter3, Chapter4];
 const INVISIBLE_HIT_LAYER = 2;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const CHAPTER_LABELS = { I: '一', II: '二', III: '三', IV: '四' };
+const chapterLabel = (chapter) => `第${CHAPTER_LABELS[chapter.roman] || chapter.number}章`;
 
 export class Game {
   constructor(canvas) {
@@ -135,24 +137,24 @@ export class Game {
 
   async _ensureAssets({ showOnUi = false } = {}) {
     if (this.assetsReady) return;
-    if (showOnUi) this.ui.showLoading('Mounting acoustic archive...');
+    if (showOnUi) this.ui.showLoading('正在挂载声学档案……');
     let lastPercent = 4;
     await this.textures.preload((fraction, name) => {
       const percent = 8 + fraction * 62;
       lastPercent = percent;
       if (showOnUi) {
-        this.ui.updateLoading(percent, `Weaving ${name.replace(/([A-Z])/g, ' $1').toLowerCase()}...`, fraction % .18 < .06 ? `texture/${name}` : null);
+        this.ui.updateLoading(percent, '正在铺设场景纹理……', fraction % .18 < .06 ? '纹理/场景' : null);
       }
     });
-    if (showOnUi) this.ui.updateLoading(72, 'Baking environment probe...', 'render/env-probe');
+    if (showOnUi) this.ui.updateLoading(72, '正在烘焙环境探针……', '渲染/环境探针');
     this.materials = new MaterialLibrary(this.textures);
     this.materials.createEnvironment(this.renderPipeline.renderer);
     this.assetsReady = true;
     this.player.setQuality(this.settings.quality);
     if (showOnUi) {
-      this.ui.updateLoading(80, 'Indexing field recordings...', 'audio/ambience');
+      this.ui.updateLoading(80, '正在索引现场录音……', '音频/环境声');
       await sleep(80);
-      this.ui.updateLoading(Math.max(lastPercent, 82), 'Archive mounted.', null);
+      this.ui.updateLoading(Math.max(lastPercent, 82), '声学档案已挂载。', null);
     }
   }
 
@@ -166,7 +168,7 @@ export class Game {
     this._transitioning = true;
     this._mutedByMenu = false;
     this.ui.hideMenu();
-    this.ui.showLoading('Mounting acoustic archive...');
+    this.ui.showLoading('正在挂载声学档案……');
     try {
       await this.audio.unlock();
       this.audio.setPaused(false);
@@ -186,7 +188,7 @@ export class Game {
     if (this._transitioning) return;
     const save = Save.read();
     if (!save) {
-      this.ui.showToast('No descent on record.');
+      this.ui.showToast('没有可继续的下潜记录。');
       return;
     }
     this._transitioning = true;
@@ -198,7 +200,7 @@ export class Game {
     this._endings = save.endings || {};
     this._mutedByMenu = false;
     this.ui.hideMenu();
-    this.ui.showLoading('Recovering last ascent...');
+    this.ui.showLoading('正在恢复上一次上浮……');
     try {
       await this.audio.unlock();
       this.audio.setPaused(false);
@@ -236,7 +238,7 @@ export class Game {
         await this._ensureAssets({ showOnUi: true });
       } catch (err) {
         console.error('Asset preparation failed:', err);
-        this.ui.updateLoading(4, 'Archive could not be mounted.', 'error/asset-pipeline');
+        this.ui.updateLoading(4, '声学档案无法挂载。', '错误/资产管线');
         this._transitioning = false;
         this.state = 'menu';
         return;
@@ -260,18 +262,18 @@ export class Game {
     this.scene.add(this.camera);
     this.camera.position.set(0, 1.68, 0);
 
-    if (first) this.ui.updateLoading(84, 'Laying concrete and cable runs...', 'level/build');
+    if (first) this.ui.updateLoading(84, '正在铺设混凝土与电缆……', '场景/构建');
     try {
       await level.build();
-      if (first) this.ui.updateLoading(89, 'Baking static illumination...', 'light/vertex-bake');
+      if (first) this.ui.updateLoading(89, '正在烘焙静态照明……', '光照/顶点烘焙');
       await level.finalize((fraction, status) => {
-        if (first) this.ui.updateLoading(89 + fraction * 10, status || 'Baking static illumination', fraction > .5 ? 'light/vertex-bake' : null);
+        if (first) this.ui.updateLoading(89 + fraction * 10, status || '正在烘焙静态照明……', fraction > .5 ? '光照/顶点烘焙' : null);
       });
     } catch (err) {
       console.error('Level construction failed:', err);
-      this.ui.showToast('The archive failed to resolve this floor.');
+      this.ui.showToast('档案无法解析这一层。');
       if (first) {
-        this.ui.updateLoading(4, 'Floor reconstruction failed.', 'error/level-build');
+        this.ui.updateLoading(4, '楼层重建失败。', '错误/场景构建');
         await sleep(2400);
         this._transitioning = false;
         this.state = 'menu';
@@ -305,7 +307,7 @@ export class Game {
     this.ui.setFlashlightState(this.player.flashlightOn);
     this.ui.setItem('keycard', false);
     this.ui.setItem('fuse', false);
-    const objective = level.objective || { text: 'Find a way deeper.', sub: '' };
+    const objective = level.objective || { text: '再往深处走。', sub: '' };
     this.ui.setObjective(objective.text, objective.sub || '');
     level.enter();
     this._noiseActive = false;
@@ -318,7 +320,7 @@ export class Game {
     }
 
     if (first) {
-      this.ui.updateLoading(100, 'Archive ready.', 'status/ready');
+      this.ui.updateLoading(100, '档案就绪。', '状态/就绪');
       await sleep(280);
       this.ui.hideLoading();
       await sleep(820);
@@ -327,7 +329,7 @@ export class Game {
 
     if (!skipCard) {
       this.ui.showChapterCard({
-        number: `CHAPTER ${chapter.roman}`,
+        number: chapterLabel(chapter),
         title: chapter.title,
         quote: chapter.quote,
         meta: chapter.meta
@@ -491,7 +493,7 @@ export class Game {
   onSheetClose(context) {
     if (context === 'pause' && this.state === 'paused') {
       this.ui.showPause({
-        chapter: `CHAPTER ${this.chapter.roman} · ${this.chapter.title.toUpperCase()}`,
+        chapter: `${chapterLabel(this.chapter)} · ${this.chapter.title}`,
         tip: this.chapter.tip
       });
     }
@@ -527,7 +529,7 @@ export class Game {
     this.ui.setNoiseVisible(false);
     this.audio.setPaused(true);
     this.ui.showPause({
-      chapter: `CHAPTER ${this.chapter.roman} · ${this.chapter.title.toUpperCase()}`,
+      chapter: `${chapterLabel(this.chapter)} · ${this.chapter.title}`,
       tip: this.chapter.tip
     });
     this.input.exitPointerLock();
@@ -594,7 +596,7 @@ export class Game {
     this._mutedByMenu = true;
     this._refreshMenuSave();
     if (this._save) {
-      this.ui.showToast('Descent archived. Continue from the chapter card.');
+      this.ui.showToast('下潜进度已归档。可从章节卡继续。');
     }
   }
 
@@ -674,7 +676,7 @@ export class Game {
     if (this._keypadResolving) return;
     if (digits === this._keypadCode) {
       this._keypadResolving = true;
-      this.ui.keypadSuccess('ACCESS GRANTED');
+      this.ui.keypadSuccess('访问通过');
       this.audio.play('keyGrant', { volume: .28 });
       const success = this._keypadOnSuccess;
       this._keypadOnSuccess = null;
@@ -685,7 +687,7 @@ export class Game {
         success?.();
       }, 980);
     } else {
-      this.ui.keypadError('ACCESS DENIED');
+      this.ui.keypadError('访问被拒');
       this.audio.play('keyError', { volume: .22 });
       this._keypadOnFail?.();
     }
@@ -718,7 +720,7 @@ export class Game {
   _updateInteraction() {
     if (!this.level || this.state !== 'playing') return;
     if (this.player.hidden) {
-      this.ui.showInteraction('Leave the locker', 'E — step out');
+      this.ui.showInteraction('离开储物柜', 'E — 走出来');
       this.currentInteraction = null;
       this._lastInteractionKey = 'hiding';
       return;
@@ -754,7 +756,7 @@ export class Game {
       return;
     }
     this.currentInteraction = item;
-    const label = item.getLabel?.() || 'Interact';
+    const label = item.getLabel?.() || '交互';
     const sub = item.getSub?.() || '';
     const key = `${item.id}:${label}:${sub}`;
     if (key !== this._lastInteractionKey) {
@@ -782,7 +784,7 @@ export class Game {
   enterHiding(spot, interactable = null) {
     if (this.state !== 'playing' || this.player.hidden) return;
     if (this.level?.allowHiding === false) {
-      this.ui.showHint('There is no time to hide. Run.', 2.4);
+      this.ui.showHint('现在没时间躲。跑。', 2.4);
       return;
     }
     this._hideRestoreCrouch = this.player.crouched;
@@ -795,7 +797,7 @@ export class Game {
     this.ui.setHiding(true);
     this.ui.hideInteraction();
     this.audio.playAt('doorClose', new THREE.Vector3(spot.hide.x, 1.2, spot.hide.z), { volume: .2, rate: 1.5 });
-    this.ui.showHint('Stay still. The shroud is not soundproof.', 4);
+    this.ui.showHint('别动。遮罩并不隔音。', 4);
   }
 
   exitHiding() {
@@ -828,7 +830,7 @@ export class Game {
     this._recordIds.add(record.id);
     this._records.push(record);
     this._sortRecords();
-    this.ui.showToast(`CASE NOTE ADDED — ${record.title}`);
+    this.ui.showToast(`案件记录已添加——${record.title}`);
     this.audio.play('pickup', { volume: .2, rate: .92 });
     this._saveProgress();
     return true;
@@ -886,7 +888,7 @@ export class Game {
     this.audio.play('staticBurst', { volume: .14, rate: .5 });
     this.player.addShake(1.1);
     this.ui.flashDamage();
-    this.ui.showDeath(cause === 'listener' ? 'It has your shape now. Returning to the last safe moment...' : 'Returning to the last safe moment...');
+    this.ui.showDeath(cause === 'listener' ? '它现在有了你的形状。正在返回上一个安全时刻……' : '正在返回上一个安全时刻……');
     this._suppressPause = true;
     setTimeout(() => {
       if (!this.level) {
@@ -908,7 +910,7 @@ export class Game {
       this._dying = false;
       this._suppressPause = false;
       this._updateNoiseUI(true);
-      this.ui.showHint('You wake at the last safe moment. Nothing has forgotten you.', 3.4);
+      this.ui.showHint('你在上一个安全时刻醒来。没有任何东西忘记你。', 3.4);
       setTimeout(() => {
         if (this.state === 'playing') this.input.requestPointerLock();
       }, 60);
@@ -1009,7 +1011,7 @@ export class Game {
       if (this._fpsTimer > .4) {
         this._fpsTimer = 0;
         const info = this.renderPipeline.getInfo();
-        this.ui.setFps(`${info.fps.toFixed(0)} FPS · ${info.calls} CALLS · ${(info.triangles / 1000).toFixed(0)}K TRI · SCALE ${info.dynamicScale.toFixed(2)}`, true);
+        this.ui.setFps(`${info.fps.toFixed(0)} 帧/秒 · ${info.calls} 次绘制 · ${(info.triangles / 1000).toFixed(0)}K 三角形 · 缩放 ${info.dynamicScale.toFixed(2)}`, true);
       }
     }
 
@@ -1034,12 +1036,12 @@ export class Game {
     const listener = this.level.listener;
     const chasing = listener?.state === 'chase';
     const noise = this.player.hidden ? 0 : this.player.noiseLevel;
-    let label = 'STILL';
-    if (this.player.hidden) label = 'HOLDING BREATH';
-    else if (this.player.sprinting) label = 'LOUD';
-    else if (this.player.crouched && this.player.effectiveSpeed > .1) label = 'QUIET';
-    else if (this.player.effectiveSpeed > .1) label = 'WALKING';
-    else if (chasing) label = 'LISTENING';
+    let label = '静止';
+    if (this.player.hidden) label = '屏住呼吸';
+    else if (this.player.sprinting) label = '响亮';
+    else if (this.player.crouched && this.player.effectiveSpeed > .1) label = '安静';
+    else if (this.player.effectiveSpeed > .1) label = '行走';
+    else if (chasing) label = '聆听';
     const segments = Math.round(Math.min(1, noise) * 6);
     const key = `${segments}:${label}:${chasing}`;
     if (force || key !== this._lastNoiseKey) {
@@ -1060,7 +1062,7 @@ export class Game {
       const dev = document.getElementById('dev-debug');
       if (dev) {
         dev.classList.toggle('is-hidden', !this._debugVisible);
-        dev.textContent = 'DEBUG / F3 TO HIDE';
+        dev.textContent = '调试 / F3 隐藏';
       }
       return;
     }
@@ -1103,7 +1105,7 @@ export class Game {
     this.state = 'menu';
     this.ui.hideMenu();
     if (!this.assetsReady) {
-      this.ui.showLoading('QA boot...');
+      this.ui.showLoading('QA 启动……');
       await this.audio.unlock().catch(() => {});
       await this._ensureAssets({ showOnUi: true });
       this.ui.hideLoading();

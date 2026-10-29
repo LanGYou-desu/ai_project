@@ -39,8 +39,8 @@ export function placeNote(level, recordId, x, y, z, {
     position: new THREE.Vector3(x, y, z),
     size: new THREE.Vector3(Math.max(.54, width * 2), Math.max(.48, height * 1.5), .46),
     range,
-    label: () => label || `Read ${record.title}`,
-    sub: 'E — add to case notes',
+    label: () => label || `阅读${record.title}`,
+    sub: 'E — 加入案件记录',
     onInteract: () => level.openNote(record)
   });
   return { group, item, record };
@@ -53,7 +53,7 @@ export function placePickup(level, {
   depth = .6,
   range = 2.1,
   label,
-  sub = 'E — take',
+  sub = 'E — 拿走',
   mesh = null,
   onPickup = null,
   once = true
@@ -77,7 +77,7 @@ export function placePickup(level, {
 }
 
 export function addFusePickup(level, x, y, z, {
-  label = 'Take ceramic fuse',
+  label = '拿走陶瓷保险丝',
   onPickup
 } = {}) {
   const mesh = makeFuseMesh(level, x, y, z);
@@ -91,7 +91,7 @@ export function addFusePickup(level, x, y, z, {
   return { mesh, item };
 }
 
-export function addKeycardPickup(level, x, y, z, { label = 'Take service access card', onPickup } = {}) {
+export function addKeycardPickup(level, x, y, z, { label = '拿走检修卡', onPickup } = {}) {
   const mesh = makeKeycardMesh(level, x, y, z);
   const item = placePickup(level, {
     x, y, z,
@@ -150,7 +150,7 @@ export function addWaterSheen(level, x0, x1, z0, z1, {
 
 export function addLiftRecess(level, {
   x, z, axis = 'x', facing = 1, width = 1.8, height = 2.3,
-  label = 'Call the lift', sub = 'E — descend', onCall
+  label = '呼叫电梯', sub = 'E — 下降', onCall
 } = {}) {
   // A dark recess, brushed frame and a single call panel. `facing` is the
   // direction the lift opens towards (+Z for x-axis lifts, +X for z-axis).

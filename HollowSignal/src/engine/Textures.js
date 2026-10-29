@@ -759,7 +759,7 @@ export class TextureFactory {
     const {
       width = 512, height = 256, bg = '#2d342d', fg = '#d6d0b8',
       accent = '#b59760', title = '', lines = [], titleSize = 54,
-      lineSize = 24, border = true, font = 'Arial, sans-serif', upper = true
+      lineSize = 24, border = true, font = '"Noto Sans SC", "Microsoft YaHei", sans-serif', upper = false
     } = options;
     const c = makeCanvas(width, height);
     const ctx = c.getContext('2d');

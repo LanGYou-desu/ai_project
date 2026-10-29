@@ -1,6 +1,6 @@
 export const QUALITY_PRESETS = {
   low: {
-    label: 'Low',
+    label: '低',
     renderScale: 0.68,
     maxPixelRatio: 1.0,
     msaaSamples: 0,
@@ -13,7 +13,7 @@ export const QUALITY_PRESETS = {
     lodBias: 2.0
   },
   medium: {
-    label: 'Medium',
+    label: '中',
     renderScale: 0.88,
     maxPixelRatio: 1.25,
     msaaSamples: 2,
@@ -26,7 +26,7 @@ export const QUALITY_PRESETS = {
     lodBias: 1.0
   },
   high: {
-    label: 'High',
+    label: '高',
     renderScale: 1.0,
     maxPixelRatio: 1.5,
     msaaSamples: 4,

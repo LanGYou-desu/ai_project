@@ -66,9 +66,9 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   const url = `http://127.0.0.1:${PORT}/`;
   console.log('');
-  console.log('  THE HOLLOW SIGNAL');
-  console.log(`  Local server: ${url}`);
-  console.log('  Press Ctrl+C to stop.');
+  console.log('  空 洞 信 号');
+  console.log(`  本地服务器：${url}`);
+  console.log('  按 Ctrl+C 停止。');
   console.log('');
   if (!process.env.NO_OPEN) {
     const cmd = process.platform === 'win32' ? `start "" "${url}"` :
