@@ -14,6 +14,18 @@ D:\CodeWorks\ai_project\HollowSignal
 
 需要 Node.js 20 或更高版本，以及支持 WebGL2 和指针锁定的桌面版 Chromium / Edge。
 
+### 一键启动（Windows）
+
+双击项目根目录下的：
+
+```text
+启动游戏.bat
+```
+
+脚本会检查 Node.js、复用已经在运行的本地服务器，并自动打开浏览器。关闭脚本窗口或按 `Ctrl+C` 即可停止服务器。
+
+### 命令行启动
+
 ```powershell
 cd D:\CodeWorks\ai_project\HollowSignal
 npm install
@@ -113,6 +125,7 @@ node tools/diag-perf.mjs
 
 ```text
 HollowSignal/
+├─ 启动游戏.bat               # Windows 一键启动脚本
 ├─ index.html                 # 静态界面骨架与中文文案
 ├─ styles.css                 # 界面、中文排版与响应式布局
 ├─ server.mjs                 # 无依赖本地静态服务器
