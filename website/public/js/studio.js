@@ -22,7 +22,7 @@ const artMap = {
 };
 
 const state = {
-  csrf: '', user: null, role: 'user', works: [], posts: [], categories: [], stats: null,
+  csrf: '', user: null, role: 'user', works: [], myWorks: [], posts: [], categories: [], stats: null,
   tab: 'all', query: '', editing: null,
 };
 const isAdmin = () => state.role === 'admin';
@@ -77,9 +77,9 @@ function renderStats() {
   } else {
     el.innerHTML =
       '<div><strong>' + state.posts.length + '</strong><span>我的手记</span></div>' +
+      '<div><strong>' + state.myWorks.length + '</strong><span>我的投稿</span></div>' +
       '<div><strong>' + (stats.works ?? '—') + '</strong><span>可玩作品</span></div>' +
-      '<div><strong>' + (stats.publicPosts ?? '—') + '</strong><span>公开手记</span></div>' +
-      '<div><strong>' + (stats.categories ?? '—') + '</strong><span>作品类别</span></div>';
+      '<div><strong>' + (stats.publicPosts ?? '—') + '</strong><span>公开手记</span></div>';
   }
   const dateEl = $('#studioDate');
   if (dateEl) {
@@ -92,6 +92,7 @@ function fillCategories() {
   const options = state.categories.map((c) => '<option value="' + esc(c.id) + '">' + esc(c.cn) + ' / ' + esc(c.name) + '</option>').join('');
   const a = $('#categorySelect'); if (a) a.innerHTML = options;
   const b = $('#editCategory'); if (b) b.innerHTML = options;
+  const c = $('#subCategory'); if (c) c.innerHTML = options;
 }
 
 function renderList() {
@@ -107,7 +108,7 @@ function renderList() {
   const empty = $('#archiveEmpty'); if (empty) empty.hidden = items.length > 0;
   list.innerHTML = items.map((w) => {
     const meta = w.builtin ? 'BUILT-IN · NO. ' + pad(w.order || 0) : 'UPLOADED · ' + String(w.createdAt || '').slice(0, 10);
-    const status = w.builtin ? '内置' : w.visible === false ? '隐藏' : '公开';
+    const status = w.builtin ? '内置' : w.status === 'pending' ? '待审核' : w.status === 'rejected' ? '已拒绝' : w.visible === false ? '隐藏' : '公开';
     const actions = w.builtin
       ? '<a href="/#work/' + encodeURIComponent(w.id) + '" target="_blank" rel="noopener">查看</a>'
       : '<button type="button" data-action="featured" class="' + (w.featured ? 'is-on' : '') + '">' + (w.featured ? '精选 ✓' : '精选') + '</button>' +
@@ -136,23 +137,28 @@ async function loadAdmin() {
   renderStats();
   renderList();
   renderPosts();
+  renderReview();
 }
 
 async function loadUser() {
-  const [meta, mine, publicPosts] = await Promise.all([
+  const [meta, mine, publicPosts, myWorks] = await Promise.all([
     api('/api/meta'),
     api('/api/my/posts'),
     api('/api/posts'),
+    api('/api/my/works'),
   ]);
   state.categories = meta.categories || [];
   state.posts = mine.posts || [];
+  state.myWorks = myWorks.works || [];
   state.stats = {
     works: meta.meta?.stats?.works ?? 33,
     categories: (meta.categories || []).length || 6,
     publicPosts: (publicPosts.posts || []).length,
   };
+  fillCategories();
   renderStats();
   renderPosts();
+  renderMyWorks();
 }
 
 function setupDropzone(dropId, inputId, maxMB, onFile) {
@@ -451,6 +457,153 @@ function setupEdit() {
   });
 }
 
+function statusLabel(status) {
+  if (status === 'pending') return '审核中';
+  if (status === 'rejected') return '未通过';
+  return '已公开';
+}
+function statusBadge(status) {
+  return '<span class="status-badge ' + esc(status || 'approved') + '">' + statusLabel(status) + '</span>';
+}
+
+function renderMyWorks() {
+  const list = $('#myWorksList');
+  if (!list) return;
+  if (!state.myWorks.length) {
+    list.innerHTML = '<div class="myworks-empty">还没有投稿。上传一个作品，管理员审核通过后就会出现在首页。</div>';
+    return;
+  }
+  list.innerHTML = state.myWorks.map((w) => {
+    const status = w.status || 'approved';
+    const cover = w.cover ? '<img src="' + esc(w.cover) + '" alt="" loading="lazy" />' : '<span class="dropzone-icon">▧</span>';
+    const actions = status === 'approved'
+      ? '<a href="/#work/' + encodeURIComponent(w.id) + '" target="_blank" rel="noopener">查看</a>'
+      : '<button type="button" data-work-action="delete" data-work-id="' + esc(w.id) + '" class="danger">删除</button>';
+    const note = status === 'rejected' && w.reviewNote ? '<div class="mywork-note">审核意见：' + esc(w.reviewNote) + '</div>' : '';
+    return '<article class="mywork-card">' +
+      '<div class="mywork-cover">' + cover + '</div>' +
+      '<div class="mywork-main"><div class="mywork-meta"><span>' + esc(String(w.createdAt || '').slice(0, 10)) + '</span><span>' + esc(w.categoryName || '') + '</span>' + statusBadge(status) + '</div>' +
+      '<h3>' + esc(w.title) + '</h3>' +
+      '<p>' + esc(w.tagline || w.subtitle || '') + '</p>' + note + '</div>' +
+      '<div class="mywork-actions">' + actions + '</div>' +
+    '</article>';
+  }).join('');
+}
+
+function setupMyWorks() {
+  const list = $('#myWorksList');
+  if (!list) return;
+  list.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-work-action="delete"]');
+    if (!btn) return;
+    if (!confirm('确定删除这个投稿？文件也会一并删除。')) return;
+    try {
+      await api('/api/my/works/' + encodeURIComponent(btn.dataset.workId), { method: 'DELETE' });
+      toast('投稿已删除');
+      await loadUser();
+    } catch (err) { toast(err.message || '删除失败', false); }
+  });
+}
+
+function renderReview() {
+  const list = $('#reviewList');
+  if (!list) return;
+  const pending = state.works.filter((w) => w.status === 'pending');
+  const count = $('#reviewCount');
+  if (count) count.textContent = pending.length + ' 件待处理';
+  if (!pending.length) {
+    list.innerHTML = '<div class="review-empty">没有待审核的投稿。新投稿会出现在这里。</div>';
+    return;
+  }
+  list.innerHTML = pending.map((w) => {
+    const cover = w.cover ? '<img src="' + esc(w.cover) + '" alt="" loading="lazy" />' : '<span class="dropzone-icon">▧</span>';
+    return '<article class="review-card" data-work-id="' + esc(w.id) + '">' +
+      '<div class="review-cover">' + cover + '</div>' +
+      '<div class="review-main"><div class="review-meta"><span>' + esc(w.authorName || '') + '</span><span>' + esc(String(w.submittedAt || w.createdAt || '').slice(0, 10)) + '</span><span>' + esc(w.categoryName || '') + '</span></div>' +
+      '<h3>' + esc(w.title) + '</h3>' +
+      '<p>' + esc(w.tagline || w.subtitle || '') + '</p></div>' +
+      '<div class="review-actions">' +
+        '<button type="button" data-review="approve" class="is-on">通过并公开</button>' +
+        '<button type="button" data-review="reject" class="danger">拒绝</button>' +
+      '</div>' +
+    '</article>';
+  }).join('');
+}
+
+function setupReview() {
+  const list = $('#reviewList');
+  if (!list) return;
+  list.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-review]');
+    if (!btn) return;
+    const card = btn.closest('.review-card');
+    const id = card?.dataset.workId;
+    if (!id) return;
+    const action = btn.dataset.review;
+    try {
+      if (action === 'approve') {
+        if (!confirm('通过后作品会立即出现在首页，并开放下载/在线游玩。确定通过？')) return;
+        await api('/api/admin/works/' + encodeURIComponent(id) + '/approve', { method: 'POST', body: JSON.stringify({}) });
+        toast('已通过并公开');
+      } else {
+        const note = prompt('拒绝原因（可留空，会显示给投稿者）：') || '';
+        await api('/api/admin/works/' + encodeURIComponent(id) + '/reject', { method: 'POST', body: JSON.stringify({ note }) });
+        toast('已拒绝');
+      }
+      await loadAdmin();
+    } catch (err) { toast(err.message || '操作失败', false); }
+  });
+}
+
+function resetSubPreviews() {
+  const c = $('#subCoverPreview'); if (c) c.innerHTML = '<span class="dropzone-icon">▧</span>';
+  const p = $('#subPackagePreview'); if (p) p.innerHTML = '<span class="dropzone-icon">ZIP</span>';
+}
+
+function setupSubmission() {
+  setupDropzone('subCoverDrop', 'subCoverInput', 12, (file) => {
+    const url = URL.createObjectURL(file);
+    $('#subCoverPreview').innerHTML = '<img src="' + url + '" alt="封面预览" />';
+  });
+  setupDropzone('subPackageDrop', 'subPackageInput', 600, (file) => {
+    $('#subPackagePreview').innerHTML = '<span class="dropzone-icon">' + esc(file.name.length > 18 ? file.name.slice(0, 16) + '…' : file.name) + '<br />' + fmtBytes(file.size) + '</span>';
+  });
+  const form = $('#submissionForm');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const title = String(fd.get('title') || '').trim();
+    if (title.length < 2) return setMsg('subMsg', '请填写作品标题（至少 2 个字符）。');
+    if (!fd.get('cover')?.size && !fd.get('package')?.size && !String(fd.get('description') || '').trim() && !String(fd.get('tagline') || '').trim()) {
+      return setMsg('subMsg', '请至少上传封面、作品包，或填写介绍。');
+    }
+    const btn = $('#subSubmit');
+    btn.disabled = true;
+    setMsg('subMsg', '正在上传…');
+    try {
+      const res = await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'x-csrf-token': state.csrf },
+        credentials: 'same-origin',
+        body: fd,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || '提交失败');
+      form.reset();
+      resetSubPreviews();
+      setMsg('subMsg', '已提交审核，管理员通过后会公开。', true);
+      toast('已提交审核');
+      await loadUser();
+    } catch (err) {
+      setMsg('subMsg', err.message || '提交失败');
+      toast(err.message || '提交失败', false);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
 function setupPassword() {
   const form = $('#passwordForm');
   if (!form) return;
@@ -492,6 +645,7 @@ async function boot() {
   document.body.classList.add('role-' + state.role);
 
   $$('[data-admin-only]').forEach((el) => { el.hidden = !isAdmin(); });
+  $$('[data-user-only]').forEach((el) => { el.hidden = isAdmin(); });
   const greetingName = $('#greetingName'); if (greetingName) greetingName.textContent = state.user.username;
   const accountName = $('#accountName'); if (accountName) accountName.textContent = state.user.username;
   const accountRole = $('#accountRole'); if (accountRole) accountRole.textContent = isAdmin() ? 'ADMIN / 管理员' : 'MEMBER / 注册用户';
@@ -510,6 +664,10 @@ async function boot() {
     setupUpload();
     setupArchive();
     setupEdit();
+    setupReview();
+  } else {
+    setupSubmission();
+    setupMyWorks();
   }
   try {
     if (isAdmin()) await loadAdmin();

@@ -39,10 +39,12 @@ export async function createWorks({ appDir, playBase, store, playDir, packageDir
 
   function decorateUpload(meta, w) {
     const cat = categoryOf(meta, w.category);
+    const status = w.status || 'approved';
     const demoUrl = w.demoPath ? joinUrl(playBase, w.demoPath) : null;
     const downloadUrl = w.downloadPath ? joinUrl('/downloads', w.downloadPath) : null;
     return {
       ...w,
+      status,
       builtin: false,
       editable: true,
       categoryName: cat.name,
@@ -54,9 +56,14 @@ export async function createWorks({ appDir, playBase, store, playDir, packageDir
     };
   }
 
+  function isPublic(w) {
+    if (w.status) return w.status === 'approved' && w.visible !== false;
+    return w.visible !== false;
+  }
+
   async function publicWorks() {
     const meta = await catalog();
-    const uploads = (await store.list()).filter((w) => w.visible !== false);
+    const uploads = (await store.list()).filter(isPublic);
     const builtins = meta.works.map((w) => decorateBuiltin(meta, w));
     const decoratedUploads = uploads.map((w) => decorateUpload(meta, w)).sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
     return { meta, works: [...builtins, ...decoratedUploads] };
@@ -65,9 +72,21 @@ export async function createWorks({ appDir, playBase, store, playDir, packageDir
   async function adminWorks() {
     const meta = await catalog();
     const uploads = await store.list();
-    const builtins = meta.works.map((w) => decorateBuiltin(meta, w)).map((w) => ({ ...w, visible: true }));
-    const decoratedUploads = uploads.map((w) => decorateUpload(meta, w)).sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    const builtins = meta.works.map((w) => decorateBuiltin(meta, w)).map((w) => ({ ...w, visible: true, status: 'approved' }));
+    const rank = { pending: 0, rejected: 1, approved: 2 };
+    const decoratedUploads = uploads.map((w) => decorateUpload(meta, w)).sort((a, b) => {
+      const byStatus = (rank[a.status] ?? 3) - (rank[b.status] ?? 3);
+      return byStatus || String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+    });
     return { meta, works: [...builtins, ...decoratedUploads] };
+  }
+
+  async function userWorks(userId) {
+    const meta = await catalog();
+    const uploads = (await store.list())
+      .filter((w) => w.authorId === userId)
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    return { meta, works: uploads.map((w) => decorateUpload(meta, w)) };
   }
 
   async function getWork(id) {
@@ -87,6 +106,7 @@ export async function createWorks({ appDir, playBase, store, playDir, packageDir
       assertions,
       categories: new Set(list.map((w) => w.category)).size,
       featured: list.filter((w) => w.featured).length,
+      pending: (await store.list()).filter((w) => w.status === 'pending').length,
     };
   }
 
@@ -106,5 +126,5 @@ export async function createWorks({ appDir, playBase, store, playDir, packageDir
     }
   }
 
-  return { catalog, publicWorks, adminWorks, getWork, stats, removeFiles };
+  return { catalog, publicWorks, adminWorks, userWorks, getWork, stats, removeFiles };
 }

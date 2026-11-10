@@ -7,8 +7,8 @@
   <meta name="robots" content="noindex,nofollow" />
   <meta name="theme-color" content="#f1ece2" />
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="/css/site.css?v=20261110-23" />
-  <link rel="stylesheet" href="/css/studio.css?v=20261110-23" />
+  <link rel="stylesheet" href="/css/site.css?v=20261110-24" />
+  <link rel="stylesheet" href="/css/studio.css?v=20261110-24" />
 </head>
 <body class="studio-body">
   <div class="grain" aria-hidden="true"></div>
@@ -42,6 +42,65 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <section class="studio-submission" data-user-only>
+      <div class="panel-head">
+        <div>
+          <div class="panel-kicker">SUBMIT / 投稿</div>
+          <h2>投稿作品</h2>
+        </div>
+        <span class="panel-hint">审核通过后才会公开</span>
+      </div>
+      <form id="submissionForm" novalidate>
+        <div class="dropzones">
+          <label class="dropzone" id="subCoverDrop">
+            <input id="subCoverInput" name="cover" type="file" accept="image/jpeg,image/png,image/webp,image/avif" hidden />
+            <span class="dropzone-preview" id="subCoverPreview"><span class="dropzone-icon">▧</span></span>
+            <span class="dropzone-copy"><strong>封面图</strong><small>点击或拖入 · 最大 12 MB</small></span>
+          </label>
+          <label class="dropzone" id="subPackageDrop">
+            <input id="subPackageInput" name="package" type="file" accept=".zip,application/zip" hidden />
+            <span class="dropzone-preview package" id="subPackagePreview"><span class="dropzone-icon">ZIP</span></span>
+            <span class="dropzone-copy"><strong>作品包</strong><small>ZIP · 含 index.html 可在审核通过后在线游玩</small></span>
+          </label>
+        </div>
+        <div class="form-grid">
+          <label class="studio-field"><span>标题 <em>TITLE</em></span><input name="title" type="text" maxlength="80" placeholder="作品名称" required /></label>
+          <label class="studio-field"><span>副标题 <em>SUBTITLE</em></span><input name="subtitle" type="text" maxlength="80" placeholder="一句副标题" /></label>
+          <label class="studio-field"><span>分类 <em>CATEGORY</em></span><select name="category" id="subCategory"></select></label>
+          <label class="studio-field"><span>标签 <em>TAGS</em></span><input name="tags" type="text" placeholder="解谜, 叙事, 3D" /></label>
+        </div>
+        <label class="studio-field"><span>一句话介绍 <em>TAGLINE</em></span><input name="tagline" type="text" maxlength="200" placeholder="审核通过后显示在卡片上" /></label>
+        <label class="studio-field"><span>详细描述 <em>DESCRIPTION</em></span><textarea name="description" rows="4" maxlength="3000" placeholder="作品是什么、怎么玩、有哪些内容…"></textarea></label>
+        <label class="studio-field"><span>技术 <em>TECH</em></span><input name="tech" type="text" placeholder="Three.js, Canvas, Node.js" /></label>
+        <div class="studio-submit-row">
+          <button class="studio-submit" type="submit" id="subSubmit"><span>提交审核</span><span>→</span></button>
+          <span class="studio-form-msg" id="subMsg" role="status"></span>
+        </div>
+      </form>
+    </section>
+
+    <section class="studio-myworks" data-user-only>
+      <div class="archive-head">
+        <div>
+          <div class="panel-kicker">MY SUBMISSIONS / 投稿记录</div>
+          <h2>我的投稿</h2>
+        </div>
+        <span class="panel-hint">待审核 / 已公开 / 未通过</span>
+      </div>
+      <div class="myworks-list" id="myWorksList"></div>
+    </section>
+
+    <section class="studio-review" data-admin-only>
+      <div class="archive-head">
+        <div>
+          <div class="panel-kicker">REVIEW / 审核</div>
+          <h2>待审核投稿</h2>
+        </div>
+        <span class="panel-hint" id="reviewCount">0 件待处理</span>
+      </div>
+      <div class="review-list" id="reviewList"></div>
     </section>
 
     <section class="studio-workspace">
@@ -208,7 +267,7 @@
   </div>
 
   <div class="studio-toast" id="studioToast" role="status" aria-live="polite"></div>
-  <script src="/js/studio-check.js?v=20261110-23"></script>
-  <script defer src="/js/studio.js?v=20261110-23"></script>
+  <script src="/js/studio-check.js?v=20261110-24"></script>
+  <script defer src="/js/studio.js?v=20261110-24"></script>
 </body>
 </html>

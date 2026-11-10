@@ -113,7 +113,7 @@ export async function createUploads({ storageDir, publicDir, playDir, packageDir
     return false;
   }
 
-  async function processUpload({ body, files, store }) {
+  async function processUpload({ body, files, store, extra = {} }) {
     const title = sanitizeText(body.title, 80);
     const subtitle = sanitizeText(body.subtitle, 80);
     const tagline = sanitizeText(body.tagline, 200);
@@ -174,6 +174,7 @@ export async function createUploads({ storageDir, publicDir, playDir, packageDir
         featured: Boolean(featured), visible: Boolean(visible),
         createdAt: now, updatedAt: now,
         builtin: false,
+        ...extra,
       };
       await store.add(work);
       return work;

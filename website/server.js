@@ -405,6 +405,70 @@ app.post('/api/logout', requireAuth, requireCsrf, (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/api/submissions', requireAuth, requireCsrf, (req, res, next) => {
+  uploads.uploader.fields([{ name: 'cover', maxCount: 1 }, { name: 'package', maxCount: 1 }])(req, res, async (err) => {
+    if (err) return next(err);
+    try {
+      const work = await uploads.processUpload({
+        body: req.body,
+        files: req.files,
+        store,
+        extra: {
+          status: 'pending',
+          visible: false,
+          featured: false,
+          authorId: req.user.id,
+          authorName: req.user.username,
+          submittedAt: new Date().toISOString(),
+        },
+      });
+      res.status(201).json({ ok: true, work });
+    } catch (e) { next(e); }
+  });
+});
+
+app.get('/api/my/works', requireAuth, async (req, res, next) => {
+  try {
+    const data = await works.userWorks(req.user.id);
+    res.json({ works: data.works });
+  } catch (err) { next(err); }
+});
+
+app.delete('/api/my/works/:id', requireAuth, requireCsrf, async (req, res, next) => {
+  try {
+    const existing = await store.get(req.params.id);
+    if (!existing || existing.authorId !== req.user.id) return res.status(404).json({ error: '投稿不存在' });
+    if (existing.status === 'approved') return res.status(400).json({ error: '已公开的作品不能由投稿者删除' });
+    await store.remove(existing.id);
+    await works.removeFiles(existing);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+app.post('/api/admin/works/:id/approve', requireAdmin, requireCsrf, async (req, res, next) => {
+  try {
+    const existing = await store.get(req.params.id);
+    if (!existing) return res.status(404).json({ error: '作品不存在' });
+    const patch = { status: 'approved', visible: true, reviewedAt: new Date().toISOString(), reviewedBy: req.user.username, reviewNote: '' };
+    if (typeof req.body?.featured === 'boolean') patch.featured = req.body.featured;
+    const updated = await store.update(existing.id, patch);
+    res.json({ ok: true, work: updated });
+  } catch (err) { next(err); }
+});
+
+app.post('/api/admin/works/:id/reject', requireAdmin, requireCsrf, async (req, res, next) => {
+  try {
+    const existing = await store.get(req.params.id);
+    if (!existing) return res.status(404).json({ error: '作品不存在' });
+    const note = String(req.body?.note || '').trim().slice(0, 500);
+    const updated = await store.update(existing.id, {
+      status: 'rejected', visible: false,
+      reviewedAt: new Date().toISOString(), reviewedBy: req.user.username, reviewNote: note,
+    });
+    res.json({ ok: true, work: updated });
+  } catch (err) { next(err); }
+});
+
 app.get('/api/admin/works', requireAdmin, async (_req, res, next) => {
   try {
     const { meta, works: list } = await works.adminWorks();
@@ -469,7 +533,9 @@ app.post('/api/admin/works', requireAdmin, requireCsrf, (req, res, next) => {
   uploads.uploader.fields([{ name: 'cover', maxCount: 1 }, { name: 'package', maxCount: 1 }])(req, res, async (err) => {
     if (err) return next(err);
     try {
-      const work = await uploads.processUpload({ body: req.body, files: req.files, store });
+      const work = await uploads.processUpload({ body: req.body, files: req.files, store, extra: {
+        status: 'approved', authorId: req.user.id, authorName: req.user.username, submittedAt: new Date().toISOString(),
+      } });
       res.status(201).json({ ok: true, work });
     } catch (e) { next(e); }
   });
