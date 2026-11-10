@@ -65,8 +65,12 @@ export async function createAuth(options) {
     if (!safeEqual(sig, expected)) return null;
     let payload;
     try { payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')); } catch { return null; }
-    if (!payload || payload.u !== record.username) return null;
-    if (!payload.exp || payload.exp < Date.now()) return null;
+    if (!payload || !payload.exp || payload.exp < Date.now()) return null;
+    if (payload.role === 'guest') {
+      if (payload.u !== 'Guest') return null;
+      return payload;
+    }
+    if (payload.u !== record.username) return null;
     if (payload.v !== record.version) return null;
     return payload;
   }
@@ -74,7 +78,14 @@ export async function createAuth(options) {
   function issue() {
     const csrf = crypto.randomBytes(24).toString('base64url');
     const exp = Date.now() + sessionDays * 24 * 60 * 60 * 1000;
-    const token = sign({ u: record.username, v: record.version, csrf, exp, iat: Date.now() });
+    const token = sign({ u: record.username, role: 'owner', v: record.version, csrf, exp, iat: Date.now() });
+    return { token, csrf, exp };
+  }
+
+  function issueGuest() {
+    const csrf = crypto.randomBytes(24).toString('base64url');
+    const exp = Date.now() + sessionDays * 24 * 60 * 60 * 1000;
+    const token = sign({ u: 'Guest', role: 'guest', csrf, exp, iat: Date.now() });
     return { token, csrf, exp };
   }
 
@@ -129,6 +140,7 @@ export async function createAuth(options) {
     username: record.username,
     login,
     issue,
+    issueGuest,
     verify,
     sessionFromRequest,
     setCookie,

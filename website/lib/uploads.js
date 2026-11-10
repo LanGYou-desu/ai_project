@@ -43,6 +43,16 @@ export async function createUploads({ storageDir, publicDir, playDir, packageDir
     },
   });
 
+  async function moveFile(src, dest) {
+    try {
+      await fsp.rename(src, dest);
+    } catch (err) {
+      if (err.code !== 'EXDEV') throw err;
+      await fsp.copyFile(src, dest);
+      await fsp.unlink(src);
+    }
+  }
+
   function sanitizeText(value, max = 2000) {
     return String(value ?? '').replace(/\u0000/g, '').trim().slice(0, max);
   }
@@ -134,13 +144,13 @@ export async function createUploads({ storageDir, publicDir, playDir, packageDir
         const ext = path.extname(coverFile.originalname || '').toLowerCase();
         const name = id + (ext === '.jpeg' ? '.jpg' : ext);
         const dest = path.join(publicDir, 'covers', 'uploads', name);
-        await fsp.rename(coverFile.path, dest);
+        await moveFile(coverFile.path, dest);
         cover = '/covers/uploads/' + name;
       }
 
       if (packageFile) {
         const dest = path.join(packageDir, id + '.zip');
-        await fsp.rename(packageFile.path, dest);
+        await moveFile(packageFile.path, dest);
         downloadPath = id + '.zip';
         downloadSize = packageFile.size || 0;
         const target = path.join(playDir, 'u', id);

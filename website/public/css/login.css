@@ -1,4 +1,11 @@
 /* login */
+.login-divider { display: flex; align-items: center; gap: 12px; margin: 24px 0 18px; font-family: var(--mono); font-size: 7px; color: var(--muted-2); letter-spacing: 0.08em; }
+.login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: var(--line-dark); }
+.guest-login { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border: 1px solid var(--line-dark); background: transparent; font-family: var(--mono); font-size: 9px; letter-spacing: 0.05em; transition: 0.3s var(--ease); }
+.guest-login:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.guest-login:disabled { opacity: 0.5; cursor: wait; }
+.guest-note { margin-top: 10px; font-family: var(--mono); font-size: 7px; line-height: 1.8; color: var(--muted-2); letter-spacing: 0.02em; }
+
 .login-body { min-height: 100svh; background: var(--ink); }
 .login-shell { min-height: 100svh; display: grid; grid-template-columns: 1.15fr 0.85fr; }
 .login-left {

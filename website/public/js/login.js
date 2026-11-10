@@ -11,13 +11,42 @@ const showError = (message) => {
   wrap.classList.add('shake');
 };
 
+let guestSession = null;
+const guestBtn = document.getElementById('guestLogin');
+const guestNote = document.querySelector('.guest-note');
+
+function setGuestMode(session) {
+  guestSession = session;
+  guestBtn.querySelector('span').textContent = '退出游客模式';
+  guestBtn.classList.add('is-guest');
+  guestNote.textContent = '当前为游客模式：可以浏览、游玩与下载，但不能发布手记或进入工作室。';
+}
+
 (async () => {
   try {
     const res = await fetch('/api/session', { headers: { accept: 'application/json' } });
     const data = await res.json();
-    if (data.authenticated) location.replace('/studio');
+    if (data.authenticated && data.user?.role === 'owner') location.replace('/studio?v=20261110-3');
+    else if (data.authenticated && data.user?.role === 'guest') setGuestMode(data);
   } catch {}
 })();
+
+guestBtn.addEventListener('click', async () => {
+  guestBtn.disabled = true;
+  try {
+    if (guestSession) {
+      await fetch('/api/logout', { method: 'POST', headers: { 'x-csrf-token': guestSession.csrf } });
+      location.reload();
+    } else {
+      const res = await fetch('/api/guest', { method: 'POST', headers: { accept: 'application/json' } });
+      if (!res.ok) throw new Error('游客入口暂时不可用');
+      location.replace('/');
+    }
+  } catch (err) {
+    showError(err.message || '游客入口暂时不可用');
+    guestBtn.disabled = false;
+  }
+});
 
 document.getElementById('togglePassword').addEventListener('click', (e) => {
   const input = document.getElementById('password');
@@ -44,7 +73,7 @@ form.addEventListener('submit', async (e) => {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || '登录失败');
     submit.querySelector('span').textContent = '已进入';
-    location.replace('/studio');
+    location.replace('/studio?v=20261110-3');
   } catch (err) {
     showError(err.message || '登录失败，请稍后再试。');
     submit.disabled = false;

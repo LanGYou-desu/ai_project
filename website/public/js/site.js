@@ -4,6 +4,7 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 const state = {
   works: [],
+  posts: [],
   categories: [],
   meta: null,
   filter: 'all',
@@ -170,6 +171,72 @@ function setFilter(id) {
 function setQuery(q) {
   state.query = q.trim();
   renderGrid();
+}
+
+function journalDate(value) {
+  try {
+    return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value)).replace(/\//g, '.');
+  } catch { return String(value || '').slice(0, 10); }
+}
+
+function renderJournal() {
+  const grid = $('#journalGrid');
+  if (!grid) return;
+  const posts = state.posts.slice(0, 6);
+  if (!posts.length) {
+    grid.innerHTML = '<div class="journal-empty">还没有公开手记。站主登录工作室后可以发布第一条。</div>';
+    return;
+  }
+  grid.innerHTML = posts.map((p, i) => {
+    const tags = (p.tags || []).slice(0, 3).map((t) => '<span class="tag">' + esc(t) + '</span>').join('');
+    return '<article class="journal-card" data-post-id="' + esc(p.id) + '" tabindex="0" role="button" aria-label="阅读手记：' + esc(p.title) + '">' +
+      '<div class="journal-date"><span>' + journalDate(p.createdAt) + '</span><span>' + (p.pinned ? 'PINNED' : 'NO. ' + pad(i + 1)) + '</span></div>' +
+      '<h3 class="journal-title">' + esc(p.title) + '</h3>' +
+      '<p class="journal-excerpt">' + esc(String(p.body || '').replace(/\s+/g, ' ').slice(0, 160)) + '</p>' +
+      '<div class="journal-tags">' + tags + '</div>' +
+      '<span class="journal-read">READ ↗</span>' +
+    '</article>';
+  }).join('');
+}
+
+function openPost(id, push = true) {
+  const post = state.posts.find((p) => p.id === id);
+  if (!post) return;
+  state.lastFocus = document.activeElement;
+  $('#postDate').textContent = journalDate(post.createdAt) + ' / ' + (post.pinned ? 'PINNED' : 'JOURNAL');
+  $('#postTitle').textContent = post.title;
+  $('#postTags').innerHTML = (post.tags || []).map((t) => '<span class="tag dark">' + esc(t) + '</span>').join('');
+  $('#postBody').textContent = post.body || '';
+  $('#postModal').classList.add('is-open');
+  $('#postModal').setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+  $('#postClose').focus({ preventScroll: true });
+  if (push) history.pushState({ post: id }, '', '#journal/' + encodeURIComponent(id));
+}
+
+function closePost(removeHash = true) {
+  const modal = $('#postModal');
+  if (!modal.classList.contains('is-open')) return;
+  modal.classList.remove('is-open');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+  if (removeHash && location.hash.startsWith('#journal/')) history.replaceState({}, '', location.pathname + location.search);
+  if (state.lastFocus && state.lastFocus.focus) state.lastFocus.focus({ preventScroll: true });
+}
+
+function applySession(session) {
+  const link = document.querySelector('.nav-studio');
+  if (!link) return;
+  if (session?.authenticated && session.user?.role === 'owner') {
+    link.innerHTML = '工作室 <span>STUDIO ↗</span>';
+    link.setAttribute('href', '/studio?v=20261110-3');
+  } else if (session?.authenticated && session.user?.role === 'guest') {
+    link.innerHTML = '游客 <span>GUEST</span>';
+    link.setAttribute('href', '/login?v=20261110-3');
+  } else {
+    link.innerHTML = '登录 <span>LOGIN ↗</span>';
+    link.setAttribute('href', '/login?v=20261110-3');
+  }
 }
 
 function openModal(id, push = true) {
@@ -404,6 +471,19 @@ async function boot() {
     state.categories = [];
   }
 
+  try {
+    const res = await fetch('/api/posts', { headers: { accept: 'application/json' } });
+    if (res.ok) {
+      const data = await res.json();
+      state.posts = Array.isArray(data.posts) ? data.posts : [];
+    }
+  } catch {}
+
+  try {
+    const res = await fetch('/api/session', { headers: { accept: 'application/json' } });
+    if (res.ok) applySession(await res.json());
+  } catch {}
+
   if (state.works.length) {
     const n = state.works.length;
     $('#heroCount').textContent = cnNum(n);
@@ -417,6 +497,7 @@ async function boot() {
   renderFeatured();
   renderFilters();
   renderGrid();
+  renderJournal();
 
   $('#filters').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-filter]');
@@ -438,14 +519,19 @@ async function boot() {
   document.addEventListener('click', (e) => {
     const card = e.target.closest('.work-card[data-id], .feature-card[data-id]');
     if (card && !e.target.closest('a')) openModal(card.dataset.id);
+    const postCard = e.target.closest('.journal-card[data-post-id]');
+    if (postCard) openPost(postCard.dataset.postId);
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
       e.preventDefault(); $('#search').focus();
     }
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') { closeModal(); closePost(); }
     if ((e.key === 'Enter' || e.key === ' ') && document.activeElement?.matches('.work-card, .feature-card')) {
       e.preventDefault(); openModal(document.activeElement.dataset.id);
+    }
+    if ((e.key === 'Enter' || e.key === ' ') && document.activeElement?.matches('.journal-card[data-post-id]')) {
+      e.preventDefault(); openPost(document.activeElement.dataset.postId);
     }
     if (e.key === 'Tab' && $('#modal').classList.contains('is-open')) {
       const focusable = $$('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])', $('#modal')).filter((el) => el.offsetParent !== null);
@@ -458,6 +544,8 @@ async function boot() {
 
   $('#modalClose').addEventListener('click', () => closeModal());
   $$('[data-close]').forEach((el) => el.addEventListener('click', () => closeModal()));
+  $('#postClose').addEventListener('click', () => closePost());
+  $$('[data-post-close]').forEach((el) => el.addEventListener('click', () => closePost()));
   $('#copyLink').addEventListener('click', async () => {
     const id = $('#copyLink').dataset.id;
     const url = location.origin + '/#work/' + encodeURIComponent(id);
@@ -469,15 +557,22 @@ async function boot() {
     if (location.hash.startsWith('#work/')) {
       const id = decodeURIComponent(location.hash.slice(6));
       if (state.works.some((w) => w.id === id)) openModal(id, false);
-    } else closeModal(false);
+    } else if (location.hash.startsWith('#journal/')) {
+      const id = decodeURIComponent(location.hash.slice(9));
+      if (state.posts.some((p) => p.id === id)) openPost(id, false);
+    } else { closeModal(false); closePost(false); }
   });
 
   if (location.hash.startsWith('#work/')) {
     const id = decodeURIComponent(location.hash.slice(6));
     if (state.works.some((w) => w.id === id)) setTimeout(() => openModal(id, false), 350);
+  } else if (location.hash.startsWith('#journal/')) {
+    const id = decodeURIComponent(location.hash.slice(9));
+    if (state.posts.some((p) => p.id === id)) setTimeout(() => openPost(id, false), 350);
   }
 
   $$('.reveal').forEach((el) => revealObserver().observe(el));
 }
 
-document.addEventListener('DOMContentLoaded', boot);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();

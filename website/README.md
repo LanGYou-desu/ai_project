@@ -8,8 +8,10 @@
 
 - **公开档案馆**：33 个作品，按网页游戏 / 桌面游戏 / 3D 世界 / 网页应用 / 工具 / 生成艺术分类。每件作品有封面、介绍、标签、在线演示与下载。
 - **在线游玩**：纯前端作品直接托管在 `play` 子域；上传的 ZIP 若包含 `index.html` 也会自动发布。
-- **站主登录**：唯一账号 `LanGYou`，密码使用 scrypt 哈希，Cookie 为 HttpOnly + SameSite=Lax，登录有速率限制。
-- **工作室**：上传 ZIP / 封面、填写元数据、设为精选、隐藏/公开、编辑、删除、修改密码。
+- **站主登录**：唯一站主账号 `LanGYou`，密码使用 scrypt 哈希，Cookie 为 HttpOnly + SameSite=Lax，登录有速率限制。
+- **游客模式**：登录页可一键以 `Guest` 身份进入；可浏览、在线游玩、下载与阅读手记，不能发布，也不能进入工作室。
+- **手记（Journal）**：站主可在工作室发布/置顶/隐藏/删除手记，首页 JOURNAL 区块与详情弹层对所有人可见。
+- **工作室**：上传 ZIP / 封面、填写元数据、设为精选、隐藏/公开、编辑、删除、发布手记、修改密码。
 - **安全边界**：上传的 HTML 运行在独立子域，不接触主站 Cookie；ZIP 解压有路径穿越、文件数与体积限制。
 
 ## 技术栈
@@ -31,7 +33,7 @@ cp .env.example .env
 npm start
 ```
 
-打开 <http://127.0.0.1:3000>。首次启动会用 `ADMIN_PASSWORD` 创建 `LanGYou` 账号，之后可在工作室里改密码。
+打开 <http://127.0.0.1:3000>。首次启动会用 `ADMIN_PASSWORD` 创建 `LanGYou` 账号，之后可在工作室里改密码。登录页的「以游客身份进入」不需要密码。
 
 ```bash
 npm run dev          # node --watch
@@ -46,6 +48,7 @@ website/
 ├── lib/
 │   ├── auth.js            # scrypt 密码、HMAC 会话、CSRF
 │   ├── store.js           # works.json 原子读写
+│   ├── posts.js           # posts.json 手记存储
 │   ├── works.js           # 内置作品 + 上传作品的合并与装饰
 │   └── uploads.js         # multer + ZIP 安全解压
 ├── data/projects.json     # 33 个内置作品清单

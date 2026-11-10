@@ -19,7 +19,7 @@ const artMap = {
   manuscript: { mark: 'Aa', cls: 'art-manuscript' },
 };
 
-const state = { csrf: '', works: [], categories: [], stats: null, tab: 'all', query: '', editing: null };
+const state = { csrf: '', works: [], posts: [], categories: [], stats: null, tab: 'all', query: '', editing: null };
 
 async function api(path, options = {}) {
   const headers = { accept: 'application/json', ...(options.headers || {}) };
@@ -102,16 +102,19 @@ function renderList() {
 }
 
 async function loadAll() {
-  const [worksData, statsData] = await Promise.all([
+  const [worksData, statsData, postsData] = await Promise.all([
     api('/api/admin/works'),
     api('/api/admin/stats'),
+    api('/api/admin/posts'),
   ]);
   state.works = worksData.works || [];
   state.categories = worksData.categories || [];
   state.stats = statsData;
+  state.posts = postsData.posts || [];
   fillCategories();
   renderStats();
   renderList();
+  renderPosts();
 }
 
 function setupDropzone(dropId, inputId, maxMB, onFile) {
@@ -209,6 +212,82 @@ function setMsg(id, text, ok = false) {
   const el = document.getElementById(id);
   el.textContent = text;
   el.classList.toggle('is-ok', Boolean(ok));
+}
+
+function renderPosts() {
+  const list = $('#postList');
+  if (!list) return;
+  if (!state.posts.length) {
+    list.innerHTML = '<div class="journal-admin-empty">还没有手记。写一条，发布后会出现在首页 JOURNAL 区块。</div>';
+    return;
+  }
+  list.innerHTML = state.posts.map((p) => {
+    const date = String(p.createdAt || '').slice(0, 10);
+    const status = [p.pinned ? 'PINNED' : '', p.visible === false ? 'HIDDEN' : 'PUBLIC'].filter(Boolean).join(' · ');
+    const tags = (p.tags || []).map((t) => '#' + t).join(' ');
+    return '<article class="journal-admin-item" data-post-id="' + esc(p.id) + '">' +
+      '<div class="ja-meta"><span>' + esc(date) + ' · ' + esc(tags || 'NO TAGS') + '</span><span>' + esc(status) + '</span></div>' +
+      '<h3>' + esc(p.title) + '</h3>' +
+      '<p>' + esc(String(p.body || '').replace(/\s+/g, ' ').slice(0, 180)) + '</p>' +
+      '<div class="ja-actions">' +
+        '<button type="button" data-post-action="pin" class="' + (p.pinned ? 'is-on' : '') + '">' + (p.pinned ? '已置顶' : '置顶') + '</button>' +
+        '<button type="button" data-post-action="visible" class="' + (p.visible === false ? '' : 'is-on') + '">' + (p.visible === false ? '隐藏' : '公开') + '</button>' +
+        '<button type="button" data-post-action="delete" class="danger">删除</button>' +
+      '</div>' +
+    '</article>';
+  }).join('');
+}
+
+function setupPosts() {
+  const form = $('#postForm');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const payload = {
+      title: String(fd.get('title') || '').trim(),
+      body: String(fd.get('body') || '').trim(),
+      tags: String(fd.get('tags') || '').split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+      pinned: fd.get('pinned') === 'on',
+      visible: fd.get('visible') === 'on',
+    };
+    if (payload.title.length < 2) return setMsg('postMsg', '标题至少 2 个字符。');
+    if (!payload.body) return setMsg('postMsg', '正文不能为空。');
+    try {
+      await api('/api/admin/posts', { method: 'POST', body: JSON.stringify(payload) });
+      form.reset();
+      form.elements.visible.checked = true;
+      setMsg('postMsg', '手记已发布。', true);
+      toast('手记已发布');
+      await loadAll();
+    } catch (err) {
+      setMsg('postMsg', err.message || '发布失败');
+    }
+  });
+  $('#postList').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-post-action]');
+    if (!btn) return;
+    const item = btn.closest('.journal-admin-item');
+    const post = state.posts.find((p) => p.id === item.dataset.postId);
+    if (!post) return;
+    const action = btn.dataset.postAction;
+    try {
+      if (action === 'delete') {
+        if (!confirm('确定删除手记《' + post.title + '》？')) return;
+        await api('/api/admin/posts/' + encodeURIComponent(post.id), { method: 'DELETE' });
+        toast('手记已删除');
+      } else if (action === 'pin') {
+        await api('/api/admin/posts/' + encodeURIComponent(post.id), { method: 'PATCH', body: JSON.stringify({ pinned: !post.pinned }) });
+        toast('已更新置顶');
+      } else if (action === 'visible') {
+        await api('/api/admin/posts/' + encodeURIComponent(post.id), { method: 'PATCH', body: JSON.stringify({ visible: post.visible === false }) });
+        toast('已更新公开状态');
+      }
+      await loadAll();
+    } catch (err) {
+      toast(err.message || '操作失败', false);
+    }
+  });
 }
 
 function setupArchive() {
@@ -332,13 +411,14 @@ function setupPassword() {
 async function boot() {
   try {
     const session = await fetch('/api/session', { headers: { accept: 'application/json' }, credentials: 'same-origin' }).then((r) => r.json());
-    if (!session.authenticated) { location.replace('/login'); return; }
+    if (!session.authenticated || session.user?.role !== 'owner') { location.replace('/login?v=20261110-4'); return; }
     state.csrf = session.csrf;
   } catch {
     location.replace('/login');
     return;
   }
   setupUpload();
+  setupPosts();
   setupArchive();
   setupEdit();
   setupPassword();
@@ -353,4 +433,5 @@ async function boot() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', boot);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();

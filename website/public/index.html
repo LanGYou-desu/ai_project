@@ -15,7 +15,7 @@
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
   <link rel="preload" href="/assets/fonts/InstrumentSerif-Regular.ttf" as="font" type="font/ttf" crossorigin />
   <link rel="preload" href="/assets/fonts/SpaceGrotesk-Variable.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="/css/site.css" />
+  <link rel="stylesheet" href="/css/site.css?v=20261110-4" />
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -31,8 +31,9 @@
     </a>
     <nav class="nav" aria-label="主导航">
       <a href="#works" data-scroll>作品 <span>WORKS</span></a>
+      <a href="#journal" data-scroll>手记 <span>JOURNAL</span></a>
       <a href="#about" data-scroll>关于 <span>ABOUT</span></a>
-      <a href="/login" class="nav-studio">站主登录 <span>STUDIO ↗</span></a>
+      <a href="/login?v=20261110-4" class="nav-studio">登录 <span>LOGIN ↗</span></a>
     </nav>
     <div class="head-meta">
       <span id="clock">CST --:--:--</span>
@@ -44,8 +45,9 @@
 
   <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
     <a href="#works" data-scroll>作品 <em>WORKS</em></a>
+    <a href="#journal" data-scroll>手记 <em>JOURNAL</em></a>
     <a href="#about" data-scroll>关于 <em>ABOUT</em></a>
-    <a href="/login">站主登录 <em>STUDIO ↗</em></a>
+    <a href="/login?v=20261110-4">登录 / 游客 <em>LOGIN ↗</em></a>
     <div class="mobile-menu-foot">langyousaikyo.top · 2026</div>
   </div>
 
@@ -138,6 +140,17 @@
       </div>
     </section>
 
+    <section class="section journal-section" id="journal">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span> JOURNAL / 手记</div>
+          <h2 class="section-title">Notes from <em>the studio.</em></h2>
+        </div>
+        <p class="section-note">制作中的碎片、刚修好的 bug、<br />以及一些还没有变成作品的想法。</p>
+      </div>
+      <div class="journal-grid" id="journalGrid"></div>
+    </section>
+
     <section class="about-section" id="about">
       <div class="about-inner">
         <div class="about-top">
@@ -165,7 +178,7 @@
             <h3>档案馆对所有人开放。<br /><em>工作室只对站主开放。</em></h3>
             <p>登录后可以上传新的作品、替换封面、管理档案。这里没有访客账号，也没有第三方登录。</p>
           </div>
-          <a class="studio-card" href="/login">
+          <a class="studio-card" href="/login?v=20261110-4">
             <span class="studio-card-no">LY / STUDIO</span>
             <span class="keyhole" aria-hidden="true"></span>
             <span class="studio-card-label">站主登录 <em>ENTER ↗</em></span>
@@ -187,7 +200,7 @@
       <div class="footer-links">
         <a href="#works" data-scroll>作品索引</a>
         <a href="#about" data-scroll>关于</a>
-        <a href="/login">站主登录</a>
+        <a href="/login?v=20261110-4">站主登录</a>
       </div>
     </div>
     <div class="footer-bottom">
@@ -218,8 +231,20 @@
     </article>
   </div>
 
+  <div class="post-modal" id="postModal" aria-hidden="true">
+    <div class="post-backdrop" data-post-close></div>
+    <article class="post-panel" role="dialog" aria-modal="true" aria-labelledby="postTitle">
+      <button class="post-close" id="postClose" aria-label="关闭">✕</button>
+      <div class="post-eyebrow" id="postDate"></div>
+      <h2 class="post-title" id="postTitle"></h2>
+      <div class="post-tags" id="postTags"></div>
+      <div class="post-body" id="postBody"></div>
+      <div class="post-foot"><span>LANGYOU / JOURNAL</span><span>© 2026</span></div>
+    </article>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="/js/site.js"></script>
+  <script type="module" src="/js/site.js?v=20261110-4"></script>
 </body>
 </html>

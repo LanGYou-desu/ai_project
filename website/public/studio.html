@@ -7,8 +7,8 @@
   <meta name="robots" content="noindex,nofollow" />
   <meta name="theme-color" content="#f1ece2" />
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="/css/site.css" />
-  <link rel="stylesheet" href="/css/studio.css" />
+  <link rel="stylesheet" href="/css/site.css?v=20261110-5" />
+  <link rel="stylesheet" href="/css/studio.css?v=20261110-4" />
 </head>
 <body class="studio-body">
   <div class="grain" aria-hidden="true"></div>
@@ -126,6 +126,34 @@
       </aside>
     </section>
 
+    <section class="studio-journal">
+      <div class="archive-head">
+        <div>
+          <div class="panel-kicker">05 / JOURNAL</div>
+          <h2>发布手记</h2>
+        </div>
+        <span class="panel-hint">公开手记 · 游客可读 · 仅站主可发</span>
+      </div>
+      <div class="journal-studio-grid">
+        <form id="postForm" class="journal-compose">
+          <label class="studio-field"><span>标题 <em>TITLE</em></span><input name="title" type="text" maxlength="120" placeholder="这次想记下什么？" required /></label>
+          <label class="studio-field"><span>正文 <em>BODY</em></span><textarea name="body" rows="8" maxlength="20000" placeholder="制作进度、刚修好的 bug、一段想法…" required></textarea></label>
+          <div class="form-grid">
+            <label class="studio-field"><span>标签 <em>TAGS</em></span><input name="tags" type="text" placeholder="devlog, 3D, 碎碎念" /></label>
+            <div class="journal-checks">
+              <label><input name="pinned" type="checkbox" /> 置顶</label>
+              <label><input name="visible" type="checkbox" checked /> 公开</label>
+            </div>
+          </div>
+          <div class="studio-submit-row">
+            <button class="studio-submit" type="submit"><span>发布手记</span><span>→</span></button>
+            <span class="studio-form-msg" id="postMsg" role="status"></span>
+          </div>
+        </form>
+        <div class="journal-admin-list" id="postList"></div>
+      </div>
+    </section>
+
     <section class="archive-panel">
       <div class="archive-head">
         <div>
@@ -180,6 +208,6 @@
   </div>
 
   <div class="studio-toast" id="studioToast" role="status" aria-live="polite"></div>
-  <script type="module" src="/js/studio.js"></script>
+  <script type="module" src="/js/studio.js?v=20261110-4"></script>
 </body>
 </html>

@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { createAuth } from './lib/auth.js';
 import { createStore } from './lib/store.js';
 import { createWorks } from './lib/works.js';
+import { createPostStore } from './lib/posts.js';
 import { createUploads } from './lib/uploads.js';
 import { ensureDir, formatBytes } from './lib/util.js';
 
@@ -49,6 +50,7 @@ const auth = await createAuth({
   secureCookie,
 });
 const works = await createWorks({ appDir, playBase: process.env.PLAY_BASE || 'https://play.langyousaikyo.top', store, playDir, packageDir, publicDir });
+const postStore = await createPostStore(storageDir);
 const uploads = await createUploads({ storageDir, publicDir, playDir, packageDir });
 
 const app = express();
@@ -59,11 +61,11 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", 'https://static.cloudflareinsights.com'],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'https://play.langyousaikyo.top'],
       fontSrc: ["'self'"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", 'https://cloudflareinsights.com'],
       frameSrc: ["https://play.langyousaikyo.top"],
       mediaSrc: ["'self'", 'https://play.langyousaikyo.top'],
       objectSrc: ["'none'"],
@@ -96,9 +98,17 @@ function sessionOf(req) {
   return auth.sessionFromRequest(req);
 }
 
+function requireSession(req, res, next) {
+  const session = sessionOf(req);
+  if (!session) return res.status(401).json({ error: '请先登录' });
+  req.session = session;
+  next();
+}
+
 function requireAdmin(req, res, next) {
   const session = sessionOf(req);
   if (!session) return res.status(401).json({ error: '请先登录' });
+  if (session.role !== 'owner') return res.status(403).json({ error: '游客只能浏览和下载，不能发布内容' });
   req.session = session;
   next();
 }
@@ -138,6 +148,11 @@ function noteFailure(req) {
   attempts.set(key, item);
 }
 
+app.use('/api', (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'langyou-archive', time: new Date().toISOString() });
 });
@@ -145,7 +160,7 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/meta', async (_req, res, next) => {
   try {
     const { meta, works: list } = await works.publicWorks();
-    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.setHeader('Cache-Control', 'no-store');
     res.json({
       meta: { ...meta, stats: { ...meta.stats, works: list.length, assertions: list.reduce((s, w) => s + (Number(w.tests) || 0), 0) } },
       categories: meta.categories,
@@ -156,7 +171,7 @@ app.get('/api/meta', async (_req, res, next) => {
 app.get('/api/works', async (_req, res, next) => {
   try {
     const { meta, works: list } = await works.publicWorks();
-    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.setHeader('Cache-Control', 'no-store');
     res.json({ meta, categories: meta.categories, works: list });
   } catch (err) { next(err); }
 });
@@ -169,10 +184,28 @@ app.get('/api/works/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+app.get('/api/posts', async (_req, res, next) => {
+  try {
+    const list = (await postStore.list())
+      .filter((p) => p.visible !== false)
+      .sort((a, b) => (Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))) || String(b.createdAt).localeCompare(String(a.createdAt)));
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ posts: list });
+  } catch (err) { next(err); }
+});
+
+app.get('/api/posts/:id', async (req, res, next) => {
+  try {
+    const post = (await postStore.list()).find((p) => p.id === req.params.id && p.visible !== false);
+    if (!post) return res.status(404).json({ error: '手记不存在' });
+    res.json({ post });
+  } catch (err) { next(err); }
+});
+
 app.get('/api/session', (req, res) => {
   const session = sessionOf(req);
   if (!session) return res.json({ authenticated: false });
-  res.json({ authenticated: true, user: { username: auth.username }, csrf: session.csrf, expiresAt: session.exp });
+  res.json({ authenticated: true, user: { username: session.role === 'guest' ? 'Guest' : auth.username, role: session.role || 'owner' }, csrf: session.csrf, expiresAt: session.exp });
 });
 
 app.post('/api/login', async (req, res) => {
@@ -188,10 +221,16 @@ app.post('/api/login', async (req, res) => {
   }
   attempts.delete(clientKey(req));
   auth.setCookie(res, session.token);
-  res.json({ ok: true, user: { username: auth.username }, csrf: session.csrf, expiresAt: session.exp });
+  res.json({ ok: true, user: { username: auth.username, role: 'owner' }, csrf: session.csrf, expiresAt: session.exp });
 });
 
-app.post('/api/logout', requireAdmin, requireCsrf, (req, res) => {
+app.post('/api/guest', (req, res) => {
+  const session = auth.issueGuest();
+  auth.setCookie(res, session.token);
+  res.json({ ok: true, user: { username: 'Guest', role: 'guest' }, csrf: session.csrf, expiresAt: session.exp });
+});
+
+app.post('/api/logout', requireSession, requireCsrf, (req, res) => {
   auth.clearCookie(res);
   res.json({ ok: true });
 });
@@ -200,6 +239,53 @@ app.get('/api/admin/works', requireAdmin, async (_req, res, next) => {
   try {
     const { meta, works: list } = await works.adminWorks();
     res.json({ meta, categories: meta.categories, works: list });
+  } catch (err) { next(err); }
+});
+
+app.get('/api/admin/posts', requireAdmin, async (_req, res, next) => {
+  try {
+    const list = (await postStore.list()).sort((a, b) => (Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))) || String(b.createdAt).localeCompare(String(a.createdAt)));
+    res.json({ posts: list });
+  } catch (err) { next(err); }
+});
+
+app.post('/api/admin/posts', requireAdmin, requireCsrf, async (req, res, next) => {
+  try {
+    const body = req.body || {};
+    const title = String(body.title || '').trim().slice(0, 120);
+    const content = String(body.body || '').trim().slice(0, 20000);
+    const tags = (Array.isArray(body.tags) ? body.tags : String(body.tags || '').split(/[,，、]/)).map((s) => String(s).trim()).filter(Boolean).slice(0, 8);
+    if (title.length < 2) return res.status(400).json({ error: '标题至少 2 个字符' });
+    if (content.length < 1) return res.status(400).json({ error: '正文不能为空' });
+    const post = await postStore.add({ title, body: content, tags, pinned: Boolean(body.pinned), visible: body.visible !== false });
+    res.status(201).json({ ok: true, post });
+  } catch (err) { next(err); }
+});
+
+app.patch('/api/admin/posts/:id', requireAdmin, requireCsrf, async (req, res, next) => {
+  try {
+    const existing = (await postStore.list()).find((p) => p.id === req.params.id);
+    if (!existing) return res.status(404).json({ error: '手记不存在' });
+    const body = req.body || {};
+    const patch = {};
+    if (typeof body.title === 'string') patch.title = body.title.trim().slice(0, 120);
+    if (typeof body.body === 'string') patch.body = body.body.trim().slice(0, 20000);
+    if (Array.isArray(body.tags)) patch.tags = body.tags.map((s) => String(s).trim()).filter(Boolean).slice(0, 8);
+    if (typeof body.pinned === 'boolean') patch.pinned = body.pinned;
+    if (typeof body.visible === 'boolean') patch.visible = body.visible;
+    if (patch.title !== undefined && patch.title.length < 2) return res.status(400).json({ error: '标题至少 2 个字符' });
+    if (patch.body !== undefined && patch.body.length < 1) return res.status(400).json({ error: '正文不能为空' });
+    const updated = await postStore.update(req.params.id, patch);
+    res.json({ ok: true, post: updated });
+  } catch (err) { next(err); }
+});
+
+app.delete('/api/admin/posts/:id', requireAdmin, requireCsrf, async (req, res, next) => {
+  try {
+    const existing = (await postStore.list()).find((p) => p.id === req.params.id);
+    if (!existing) return res.status(404).json({ error: '手记不存在' });
+    await postStore.remove(req.params.id);
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 
@@ -213,7 +299,8 @@ app.get('/api/admin/stats', requireAdmin, async (_req, res, next) => {
         if (f.isFile()) uploadBytes += (await fsp.stat(path.join(packageDir, f.name))).size;
       }
     } catch {}
-    res.json({ ...stats, uploadBytes, uploadBytesLabel: formatBytes(uploadBytes), storageFree: null });
+    const posts = await postStore.list();
+    res.json({ ...stats, posts: posts.length, uploadBytes, uploadBytesLabel: formatBytes(uploadBytes), storageFree: null });
   } catch (err) { next(err); }
 });
 
@@ -271,9 +358,18 @@ app.post('/api/admin/password', requireAdmin, requireCsrf, async (req, res, next
   } catch (err) { next(err); }
 });
 
-app.get(['/login', '/login/'], (_req, res) => res.sendFile(path.join(publicDir, 'login.html')));
-app.get(['/studio', '/studio/'], (_req, res) => res.sendFile(path.join(publicDir, 'studio.html')));
-app.get(['/', '/index.html'], (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+function sendHtml(res, file) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('CDN-Cache-Control', 'no-store');
+  res.sendFile(path.join(publicDir, file));
+}
+app.get(['/login', '/login/'], (_req, res) => sendHtml(res, 'login.html'));
+app.get(['/studio', '/studio/'], (req, res) => {
+  const session = auth.sessionFromRequest(req);
+  if (!session || session.role !== 'owner') return res.redirect(302, '/login?v=20261110-4');
+  return sendHtml(res, 'studio.html');
+});
+app.get(['/', '/index.html'], (_req, res) => sendHtml(res, 'index.html'));
 
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: '接口不存在' });
