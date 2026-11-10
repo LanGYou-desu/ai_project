@@ -408,15 +408,25 @@ function setupPassword() {
   });
 }
 
+let booted = false;
 async function boot() {
-  try {
-    const session = await fetch('/api/session', { headers: { accept: 'application/json' }, credentials: 'same-origin' }).then((r) => r.json());
-    if (!session.authenticated || session.user?.role !== 'owner') { location.replace('/login?v=20261110-4'); return; }
-    state.csrf = session.csrf;
-  } catch {
-    location.replace('/login');
-    return;
+  if (booted) return;
+  booted = true;
+  let session = null;
+  for (let attempt = 0; attempt < 4 && !session; attempt++) {
+    try {
+      const res = await fetch('/api/session', { headers: { accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated) session = data;
+      }
+    } catch (err) {
+      console.warn('[studio] session fetch failed', err && err.message);
+    }
+    if (!session) await new Promise((resolve) => setTimeout(resolve, 500));
   }
+  if (!session || session.user?.role !== 'owner') { location.replace('/login?t=' + Date.now()); return; }
+  state.csrf = session.csrf;
   setupUpload();
   setupPosts();
   setupArchive();
@@ -429,9 +439,11 @@ async function boot() {
   try {
     await loadAll();
   } catch (err) {
+    console.error('studio load failed', err);
     toast(err.message || '加载失败', false);
   }
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
+addEventListener('load', () => { if (!booted) boot(); });

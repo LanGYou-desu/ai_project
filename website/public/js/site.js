@@ -229,7 +229,7 @@ function applySession(session) {
   if (!link) return;
   if (session?.authenticated && session.user?.role === 'owner') {
     link.innerHTML = '工作室 <span>STUDIO ↗</span>';
-    link.setAttribute('href', '/studio?v=20261110-3');
+    link.setAttribute('href', '/studio?t=' + Date.now());
   } else if (session?.authenticated && session.user?.role === 'guest') {
     link.innerHTML = '游客 <span>GUEST</span>';
     link.setAttribute('href', '/login?v=20261110-3');

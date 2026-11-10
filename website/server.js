@@ -366,7 +366,7 @@ function sendHtml(res, file) {
 app.get(['/login', '/login/'], (_req, res) => sendHtml(res, 'login.html'));
 app.get(['/studio', '/studio/'], (req, res) => {
   const session = auth.sessionFromRequest(req);
-  if (!session || session.role !== 'owner') return res.redirect(302, '/login?v=20261110-4');
+  if (!session || session.role !== 'owner') return res.redirect(302, '/login?t=' + Date.now());
   return sendHtml(res, 'studio.html');
 });
 app.get(['/', '/index.html'], (_req, res) => sendHtml(res, 'index.html'));

@@ -26,7 +26,7 @@ function setGuestMode(session) {
   try {
     const res = await fetch('/api/session', { headers: { accept: 'application/json' } });
     const data = await res.json();
-    if (data.authenticated && data.user?.role === 'owner') location.replace('/studio?v=20261110-3');
+    if (data.authenticated && data.user?.role === 'owner') location.replace('/studio?t=' + Date.now());
     else if (data.authenticated && data.user?.role === 'guest') setGuestMode(data);
   } catch {}
 })();
@@ -73,7 +73,7 @@ form.addEventListener('submit', async (e) => {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || '登录失败');
     submit.querySelector('span').textContent = '已进入';
-    location.replace('/studio?v=20261110-3');
+    location.replace('/studio?t=' + Date.now());
   } catch (err) {
     showError(err.message || '登录失败，请稍后再试。');
     submit.disabled = false;
