@@ -541,7 +541,9 @@
     var detail = $('speciesDetail');
     if (detail) {
       var terrainText = sp.type === 'plant'
-        ? sp.terrain.map(function (v, t) { return v > 0.05 ? SPEC.TERRAIN_NAMES[t] : null; }).filter(Boolean).join('、')
+        ? Object.keys(sp.terrain).filter(function (t) { return sp.terrain[t] > 0.05; })
+            .sort(function (a, b) { return sp.terrain[b] - sp.terrain[a]; })
+            .map(function (t) { return SPEC.TERRAIN_NAMES[t]; }).join('、')
         : sp.terrain.map(function (t) { return SPEC.TERRAIN_NAMES[t]; }).join('、');
       var diet = sp.type === 'herbivore' ? '食：' + sp.diet.map(function (x) { return SPEC.byId(x).name; }).join('、')
         : sp.type === 'predator' ? '猎：' + sp.prey.map(function (x) { return SPEC.byId(x).name; }).join('、')
