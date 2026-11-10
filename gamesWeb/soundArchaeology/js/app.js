@@ -19,6 +19,21 @@
   const PROG_KEY = 'af_progress_v1';
   const NOTES_KEY = 'af_notes';
   const VOICE_SR = 22050;    // 内嵌语音素材的原生采样率
+  const TUTORIAL_KEY = 'af_tutorial_v1';
+
+  let bootStarted = false;
+  let bootVisible = true;
+  let bootRaf = 0;
+  let bootInterval = 0;
+  let bootTypeTimer = 0;
+  let stampTimer = 0;
+  let fitRaf = 0;
+  let lastFitKey = '';
+  let scopeObserver = null;
+
+  const prefersReducedMotion = () =>
+    !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
 
   function loadProgress() {
     try {
