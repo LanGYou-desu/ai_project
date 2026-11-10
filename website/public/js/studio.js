@@ -1,4 +1,4 @@
-/* LanGYou Studio */
+/* LanGYou Archive — dashboard */
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const esc = (v = '') => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -19,14 +19,18 @@ const artMap = {
   manuscript: { mark: 'Aa', cls: 'art-manuscript' },
 };
 
-const state = { csrf: '', works: [], posts: [], categories: [], stats: null, tab: 'all', query: '', editing: null };
+const state = {
+  csrf: '', user: null, role: 'user', works: [], posts: [], categories: [], stats: null,
+  tab: 'all', query: '', editing: null,
+};
+const isAdmin = () => state.role === 'admin';
 
 async function api(path, options = {}) {
   const headers = { accept: 'application/json', ...(options.headers || {}) };
   if (options.body && !(options.body instanceof FormData)) headers['content-type'] = 'application/json';
   if (options.method && options.method !== 'GET') headers['x-csrf-token'] = state.csrf;
   const res = await fetch(path, { ...options, headers, credentials: 'same-origin' });
-  if (res.status === 401) { location.replace('/login'); throw new Error('未登录'); }
+  if (res.status === 401) { location.replace('/login?t=' + Date.now()); throw new Error('登录状态已失效'); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || '请求失败');
   return data;
@@ -34,11 +38,18 @@ async function api(path, options = {}) {
 
 function toast(message, ok = true) {
   const el = $('#studioToast');
+  if (!el) return;
   el.textContent = message;
   el.classList.toggle('is-ok', ok);
   el.classList.add('is-show');
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => el.classList.remove('is-show'), 2600);
+}
+function setMsg(id, text, ok = false) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle('is-ok', Boolean(ok));
 }
 
 function artHTML(work) {
@@ -46,36 +57,44 @@ function artHTML(work) {
   const art = artMap[work.art] || { mark: catMark[work.category] || '✦', cls: 'art-plate' };
   return '<div class="card-art ' + art.cls + '"><div class="art-lines"></div><span class="art-no">' + pad(work.order || 0) + '</span><span class="art-mark">' + esc(art.mark) + '</span><span class="art-label">' + esc(work.categoryName || '') + '</span></div>';
 }
-
 function coverHTML(work) {
   if (work.cover) return '<img src="' + esc(work.cover) + '" alt="" loading="lazy" />';
   return artHTML(work);
 }
 
 function renderStats() {
+  const el = $('#studioStats');
+  if (!el) return;
   const stats = state.stats || {};
-  const visible = state.works.filter((w) => !w.builtin ? w.visible !== false : true).length;
-  $('#studioStats').innerHTML =
-    '<div><strong>' + (stats.works ?? state.works.length) + '</strong><span>作品总数</span></div>' +
-    '<div><strong>' + (stats.uploads ?? 0) + '</strong><span>上传作品</span></div>' +
-    '<div><strong>' + (stats.uploadBytesLabel || '0 B') + '</strong><span>占用空间</span></div>' +
-    '<div><strong>' + visible + '</strong><span>公开中</span></div>';
+  if (isAdmin()) {
+    el.innerHTML =
+      '<div><strong>' + (stats.works ?? state.works.length) + '</strong><span>作品总数</span></div>' +
+      '<div><strong>' + (stats.users ?? 0) + '</strong><span>注册用户</span></div>' +
+      '<div><strong>' + (stats.posts ?? state.posts.length) + '</strong><span>手记总数</span></div>' +
+      '<div><strong>' + (stats.uploadBytesLabel || fmtBytes(stats.uploadBytes)) + '</strong><span>作品包体积</span></div>';
+  } else {
+    el.innerHTML =
+      '<div><strong>' + state.posts.length + '</strong><span>我的手记</span></div>' +
+      '<div><strong>' + (stats.works ?? '—') + '</strong><span>可玩作品</span></div>' +
+      '<div><strong>' + (stats.publicPosts ?? '—') + '</strong><span>公开手记</span></div>' +
+      '<div><strong>' + (stats.categories ?? '—') + '</strong><span>作品类别</span></div>';
+  }
   const dateEl = $('#studioDate');
-  const now = new Date();
-  dateEl.textContent = 'CST ' + new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(now).replaceAll('/', '.');
-  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Shanghai', hour: '2-digit', hour12: false }).format(now));
-  const greet = hour < 5 ? '凌晨好' : hour < 11 ? '早上好' : hour < 14 ? '中午好' : hour < 19 ? '下午好' : '晚上好';
-  $('#greeting').innerHTML = greet + '，<em>LanGYou</em>。';
+  if (dateEl) {
+    const now = new Date();
+    dateEl.textContent = 'CST ' + new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(now).replaceAll('/', '.');
+  }
 }
 
 function fillCategories() {
   const options = state.categories.map((c) => '<option value="' + esc(c.id) + '">' + esc(c.cn) + ' / ' + esc(c.name) + '</option>').join('');
-  $('#categorySelect').innerHTML = options;
-  $('#editCategory').innerHTML = options;
+  const a = $('#categorySelect'); if (a) a.innerHTML = options;
+  const b = $('#editCategory'); if (b) b.innerHTML = options;
 }
 
 function renderList() {
   const list = $('#archiveList');
+  if (!list) return;
   const q = state.query.toLowerCase();
   const items = state.works.filter((w) => {
     if (state.tab === 'upload' && w.builtin) return false;
@@ -83,7 +102,7 @@ function renderList() {
     if (!q) return true;
     return [w.title, w.subtitle, w.categoryName, w.categoryCn, ...(w.tags || [])].join(' ').toLowerCase().includes(q);
   });
-  $('#archiveEmpty').hidden = items.length > 0;
+  const empty = $('#archiveEmpty'); if (empty) empty.hidden = items.length > 0;
   list.innerHTML = items.map((w) => {
     const meta = w.builtin ? 'BUILT-IN · NO. ' + pad(w.order || 0) : 'UPLOADED · ' + String(w.createdAt || '').slice(0, 10);
     const status = w.builtin ? '内置' : w.visible === false ? '隐藏' : '公开';
@@ -101,7 +120,7 @@ function renderList() {
   }).join('');
 }
 
-async function loadAll() {
+async function loadAdmin() {
   const [worksData, statsData, postsData] = await Promise.all([
     api('/api/admin/works'),
     api('/api/admin/stats'),
@@ -117,9 +136,27 @@ async function loadAll() {
   renderPosts();
 }
 
+async function loadUser() {
+  const [meta, mine, publicPosts] = await Promise.all([
+    api('/api/meta'),
+    api('/api/my/posts'),
+    api('/api/posts'),
+  ]);
+  state.categories = meta.categories || [];
+  state.posts = mine.posts || [];
+  state.stats = {
+    works: meta.meta?.stats?.works ?? 33,
+    categories: (meta.categories || []).length || 6,
+    publicPosts: (publicPosts.posts || []).length,
+  };
+  renderStats();
+  renderPosts();
+}
+
 function setupDropzone(dropId, inputId, maxMB, onFile) {
   const drop = document.getElementById(dropId);
   const input = document.getElementById(inputId);
+  if (!drop || !input) return;
   const handle = (file) => {
     if (!file) return;
     if (file.size > maxMB * 1024 * 1024) { toast('文件太大：最大 ' + maxMB + ' MB', false); input.value = ''; return; }
@@ -139,21 +176,22 @@ function setupDropzone(dropId, inputId, maxMB, onFile) {
 }
 
 function resetPreviews() {
-  $('#coverPreview').innerHTML = '<span class="dropzone-icon">▧</span>';
-  $('#packagePreview').innerHTML = '<span class="dropzone-icon">ZIP</span>';
+  const c = $('#coverPreview'); if (c) c.innerHTML = '<span class="dropzone-icon">▧</span>';
+  const p = $('#packagePreview'); if (p) p.innerHTML = '<span class="dropzone-icon">ZIP</span>';
 }
 
 function setupUpload() {
   setupDropzone('coverDrop', 'coverInput', 12, (file) => {
     const url = URL.createObjectURL(file);
-    $('#coverPreview').innerHTML = '<img src="' + url + '" alt="封面预览" />';
-    $('#coverPreview').dataset.url = url;
+    const preview = $('#coverPreview');
+    preview.innerHTML = '<img src="' + url + '" alt="封面预览" />';
+    preview.dataset.url = url;
   });
   setupDropzone('packageDrop', 'packageInput', 600, (file) => {
     $('#packagePreview').innerHTML = '<span class="dropzone-icon">' + esc(file.name.length > 18 ? file.name.slice(0, 16) + '…' : file.name) + '<br />' + fmtBytes(file.size) + '</span>';
   });
-
   const form = $('#uploadForm');
+  if (!form) return;
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const fd = new FormData(form);
@@ -171,7 +209,6 @@ function setupUpload() {
     bar.style.width = '0%';
     pct.textContent = '0%';
     setMsg('formMsg', '');
-
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/admin/works');
     xhr.withCredentials = true;
@@ -188,30 +225,19 @@ function setupUpload() {
       let data = {};
       try { data = JSON.parse(xhr.responseText || '{}'); } catch {}
       if (xhr.status >= 200 && xhr.status < 300) {
-        form.reset();
-        resetPreviews();
-        setMsg('formMsg', '作品已发布。', true);
-        toast('作品已发布');
-        await loadAll();
+        form.reset(); resetPreviews(); setMsg('formMsg', '作品已发布。', true); toast('作品已发布');
+        await loadAdmin();
       } else {
         setMsg('formMsg', data.error || '上传失败（' + xhr.status + '）');
         toast(data.error || '上传失败', false);
       }
     };
     xhr.onerror = () => {
-      btn.disabled = false;
-      progress.hidden = true;
-      setMsg('formMsg', '网络错误，上传中断。');
-      toast('网络错误', false);
+      btn.disabled = false; progress.hidden = true;
+      setMsg('formMsg', '网络错误，上传中断。'); toast('网络错误', false);
     };
     xhr.send(fd);
   });
-}
-
-function setMsg(id, text, ok = false) {
-  const el = document.getElementById(id);
-  el.textContent = text;
-  el.classList.toggle('is-ok', Boolean(ok));
 }
 
 function renderPosts() {
@@ -225,17 +251,38 @@ function renderPosts() {
     const date = String(p.createdAt || '').slice(0, 10);
     const status = [p.pinned ? 'PINNED' : '', p.visible === false ? 'HIDDEN' : 'PUBLIC'].filter(Boolean).join(' · ');
     const tags = (p.tags || []).map((t) => '#' + t).join(' ');
+    const adminActions = isAdmin()
+      ? '<button type="button" data-post-action="pin" class="' + (p.pinned ? 'is-on' : '') + '">' + (p.pinned ? '已置顶' : '置顶') + '</button>' +
+        '<button type="button" data-post-action="visible" class="' + (p.visible === false ? '' : 'is-on') + '">' + (p.visible === false ? '隐藏' : '公开') + '</button>'
+      : '';
     return '<article class="journal-admin-item" data-post-id="' + esc(p.id) + '">' +
-      '<div class="ja-meta"><span>' + esc(date) + ' · ' + esc(tags || 'NO TAGS') + '</span><span>' + esc(status) + '</span></div>' +
+      '<div class="ja-meta"><span>' + esc(date) + ' · ' + esc(tags || 'NO TAGS') + (isAdmin() ? ' · ' + esc(p.authorName || '') : '') + '</span><span>' + esc(status) + '</span></div>' +
       '<h3>' + esc(p.title) + '</h3>' +
       '<p>' + esc(String(p.body || '').replace(/\s+/g, ' ').slice(0, 180)) + '</p>' +
-      '<div class="ja-actions">' +
-        '<button type="button" data-post-action="pin" class="' + (p.pinned ? 'is-on' : '') + '">' + (p.pinned ? '已置顶' : '置顶') + '</button>' +
-        '<button type="button" data-post-action="visible" class="' + (p.visible === false ? '' : 'is-on') + '">' + (p.visible === false ? '隐藏' : '公开') + '</button>' +
+      '<div class="ja-actions">' + adminActions +
+        '<button type="button" data-post-action="edit">编辑</button>' +
         '<button type="button" data-post-action="delete" class="danger">删除</button>' +
       '</div>' +
     '</article>';
   }).join('');
+}
+
+function resetPostForm() {
+  const form = $('#postForm');
+  if (!form) return;
+  form.reset();
+  delete form.dataset.editing;
+  const visible = form.elements.visible; if (visible) visible.checked = true;
+  const submitLabel = form.querySelector('.studio-submit span');
+  if (submitLabel) submitLabel.textContent = '发布手记';
+  setMsg('postMsg', '');
+}
+
+async function reloadPosts() {
+  const data = await api(isAdmin() ? '/api/admin/posts' : '/api/my/posts');
+  state.posts = data.posts || [];
+  renderPosts();
+  renderStats();
 }
 
 function setupPosts() {
@@ -248,23 +295,31 @@ function setupPosts() {
       title: String(fd.get('title') || '').trim(),
       body: String(fd.get('body') || '').trim(),
       tags: String(fd.get('tags') || '').split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
-      pinned: fd.get('pinned') === 'on',
-      visible: fd.get('visible') === 'on',
     };
+    if (isAdmin()) {
+      payload.pinned = fd.get('pinned') === 'on';
+      payload.visible = fd.get('visible') === 'on';
+    }
     if (payload.title.length < 2) return setMsg('postMsg', '标题至少 2 个字符。');
     if (!payload.body) return setMsg('postMsg', '正文不能为空。');
+    const editing = form.dataset.editing;
     try {
-      await api('/api/admin/posts', { method: 'POST', body: JSON.stringify(payload) });
-      form.reset();
-      form.elements.visible.checked = true;
-      setMsg('postMsg', '手记已发布。', true);
-      toast('手记已发布');
-      await loadAll();
+      if (editing) {
+        await api('/api/posts/' + encodeURIComponent(editing), { method: 'PATCH', body: JSON.stringify(payload) });
+        toast('手记已保存');
+      } else {
+        await api('/api/posts', { method: 'POST', body: JSON.stringify(payload) });
+        toast('手记已发布');
+      }
+      resetPostForm();
+      await reloadPosts();
     } catch (err) {
       setMsg('postMsg', err.message || '发布失败');
     }
   });
-  $('#postList').addEventListener('click', async (e) => {
+  const list = $('#postList');
+  if (!list) return;
+  list.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-post-action]');
     if (!btn) return;
     const item = btn.closest('.journal-admin-item');
@@ -272,18 +327,31 @@ function setupPosts() {
     if (!post) return;
     const action = btn.dataset.postAction;
     try {
+      if (action === 'edit') {
+        form.elements.title.value = post.title || '';
+        form.elements.body.value = post.body || '';
+        form.elements.tags.value = (post.tags || []).join(', ');
+        if (form.elements.pinned) form.elements.pinned.checked = Boolean(post.pinned);
+        if (form.elements.visible) form.elements.visible.checked = post.visible !== false;
+        form.dataset.editing = post.id;
+        const submitLabel = form.querySelector('.studio-submit span');
+        if (submitLabel) submitLabel.textContent = '保存修改';
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        form.elements.title.focus({ preventScroll: true });
+        return;
+      }
       if (action === 'delete') {
         if (!confirm('确定删除手记《' + post.title + '》？')) return;
-        await api('/api/admin/posts/' + encodeURIComponent(post.id), { method: 'DELETE' });
+        await api('/api/posts/' + encodeURIComponent(post.id), { method: 'DELETE' });
         toast('手记已删除');
-      } else if (action === 'pin') {
-        await api('/api/admin/posts/' + encodeURIComponent(post.id), { method: 'PATCH', body: JSON.stringify({ pinned: !post.pinned }) });
+      } else if (action === 'pin' && isAdmin()) {
+        await api('/api/posts/' + encodeURIComponent(post.id), { method: 'PATCH', body: JSON.stringify({ pinned: !post.pinned }) });
         toast('已更新置顶');
-      } else if (action === 'visible') {
-        await api('/api/admin/posts/' + encodeURIComponent(post.id), { method: 'PATCH', body: JSON.stringify({ visible: post.visible === false }) });
+      } else if (action === 'visible' && isAdmin()) {
+        await api('/api/posts/' + encodeURIComponent(post.id), { method: 'PATCH', body: JSON.stringify({ visible: post.visible === false }) });
         toast('已更新公开状态');
       }
-      await loadAll();
+      await reloadPosts();
     } catch (err) {
       toast(err.message || '操作失败', false);
     }
@@ -291,7 +359,9 @@ function setupPosts() {
 }
 
 function setupArchive() {
-  $('#archiveTabs').addEventListener('click', (e) => {
+  const tabs = $('#archiveTabs');
+  if (!tabs) return;
+  tabs.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-tab]');
     if (!btn) return;
     state.tab = btn.dataset.tab;
@@ -314,22 +384,17 @@ function setupArchive() {
       if (action === 'delete') {
         if (!confirm('确定删除《' + work.title + '》？封面、作品包与在线演示都会一起删除，无法撤销。')) return;
         await api('/api/admin/works/' + encodeURIComponent(work.id), { method: 'DELETE' });
-        toast('已删除');
-        await loadAll();
+        toast('已删除'); await loadAdmin();
       } else if (action === 'featured') {
         await api('/api/admin/works/' + encodeURIComponent(work.id), { method: 'PATCH', body: JSON.stringify({ featured: !work.featured }) });
-        toast('已更新精选状态');
-        await loadAll();
+        toast('已更新精选状态'); await loadAdmin();
       } else if (action === 'visible') {
         await api('/api/admin/works/' + encodeURIComponent(work.id), { method: 'PATCH', body: JSON.stringify({ visible: work.visible === false }) });
-        toast('已更新公开状态');
-        await loadAll();
+        toast('已更新公开状态'); await loadAdmin();
       } else if (action === 'edit') {
         openEdit(work);
       }
-    } catch (err) {
-      toast(err.message || '操作失败', false);
-    }
+    } catch (err) { toast(err.message || '操作失败', false); }
   });
 }
 
@@ -351,20 +416,19 @@ function openEdit(work) {
   $('#editModal').setAttribute('aria-hidden', 'false');
   form.elements.title.focus({ preventScroll: true });
 }
-
 function closeEdit() {
   $('#editModal').classList.remove('is-open');
   $('#editModal').setAttribute('aria-hidden', 'true');
   state.editing = null;
 }
-
 function setupEdit() {
   $$('[data-edit-close]').forEach((el) => el.addEventListener('click', closeEdit));
   addEventListener('keydown', (e) => { if (e.key === 'Escape') closeEdit(); });
-  $('#editForm').addEventListener('submit', async (e) => {
+  const form = $('#editForm');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!state.editing) return;
-    const form = e.currentTarget;
     const split = (v) => String(v || '').split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
     const payload = {
       title: form.elements.title.value.trim(),
@@ -380,31 +444,26 @@ function setupEdit() {
     };
     try {
       await api('/api/admin/works/' + encodeURIComponent(state.editing), { method: 'PATCH', body: JSON.stringify(payload) });
-      closeEdit();
-      toast('已保存');
-      await loadAll();
-    } catch (err) {
-      setMsg('editMsg', err.message || '保存失败');
-    }
+      closeEdit(); toast('已保存'); await loadAdmin();
+    } catch (err) { setMsg('editMsg', err.message || '保存失败'); }
   });
 }
 
 function setupPassword() {
-  $('#passwordForm').addEventListener('submit', async (e) => {
+  const form = $('#passwordForm');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const form = e.currentTarget;
     const currentPassword = form.elements.currentPassword.value;
     const newPassword = form.elements.newPassword.value;
-    if (newPassword.length < 10) return setMsg('passwordMsg', '新密码至少需要 10 位。');
+    if (newPassword.length < 8) return setMsg('passwordMsg', '新密码至少需要 8 位。');
     try {
-      const data = await api('/api/admin/password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) });
+      const data = await api('/api/account/password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) });
       state.csrf = data.csrf;
       form.reset();
       setMsg('passwordMsg', '密码已更新，其他设备上的会话已失效。', true);
       toast('密码已更新');
-    } catch (err) {
-      setMsg('passwordMsg', err.message || '密码更新失败');
-    }
+    } catch (err) { setMsg('passwordMsg', err.message || '密码更新失败'); }
   });
 }
 
@@ -420,26 +479,40 @@ async function boot() {
         const data = await res.json();
         if (data.authenticated) session = data;
       }
-    } catch (err) {
-      console.warn('[studio] session fetch failed', err && err.message);
-    }
+    } catch (err) { console.warn('[dashboard] session fetch failed', err && err.message); }
     if (!session) await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  if (!session || session.user?.role !== 'owner') { location.replace('/login?t=' + Date.now()); return; }
+  if (!session) { location.replace('/login?t=' + Date.now()); return; }
   state.csrf = session.csrf;
-  setupUpload();
+  state.user = session.user;
+  state.role = session.user?.role === 'admin' ? 'admin' : 'user';
+  document.body.classList.add('role-' + state.role);
+
+  $$('[data-admin-only]').forEach((el) => { el.hidden = !isAdmin(); });
+  const greetingName = $('#greetingName'); if (greetingName) greetingName.textContent = state.user.username;
+  const accountName = $('#accountName'); if (accountName) accountName.textContent = state.user.username;
+  const accountRole = $('#accountRole'); if (accountRole) accountRole.textContent = isAdmin() ? 'ADMIN / 管理员' : 'MEMBER / 注册用户';
+  const avatar = $('#accountAvatar'); if (avatar) avatar.textContent = String(state.user.username || 'U').slice(0, 1).toUpperCase();
+  const hint = $('#journalHint'); if (hint) hint.textContent = isAdmin() ? '公开手记 · 所有人可读 · 管理员可置顶/隐藏' : '公开手记 · 所有人可读 · 你可以写和编辑自己的';
+
   setupPosts();
-  setupArchive();
-  setupEdit();
   setupPassword();
-  $('#logoutBtn').addEventListener('click', async () => {
+  const logout = $('#logoutBtn');
+  if (logout) logout.addEventListener('click', async () => {
     try { await api('/api/logout', { method: 'POST' }); } catch {}
     location.replace('/');
   });
+
+  if (isAdmin()) {
+    setupUpload();
+    setupArchive();
+    setupEdit();
+  }
   try {
-    await loadAll();
+    if (isAdmin()) await loadAdmin();
+    else await loadUser();
   } catch (err) {
-    console.error('studio load failed', err);
+    console.error('dashboard load failed', err);
     toast(err.message || '加载失败', false);
   }
 }

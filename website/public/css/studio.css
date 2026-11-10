@@ -182,3 +182,8 @@
   .row-cover { width: 70px; height: 56px; }
   .row-actions { grid-column: 1 / -1; justify-content: flex-start; padding-left: 82px; }
 }
+[hidden] { display: none !important; }
+body.role-user .studio-workspace { display: block; }
+body.role-user .studio-aside { margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+body.role-user .account-card { max-width: 560px; }
+body.role-user .studio-hero-side p { max-width: 560px; }

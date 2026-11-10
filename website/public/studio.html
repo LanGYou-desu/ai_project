@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>工作室 — LanGYou Archive</title>
+  <title>创作中心 — LanGYou Archive</title>
   <meta name="robots" content="noindex,nofollow" />
   <meta name="theme-color" content="#f1ece2" />
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="/css/site.css?v=20261110-16" />
-  <link rel="stylesheet" href="/css/studio.css?v=20261110-16" />
+  <link rel="stylesheet" href="/css/site.css?v=20261110-22" />
+  <link rel="stylesheet" href="/css/studio.css?v=20261110-22" />
 </head>
 <body class="studio-body">
   <div class="grain" aria-hidden="true"></div>
   <header class="studio-head">
     <a class="studio-brand" href="/">
       <span class="studio-brand-mark">LY</span>
-      <span><strong>LanGYou</strong><small>STUDIO / 工作室</small></span>
+      <span><strong>LanGYou</strong><small>DASHBOARD / 创作中心</small></span>
     </a>
     <div class="studio-head-mid">
       <span class="studio-live"><i></i> ARCHIVE ONLINE</span>
@@ -29,11 +29,11 @@
 
   <main class="studio-main">
     <section class="studio-hero">
-      <div class="eyebrow dark"><span class="pulse"></span> STUDIO / 控制台</div>
+      <div class="eyebrow dark"><span class="pulse"></span> DASHBOARD / 创作中心</div>
       <div class="studio-hero-grid">
-        <h1 id="greeting">晚上好，<em>LanGYou</em>。</h1>
+        <h1 id="greeting">你好，<em id="greetingName">…</em>。</h1>
         <div class="studio-hero-side">
-          <p>这里是档案馆的后台。上传新的作品、替换展示信息、决定哪些世界对访客开放。</p>
+          <p>写手记、管理自己的内容。管理员可以维护作品、用户与所有公开手记。</p>
           <div class="studio-stats" id="studioStats">
             <div><strong>—</strong><span>作品总数</span></div>
             <div><strong>—</strong><span>上传作品</span></div>
@@ -45,7 +45,7 @@
     </section>
 
     <section class="studio-workspace">
-      <div class="upload-panel">
+      <div class="upload-panel" data-admin-only>
         <div class="panel-head">
           <div>
             <div class="panel-kicker">01 / NEW WORK</div>
@@ -101,7 +101,7 @@
       </div>
 
       <aside class="studio-aside">
-        <div class="aside-card">
+        <div class="aside-card" data-admin-only>
           <div class="panel-kicker">02 / GUIDE</div>
           <h3>上传说明</h3>
           <ul>
@@ -115,10 +115,10 @@
         <div class="aside-card account-card">
           <div class="panel-kicker">03 / ACCOUNT</div>
           <h3>账号</h3>
-          <div class="account-name"><span class="account-avatar">L</span><div><strong>LanGYou</strong><small>OWNER · 唯一账号</small></div></div>
+          <div class="account-name"><span class="account-avatar" id="accountAvatar">L</span><div><strong id="accountName">—</strong><small id="accountRole">—</small></div></div>
           <form id="passwordForm">
             <label class="studio-field"><span>当前密码</span><input name="currentPassword" type="password" autocomplete="current-password" required /></label>
-            <label class="studio-field"><span>新密码</span><input name="newPassword" type="password" autocomplete="new-password" minlength="10" required /></label>
+            <label class="studio-field"><span>新密码</span><input name="newPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
             <button class="studio-text-btn" type="submit">更新密码 <span>→</span></button>
             <div class="studio-form-msg" id="passwordMsg" role="status"></div>
           </form>
@@ -132,7 +132,7 @@
           <div class="panel-kicker">05 / JOURNAL</div>
           <h2>发布手记</h2>
         </div>
-        <span class="panel-hint">公开手记 · 游客可读 · 仅站主可发</span>
+        <span class="panel-hint" id="journalHint">公开手记 · 所有人可读 · 登录用户可写</span>
       </div>
       <div class="journal-studio-grid">
         <form id="postForm" class="journal-compose">
@@ -140,7 +140,7 @@
           <label class="studio-field"><span>正文 <em>BODY</em></span><textarea name="body" rows="8" maxlength="20000" placeholder="制作进度、刚修好的 bug、一段想法…" required></textarea></label>
           <div class="form-grid">
             <label class="studio-field"><span>标签 <em>TAGS</em></span><input name="tags" type="text" placeholder="devlog, 3D, 碎碎念" /></label>
-            <div class="journal-checks">
+            <div class="journal-checks" id="postAdminChecks" data-admin-only>
               <label><input name="pinned" type="checkbox" /> 置顶</label>
               <label><input name="visible" type="checkbox" checked /> 公开</label>
             </div>
@@ -154,7 +154,7 @@
       </div>
     </section>
 
-    <section class="archive-panel">
+    <section class="archive-panel" data-admin-only>
       <div class="archive-head">
         <div>
           <div class="panel-kicker">04 / ARCHIVE</div>
@@ -174,7 +174,7 @@
     </section>
   </main>
 
-  <div class="edit-modal" id="editModal" aria-hidden="true">
+  <div class="edit-modal" id="editModal" aria-hidden="true" data-admin-only>
     <div class="edit-backdrop" data-edit-close></div>
     <div class="edit-panel" role="dialog" aria-modal="true" aria-labelledby="editTitle">
       <div class="edit-head">
@@ -208,6 +208,7 @@
   </div>
 
   <div class="studio-toast" id="studioToast" role="status" aria-live="polite"></div>
-  <script type="module" src="/js/studio.js?v=20261110-16"></script>
+  <script src="/js/studio-check.js?v=20261110-22"></script>
+  <script defer src="/js/studio.js?v=20261110-22"></script>
 </body>
 </html>

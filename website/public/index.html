@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>LanGYou Archive — 一个人，三十三个可以进入的世界</title>
-  <meta name="description" content="LanGYou 的个人创作档案馆：网页游戏、桌面游戏、3D 场景、网页应用、开发工具与生成艺术。在线游玩、下载与持续更新。" />
+  <title>LanGYou Archive — 可玩的世界与公开手记</title>
+  <meta name="description" content="LanGYou Archive 是一个开放的作品与写作空间：网页游戏、桌面故事、3D 场景、工具与生成艺术。在线游玩、下载，注册后可以发布自己的手记。" />
   <meta name="theme-color" content="#0b0b0d" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="LanGYou Archive" />
-  <meta property="og:description" content="一个人，三十三个可以进入的世界。网页游戏、3D 场景、桌面游戏、工具与生成艺术。" />
+  <meta property="og:description" content="可玩的世界，公开的手记。网页游戏、3D 场景、桌面故事、工具与生成艺术。" />
   <meta property="og:url" content="https://langyousaikyo.top/" />
   <meta property="og:image" content="https://langyousaikyo.top/assets/og.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
   <link rel="preload" href="/assets/fonts/InstrumentSerif-Regular.ttf" as="font" type="font/ttf" crossorigin />
   <link rel="preload" href="/assets/fonts/SpaceGrotesk-Variable.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="/css/site.css?v=20261110-10" />
+  <link rel="stylesheet" href="/css/site.css?v=20261110-22" />
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -26,14 +26,14 @@
       <span class="brand-glyph">LY</span>
       <span class="brand-text">
         <strong>LanGYou</strong>
-        <small>ARCHIVE / 最强</small>
+        <small>ARCHIVE / 公开档案</small>
       </span>
     </a>
     <nav class="nav" aria-label="主导航">
       <a href="#works" data-scroll>作品 <span>WORKS</span></a>
       <a href="#journal" data-scroll>手记 <span>JOURNAL</span></a>
       <a href="#about" data-scroll>关于 <span>ABOUT</span></a>
-      <a href="/login?v=20261110-10" class="nav-studio">登录 <span>LOGIN ↗</span></a>
+      <a href="/login" class="nav-studio">登录 / 注册 <span>ACCOUNT ↗</span></a>
     </nav>
     <div class="head-meta">
       <span id="clock">CST --:--:--</span>
@@ -47,7 +47,7 @@
     <a href="#works" data-scroll>作品 <em>WORKS</em></a>
     <a href="#journal" data-scroll>手记 <em>JOURNAL</em></a>
     <a href="#about" data-scroll>关于 <em>ABOUT</em></a>
-    <a href="/login?v=20261110-10">登录 / 游客 <em>LOGIN ↗</em></a>
+    <a href="/login" class="nav-studio-mobile">登录 / 注册 <em>ACCOUNT ↗</em></a>
     <div class="mobile-menu-foot">langyousaikyo.top · 2026</div>
   </div>
 
@@ -58,22 +58,22 @@
       <div class="hero-inner">
         <div class="eyebrow hero-eyebrow">
           <span class="pulse"></span>
-          PERSONAL ARCHIVE — 2026
-          <span class="eyebrow-cn">个人创作档案馆</span>
+          OPEN ARCHIVE — 2026
+          <span class="eyebrow-cn">公开作品与手记</span>
         </div>
-        <h1 class="hero-title" aria-label="Small worlds, made real.">
-          <span class="hero-line hero-line-1"><em>Small</em> worlds,</span>
-          <span class="hero-line hero-line-2">made <span class="outline">real</span><span class="hero-dot">.</span></span>
+        <h1 class="hero-title" aria-label="Worlds to play. Notes to share.">
+          <span class="hero-line hero-line-1"><em>Worlds</em> to play.</span>
+          <span class="hero-line hero-line-2">Notes to <span class="outline">share</span><span class="hero-dot">.</span></span>
         </h1>
-        <div class="hero-cn">一个人，<span id="heroCount">三十三</span>个可以进入的世界。</div>
+        <div class="hero-cn"><span id="heroCount">三十三</span>个可以进入的世界，和一群人的手记。</div>
         <div class="hero-bottom">
           <p class="hero-intro">
-            这里是 LanGYou 的档案馆。网页游戏、桌面游戏、3D 庭院、奇怪的小工具，
-            以及一些只能用浏览器打开的房间。大多数作品可以立刻游玩，也可以把整个项目带走。
+            这里收集网页游戏、桌面故事、3D 场景、奇怪的小工具，
+            以及一些只能用浏览器打开的房间。大多数作品可以直接游玩，也可以把整个项目带走；注册后，你还可以发布自己的手记。
           </p>
           <div class="hero-actions">
             <a class="round-btn magnet" href="#works" data-scroll>
-              <span class="round-btn-label">进入<br />档案馆</span>
+              <span class="round-btn-label">浏览<br />作品</span>
               <span class="round-btn-arrow">↓</span>
             </a>
             <button class="surprise-link" id="surpriseHero" type="button">
@@ -144,9 +144,9 @@
       <div class="section-head">
         <div>
           <div class="eyebrow"><span class="pulse"></span> JOURNAL / 手记</div>
-          <h2 class="section-title">Notes from <em>the studio.</em></h2>
+          <h2 class="section-title">Notes from <em>the archive.</em></h2>
         </div>
-        <p class="section-note">制作中的碎片、刚修好的 bug、<br />以及一些还没有变成作品的想法。</p>
+        <p class="section-note">制作日志、刚修好的 bug、<br />以及一些还没有变成作品的想法。注册后可写。</p>
       </div>
       <div class="journal-grid" id="journalGrid"></div>
     </section>
@@ -156,11 +156,11 @@
         <div class="about-top">
           <div class="eyebrow dark"><span class="pulse"></span> ABOUT THE ARCHIVE / 关于</div>
           <div class="about-grid">
-            <h2 class="about-title">我做小世界。<br /><em>可进入的、可弄坏的、<br />会回望你的。</em></h2>
+            <h2 class="about-title">一个开放的作品<br /><em>与写作空间。</em></h2>
             <div class="about-copy">
-              <p>LanGYou 是一名独立创作者。这里的每一个项目都从零开始：概念、代码、美术、声音、测试，以及最后那一点不肯将就的细节。</p>
-              <p>有些作品是为了让人玩，有些是为了让人停下来听一会儿，有些只是想知道「如果把它做出来，会是什么样子」。</p>
-              <p class="about-sign">— LanGYou，写于某个还在运行的深夜。</p>
+              <p>这里收集可玩的作品与制作手记。作品由 LanGYou 与贡献者维护；注册用户可以发布自己的手记，记录制作过程、灵感或一段想法。</p>
+              <p>有些作品是为了让人玩，有些是为了让人停下来听一会儿，有些只是想知道「如果把它做出来，会是什么样子」。浏览与下载始终开放。</p>
+              <p class="about-sign">— LanGYou Archive，持续更新中。</p>
             </div>
           </div>
         </div>
@@ -174,14 +174,14 @@
 
         <div class="about-cta">
           <div class="about-cta-copy">
-            <div class="eyebrow dark"><span class="pulse"></span> CURATOR'S ENTRANCE</div>
-            <h3>档案馆对所有人开放。<br /><em>工作室只对站主开放。</em></h3>
-            <p>登录后可以上传新的作品、替换封面、管理档案。这里没有访客账号，也没有第三方登录。</p>
+            <div class="eyebrow dark"><span class="pulse"></span> JOIN THE ARCHIVE / 加入</div>
+            <h3>作品对所有人开放。<br /><em>手记也可以有你的一页。</em></h3>
+            <p>注册一个账号，就可以发布自己的手记、管理自己的内容。浏览、在线游玩与下载不需要登录。</p>
           </div>
-          <a class="studio-card" href="/login?v=20261110-10">
-            <span class="studio-card-no">LY / STUDIO</span>
+          <a class="studio-card" href="/login">
+            <span class="studio-card-no">LY / ACCOUNT</span>
             <span class="keyhole" aria-hidden="true"></span>
-            <span class="studio-card-label">站主登录 <em>ENTER ↗</em></span>
+            <span class="studio-card-label">创建账号 <em>JOIN ↗</em></span>
           </a>
         </div>
       </div>
@@ -194,17 +194,17 @@
         <span class="brand-glyph">LY</span>
         <div>
           <strong>LanGYou Archive</strong>
-          <span>一个人，三十三个可以进入的世界。</span>
+          <span>可玩的世界，公开的手记。</span>
         </div>
       </div>
       <div class="footer-links">
         <a href="#works" data-scroll>作品索引</a>
         <a href="#about" data-scroll>关于</a>
-        <a href="/login?v=20261110-10">站主登录</a>
+        <a href="/login">登录 / 注册</a>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 LanGYou. Built by hand, no templates.</span>
+      <span>© 2026 LanGYou Archive. Built by hand, no templates.</span>
       <span class="footer-domain">LANGYOU / SAIKYO.TOP</span>
       <span>ALL WORLDS PLAYABLE / SOME REQUIRE HEADPHONES</span>
     </div>
@@ -239,12 +239,12 @@
       <h2 class="post-title" id="postTitle"></h2>
       <div class="post-tags" id="postTags"></div>
       <div class="post-body" id="postBody"></div>
-      <div class="post-foot"><span>LANGYOU / JOURNAL</span><span>© 2026</span></div>
+      <div class="post-foot"><span id="postAuthorFoot">LANGYOU / JOURNAL</span><span>© 2026</span></div>
     </article>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="/js/site.js?v=20261110-10"></script>
+  <script defer src="/js/site.js?v=20261110-22"></script>
 </body>
 </html>

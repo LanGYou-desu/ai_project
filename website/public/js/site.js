@@ -184,13 +184,13 @@ function renderJournal() {
   if (!grid) return;
   const posts = state.posts.slice(0, 6);
   if (!posts.length) {
-    grid.innerHTML = '<div class="journal-empty">还没有公开手记。站主登录工作室后可以发布第一条。</div>';
+    grid.innerHTML = '<div class="journal-empty">还没有公开手记。注册账号后可以发布第一条。</div>';
     return;
   }
   grid.innerHTML = posts.map((p, i) => {
     const tags = (p.tags || []).slice(0, 3).map((t) => '<span class="tag">' + esc(t) + '</span>').join('');
     return '<article class="journal-card" data-post-id="' + esc(p.id) + '" tabindex="0" role="button" aria-label="阅读手记：' + esc(p.title) + '">' +
-      '<div class="journal-date"><span>' + journalDate(p.createdAt) + '</span><span>' + (p.pinned ? 'PINNED' : 'NO. ' + pad(i + 1)) + '</span></div>' +
+      '<div class="journal-date"><span>' + journalDate(p.createdAt) + ' · ' + esc(p.authorName || 'LanGYou') + '</span><span>' + (p.pinned ? 'PINNED' : 'NO. ' + pad(i + 1)) + '</span></div>' +
       '<h3 class="journal-title">' + esc(p.title) + '</h3>' +
       '<p class="journal-excerpt">' + esc(String(p.body || '').replace(/\s+/g, ' ').slice(0, 160)) + '</p>' +
       '<div class="journal-tags">' + tags + '</div>' +
@@ -203,10 +203,12 @@ function openPost(id, push = true) {
   const post = state.posts.find((p) => p.id === id);
   if (!post) return;
   state.lastFocus = document.activeElement;
-  $('#postDate').textContent = journalDate(post.createdAt) + ' / ' + (post.pinned ? 'PINNED' : 'JOURNAL');
+  $('#postDate').textContent = journalDate(post.createdAt) + ' / ' + (post.pinned ? 'PINNED' : 'JOURNAL') + ' / ' + (post.authorName || 'LanGYou');
   $('#postTitle').textContent = post.title;
   $('#postTags').innerHTML = (post.tags || []).map((t) => '<span class="tag dark">' + esc(t) + '</span>').join('');
   $('#postBody').textContent = post.body || '';
+  const authorFoot = $('#postAuthorFoot');
+  if (authorFoot) authorFoot.textContent = (post.authorName || 'LanGYou') + ' / JOURNAL';
   $('#postModal').classList.add('is-open');
   $('#postModal').setAttribute('aria-hidden', 'false');
   document.body.classList.add('modal-open');
@@ -225,17 +227,23 @@ function closePost(removeHash = true) {
 }
 
 function applySession(session) {
-  const link = document.querySelector('.nav-studio');
-  if (!link) return;
-  if (session?.authenticated && session.user?.role === 'owner') {
-    link.innerHTML = '工作室 <span>STUDIO ↗</span>';
-    link.setAttribute('href', '/studio?t=' + Date.now());
-  } else if (session?.authenticated && session.user?.role === 'guest') {
-    link.innerHTML = '游客 <span>GUEST</span>';
-    link.setAttribute('href', '/login?v=20261110-3');
+  const links = [document.querySelector('.nav-studio'), document.querySelector('.nav-studio-mobile')].filter(Boolean);
+  if (!links.length) return;
+  if (session?.authenticated && session.user?.role === 'admin') {
+    links.forEach((link) => {
+      link.innerHTML = '管理后台 <span>ADMIN ↗</span>';
+      link.setAttribute('href', '/dashboard?t=' + Date.now());
+    });
+  } else if (session?.authenticated && session.user?.role === 'user') {
+    links.forEach((link) => {
+      link.innerHTML = '写手记 <span>' + esc(session.user.username) + ' ↗</span>';
+      link.setAttribute('href', '/dashboard?t=' + Date.now());
+    });
   } else {
-    link.innerHTML = '登录 <span>LOGIN ↗</span>';
-    link.setAttribute('href', '/login?v=20261110-3');
+    links.forEach((link) => {
+      link.innerHTML = '登录 / 注册 <span>ACCOUNT ↗</span>';
+      link.setAttribute('href', '/login');
+    });
   }
 }
 
@@ -277,7 +285,7 @@ function openModal(id, push = true) {
   }
   if (!actions.length) actions.push('<span class="btn-secondary">档案条目 · 暂无下载 <span>∅</span></span>');
   $('#modalActions').innerHTML = actions.join('');
-  $('#modalKind').textContent = work.builtin ? 'FROM THE PERSONAL ARCHIVE' : 'UPLOADED TO THE STUDIO';
+  $('#modalKind').textContent = work.builtin ? 'FROM THE ARCHIVE' : 'UPLOADED TO THE ARCHIVE';
   $('#copyLink').dataset.id = work.id;
 
   const modal = $('#modal');
@@ -479,10 +487,18 @@ async function boot() {
     }
   } catch {}
 
-  try {
-    const res = await fetch('/api/session', { headers: { accept: 'application/json' } });
-    if (res.ok) applySession(await res.json());
-  } catch {}
+  let session = null;
+  for (let attempt = 0; attempt < 3 && !session; attempt++) {
+    try {
+      const res = await fetch('/api/session', { headers: { accept: 'application/json' }, cache: 'no-store' });
+      if (res.ok) session = await res.json();
+    } catch {}
+    if (!session || !session.authenticated) {
+      session = session && session.authenticated ? session : null;
+      if (!session) await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+  }
+  if (session) applySession(session);
 
   if (state.works.length) {
     const n = state.works.length;

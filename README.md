@@ -13,7 +13,7 @@
 >
 > 其中 **23 个项目自带自动化测试**，合计 **2,551 项检查**（含 HollowSignal 的 93 项浏览器冒烟），一条 `npm test` 即可全量回归。其余项目为静态页面、3D 场景或工具，由各项目自己的构建 / 冒烟检查覆盖。
 >
-> **线上档案馆：<https://langyousaikyo.top>** · 源码在 [`website/`](./website/)，支持作品浏览、在线游玩、下载与站主后台上传。
+> **线上档案馆：<https://langyousaikyo.top>** · 源码在 [`website/`](./website/)，支持作品浏览、在线游玩、下载、邮箱注册与用户手记。
 
 | GitHub | https://github.com/LanGYou-desu/ai_project |
 | Website | <https://langyousaikyo.top> |
@@ -89,10 +89,10 @@
 - **地址**：<https://langyousaikyo.top>
 - **源码**：[`website/`](./website/)
 - **内容**：33 个作品的完整索引、封面、标签、在线演示与下载；支持按类别筛选、搜索、随机漫游与作品详情弹层。
-- **站主工作室**：站主账号 `LanGYou` 登录后可上传 ZIP / 封面、填写元数据、设为精选、隐藏 / 公开、编辑与删除作品，并发布手记。
-- **游客模式**：登录页可一键以 `Guest` 身份进入；可浏览、在线游玩、下载与读手记，不能发布，也不能进入工作室。
-- **手记（Journal）**：首页 JOURNAL 区块展示站主发布的制作日志、更新与碎片想法。
-- **运行方式**：Node.js + Express + 原生前端，上传内容运行在独立 `play` 子域；详细部署说明见 [`website/README.md`](./website/README.md)。
+- **公开账号系统**：访客可以直接浏览、游玩与下载；注册需要邮箱验证码，忘记密码也通过邮箱验证码重置。
+- **三种角色**：访客只读；注册用户可以发布、编辑、删除自己的手记；管理员可以维护作品、所有手记与注册用户。
+- **手记（Journal）**：首页 JOURNAL 区块展示所有公开手记与作者；登录用户可在创作中心写自己的手记。
+- **运行方式**：Node.js + Express + 原生前端 + JSON 存储 + Nodemailer SMTP；上传内容运行在独立 `play` 子域；详细部署说明见 [`website/README.md`](./website/README.md)。
 
 ## 🧪 全仓库测试
 

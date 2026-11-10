@@ -8,7 +8,7 @@
     if (document.getElementById('studioBootNote') || statsReady()) return;
     var el = document.createElement('div');
     el.id = 'studioBootNote';
-    el.textContent = '正在重新连接工作室…如果长时间空白，请刷新页面。';
+    el.textContent = '正在重新连接创作中心…如果长时间空白，请刷新页面。';
     el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;background:#0b0b0d;color:#f1ece2;padding:10px 16px;font:9px ui-monospace,monospace;letter-spacing:.04em;';
     document.body.appendChild(el);
   }
@@ -17,7 +17,7 @@
     attempted = true;
     showNote();
     var s = document.createElement('script');
-    s.type = 'module';
+    s.defer = true;
     s.src = '/js/studio.js?retry=' + Date.now();
     document.body.appendChild(s);
   }

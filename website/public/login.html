@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>站主登录 — LanGYou Archive</title>
+  <title>登录 / 注册 — LanGYou Archive</title>
+  <meta name="description" content="登录或注册 LanGYou Archive，浏览作品、阅读手记，也可以发布自己的手记。" />
   <meta name="robots" content="noindex,nofollow" />
   <meta name="theme-color" content="#0b0b0d" />
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="/css/site.css?v=20261110-10" />
-  <link rel="stylesheet" href="/css/login.css?v=20261110-10" />
+  <link rel="stylesheet" href="/css/site.css?v=20261110-22" />
+  <link rel="stylesheet" href="/css/login.css?v=20261110-22" />
 </head>
 <body class="login-body">
   <div class="grain" aria-hidden="true"></div>
@@ -16,68 +17,126 @@
     <section class="login-left">
       <a class="brand login-brand" href="/" aria-label="返回 LanGYou Archive">
         <span class="brand-glyph">LY</span>
-        <span class="brand-text"><strong>LanGYou</strong><small>ARCHIVE / 最强</small></span>
+        <span class="brand-text"><strong>LanGYou</strong><small>ARCHIVE / 公开档案</small></span>
       </a>
       <div class="login-left-inner">
-        <div class="eyebrow"><span class="pulse"></span> CURATOR'S ENTRANCE / 站主入口</div>
-        <h1>Only <em>one</em><br />curator.</h1>
-        <p class="login-lead">这座档案馆对所有人开放。<br />工作室只对 LanGYou 本人开放。</p>
-        <div class="login-keyhole" aria-hidden="true">
-          <span class="keyhole-ring"></span>
-          <span class="keyhole-slot"></span>
-          <span class="keyhole-scan"></span>
+        <div class="eyebrow"><span class="pulse"></span> OPEN ARCHIVE / 公开写作与作品分享</div>
+        <h1>Come in,<br /><em>make a page.</em></h1>
+        <p class="login-lead">浏览 33 个可以进入的世界，读一读制作手记。<br />注册一个账号，也可以在这里写下你自己的那一页。</p>
+        <div class="login-stats">
+          <span><strong>33</strong> WORKS</span>
+          <span><strong>6</strong> CATEGORIES</span>
+          <span><strong>OPEN</strong> SIGN-UP</span>
         </div>
-        <blockquote>“The archive is open.<br />The studio is not.”</blockquote>
       </div>
       <div class="login-left-foot">
         <span>LANGYOUSAikyo.TOP</span>
-        <span>EST. 2026 / CST</span>
+        <span>PUBLIC ARCHIVE / EST. 2026</span>
       </div>
     </section>
 
     <section class="login-right">
       <div class="login-form-wrap">
         <div class="login-form-top">
-          <span>LY / STUDIO</span>
-          <a href="/">← 返回档案馆</a>
+          <span>LY / ACCOUNT</span>
+          <a href="/">← 返回首页</a>
         </div>
-        <h2>站主登录</h2>
-        <p class="login-sub">输入凭据以进入工作室。没有注册，没有第三方登录，也没有找回密码的入口。</p>
-        <form id="loginForm" novalidate>
-          <label class="field">
-            <span>用户名 <em>USERNAME</em></span>
-            <input id="username" name="username" type="text" value="LanGYou" autocomplete="username" autocapitalize="off" spellcheck="false" required />
-          </label>
-          <label class="field">
-            <span>密码 <em>PASSWORD</em></span>
-            <span class="password-wrap">
-              <input id="password" name="password" type="password" autocomplete="current-password" required />
-              <button type="button" id="togglePassword" aria-label="显示密码">显示</button>
-            </span>
-          </label>
-          <button class="login-submit" type="submit">
-            <span>进入工作室</span><span class="login-submit-arrow">→</span>
-          </button>
-          <div class="login-error" id="loginError" role="alert"></div>
-        </form>
+        <h2>登录 / 注册</h2>
+        <p class="login-sub">一个账号，用来发布手记、管理自己的内容。浏览作品和下载不需要登录。</p>
 
-        <div class="login-divider"><span>或 / OR</span></div>
-        <button class="guest-login" id="guestLogin" type="button">
-          <span>以游客身份进入</span><span>→</span>
-        </button>
-        <p class="guest-note">游客可以浏览、在线游玩与下载作品；不能发布手记，也不能进入工作室。</p>
+        <div class="auth-tabs" role="tablist" aria-label="登录或注册">
+          <button type="button" class="auth-tab is-active" data-auth-tab="login" role="tab" aria-selected="true">登录 <em>LOGIN</em></button>
+          <button type="button" class="auth-tab" data-auth-tab="register" role="tab" aria-selected="false">注册 <em>REGISTER</em></button>
+        </div>
+
+        <div class="auth-panel" data-auth-panel="login">
+          <form id="loginForm" novalidate>
+            <label class="field">
+              <span>用户名或邮箱 <em>USERNAME / EMAIL</em></span>
+              <input id="loginIdentifier" name="identifier" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" required />
+            </label>
+            <label class="field">
+              <span>密码 <em>PASSWORD</em></span>
+              <span class="password-wrap">
+                <input id="loginPassword" name="password" type="password" autocomplete="current-password" required />
+                <button type="button" class="password-toggle" data-password-toggle="loginPassword" aria-label="显示密码">显示</button>
+              </span>
+            </label>
+            <div class="auth-inline">
+              <button type="button" class="link-button" data-auth-go="reset">忘记密码？</button>
+            </div>
+            <button class="login-submit" type="submit"><span>登录</span><span class="login-submit-arrow">→</span></button>
+          </form>
+        </div>
+
+        <div class="auth-panel" data-auth-panel="register" hidden>
+          <form id="registerForm" novalidate>
+            <label class="field">
+              <span>用户名 <em>USERNAME</em></span>
+              <input id="registerUsername" name="username" type="text" maxlength="24" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="2–24 个字符" required />
+            </label>
+            <label class="field">
+              <span>邮箱 <em>EMAIL</em></span>
+              <span class="code-row">
+                <input id="registerEmail" name="email" type="email" autocomplete="email" placeholder="用来接收验证码" required />
+                <button type="button" class="code-button" data-send-code="register" data-email="registerEmail">发送验证码</button>
+              </span>
+            </label>
+            <label class="field">
+              <span>邮箱验证码 <em>CODE</em></span>
+              <input id="registerCode" name="code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 位数字" required />
+            </label>
+            <label class="field">
+              <span>密码 <em>PASSWORD</em></span>
+              <span class="password-wrap">
+                <input id="registerPassword" name="password" type="password" minlength="8" autocomplete="new-password" placeholder="至少 8 位" required />
+                <button type="button" class="password-toggle" data-password-toggle="registerPassword" aria-label="显示密码">显示</button>
+              </span>
+            </label>
+            <button class="login-submit" type="submit"><span>创建账号</span><span class="login-submit-arrow">→</span></button>
+            <p class="auth-fineprint">注册后可以发布自己的手记；作品上传由管理员统一维护。</p>
+          </form>
+        </div>
+
+        <div class="auth-panel" data-auth-panel="reset" hidden>
+          <form id="resetForm" novalidate>
+            <p class="auth-panel-lead">输入注册邮箱，我们会发送一封验证码邮件。验证后即可设置新密码。</p>
+            <label class="field">
+              <span>邮箱 <em>EMAIL</em></span>
+              <span class="code-row">
+                <input id="resetEmail" name="email" type="email" autocomplete="email" placeholder="注册时使用的邮箱" required />
+                <button type="button" class="code-button" data-send-code="reset" data-email="resetEmail">发送验证码</button>
+              </span>
+            </label>
+            <label class="field">
+              <span>邮箱验证码 <em>CODE</em></span>
+              <input id="resetCode" name="code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 位数字" required />
+            </label>
+            <label class="field">
+              <span>新密码 <em>NEW PASSWORD</em></span>
+              <span class="password-wrap">
+                <input id="resetPassword" name="password" type="password" minlength="8" autocomplete="new-password" placeholder="至少 8 位" required />
+                <button type="button" class="password-toggle" data-password-toggle="resetPassword" aria-label="显示密码">显示</button>
+              </span>
+            </label>
+            <button class="login-submit" type="submit"><span>重置密码</span><span class="login-submit-arrow">→</span></button>
+            <div class="auth-inline"><button type="button" class="link-button" data-auth-go="login">← 返回登录</button></div>
+          </form>
+        </div>
+
+        <div class="auth-status" id="authStatus" role="status" aria-live="polite"></div>
 
         <div class="login-note">
           <span class="login-note-dot"></span>
-          仅站主账号。上传的作品会立即出现在公开档案馆中。
+          我们只会用你的邮箱发送验证码和找回密码邮件，不会公开展示。
         </div>
       </div>
       <div class="login-right-foot">
-        <span>© 2026 LanGYou</span>
-        <span>PRIVATE STUDIO / NO PUBLIC SIGN-UP</span>
+        <span>© 2026 LanGYou Archive</span>
+        <span>PUBLIC ARCHIVE / OPEN SIGN-UP</span>
       </div>
     </section>
   </main>
-  <script type="module" src="/js/login.js?v=20261110-10"></script>
+  <script defer src="/js/login.js?v=20261110-22"></script>
 </body>
 </html>
