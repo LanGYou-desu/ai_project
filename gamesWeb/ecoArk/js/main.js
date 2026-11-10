@@ -116,7 +116,9 @@
   // ---------- 菜单 ----------
   function showMenu() {
     G.mode = 'menu';
-    G.paused = true;
+    setPaused(true);
+    var veil = $('pauseVeil');
+    if (veil) veil.classList.add('hidden');
     clearPendingComplete();   // 防止延迟的章节结算弹窗盖在主菜单上
     var starsTotal = 0;
     Object.keys(G.stars || {}).forEach(function (k) { starsTotal += Number(G.stars[k]) || 0; });
@@ -207,7 +209,12 @@
     document.body.appendChild(wrap);
     wrap.querySelector('#chGo').addEventListener('click', function () {
       wrap.remove();
-      G.paused = false;
+      setPaused(false);
+      if (ch.no === 1) {
+        setTimeout(function () {
+          flashTip('👆 先在左侧选择物种，再在培养皿上拖动放置；按空格控制时间流动');
+        }, 450);
+      }
     });
   }
 
@@ -289,8 +296,7 @@
     G.chState = sandbox ? null : CHAPTERS.createState(G.chapter);
     G.chResult = null;
     if (G.clock) G.clock.acc = 0;
-    G.paused = true;
-    els.btnPause.textContent = '▶';
+    setPaused(true);
     els.chapterPill.textContent = sandbox ? '🔬 沙盒模式' : CHAPTERS.byNo(G.chapter).title;
     updateClock();
     renderSpeciesList();
@@ -766,13 +772,17 @@
   }
 
   // ---------- 顶部按钮 ----------
+  function setPaused(paused) {
+    G.paused = paused;
+    if (els.btnPause) els.btnPause.textContent = paused ? '▶' : '⏸';
+    var veil = $('pauseVeil');
+    if (veil) veil.classList.toggle('hidden', !paused || G.mode === 'menu' || !G.sim);
+  }
+
   function bindUI() {
     bindCanvas();
     bindToolbar();
-    els.btnPause.addEventListener('click', function () {
-      G.paused = !G.paused;
-      els.btnPause.textContent = G.paused ? '▶' : '⏸';
-    });
+    if (els.btnPause) els.btnPause.addEventListener('click', function () { setPaused(!G.paused); });
     [['btnSpeed1', 1], ['btnSpeed2', 2], ['btnSpeed4', 4], ['btnSpeed8', 8], ['btnSpeed16', 16]].forEach(function (pair) {
       var b = $(pair[0]);
       if (!b) return;
@@ -792,16 +802,31 @@
     });
     els.btnMenu.addEventListener('click', function () {
       if (confirm('返回主菜单？当前进度可在菜单中「继续上次的方舟」。')) {
-        G.paused = true;
+        setPaused(true);
         showMenu();
       }
     });
-    // 空格暂停
+    // 键盘：空格/1-5/静音/图鉴/存档
     window.addEventListener('keydown', function (e) {
-      if (e.code === 'Space' && G.sim) {
+      if (!G.sim || G.mode === 'menu') return;
+      if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      if (e.code === 'Space' || e.key === 'p' || e.key === 'P') {
         e.preventDefault();
-        G.paused = !G.paused;
-        els.btnPause.textContent = G.paused ? '▶' : '⏸';
+        setPaused(!G.paused);
+        return;
+      }
+      if (e.key >= '1' && e.key <= '5') {
+        var speeds = [1, 2, 4, 8, 16];
+        var b = $('btnSpeed' + speeds[Number(e.key) - 1]);
+        if (b) b.click();
+      } else if (e.key === 'm' || e.key === 'M') {
+        els.btnSound.click();
+      } else if (e.key === 'b' || e.key === 'B') {
+        showBook();
+      } else if (e.key === 's' || e.key === 'S') {
+        showSavePanel();
+      } else if (e.key === 'Escape') {
+        els.btnMenu.click();
       }
     });
     Audio.setMuted(false);
