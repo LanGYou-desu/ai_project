@@ -1,3 +1,5 @@
+(function () {
+'use strict';
 /* LanGYou Archive — dashboard */
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -469,8 +471,9 @@ function setupPassword() {
 
 let booted = false;
 async function boot() {
-  if (booted) return;
+  if (booted || window.__dashboardBooting) return;
   booted = true;
+  window.__dashboardBooting = true;
   let session = null;
   for (let attempt = 0; attempt < 4 && !session; attempt++) {
     try {
@@ -520,3 +523,4 @@ async function boot() {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
 addEventListener('load', () => { if (!booted) boot(); });
+})();
