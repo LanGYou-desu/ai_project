@@ -1,0 +1,23 @@
+{
+  "name": "langyou-archive",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "LanGYou 的个人创作档案馆 — 作品展示、在线游玩、下载与后台上传",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "set-password": "node scripts/set-password.js"
+  },
+  "dependencies": {
+    "compression": "^1.8.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "multer": "^2.0.2",
+    "unzipper": "^0.12.3"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.56.0"
+  }
+}

@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ede7da">
+  <meta name="description" content="臆候局：为那些被感受过、却从未发生的天气建立档案。写下一段感受，凝结一场只属于你的天气。">
+  <meta property="og:title" content="臆候局 · The Bureau of Imagined Weather">
+  <meta property="og:description" content="写下一段感受，凝结一场只属于你的天气。">
+  <meta property="og:type" content="website">
+  <title>臆候局 · The Bureau of Imagined Weather</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%231a2421'/%3E%3Ccircle cx='32' cy='30' r='17' fill='none' stroke='%23ede7da' stroke-width='1.2'/%3E%3Cpath d='M15 45h34' stroke='%23d85b3e' stroke-width='2'/%3E%3Ccircle cx='42' cy='22' r='3' fill='%23d85b3e'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="paper-grain" aria-hidden="true"></div>
+  <div class="page-frame" aria-hidden="true"></div>
+
+  <div class="page">
+    <header class="masthead">
+      <a class="brand" href="./" aria-label="臆候局首页">
+        <span class="seal" aria-hidden="true">臆</span>
+        <span class="brand-copy">
+          <span class="brand-cn">臆候局</span>
+          <span class="brand-en">BUREAU OF IMAGINED WEATHER</span>
+        </span>
+      </a>
+
+      <p class="masthead-note">为尚未发生、却已被感受的天气<br>建立一份非官方档案</p>
+
+      <div class="meta-strip">
+        <span class="meta-item"><i class="live-dot" aria-hidden="true"></i><span>OBSERVING</span></span>
+        <span class="meta-item clock" id="clock">05 NOV 2026 · 18:21</span>
+        <button class="meta-button" id="sound-button" type="button" aria-pressed="false">
+          <span class="meta-label">声场</span><span class="meta-value" id="sound-value">OFF</span>
+        </button>
+        <button class="meta-button archive-trigger" id="archive-button" type="button" aria-haspopup="dialog">
+          <span class="meta-label">档案</span><span class="meta-value" id="archive-count">04</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="specimen" aria-labelledby="weather-title">
+        <div class="kicker reveal reveal-1">
+          <span class="kicker-index">CURRENT OBSERVATION</span>
+          <span class="kicker-line" aria-hidden="true"></span>
+          <span class="kicker-number" id="specimen-number">NO. 0001</span>
+        </div>
+
+        <div class="title-block reveal reveal-2">
+          <h1 class="weather-title" id="weather-title" aria-live="polite">
+            <span class="title-line title-line-a"><span id="title-a">琥珀色</span></span>
+            <span class="title-line title-line-b"><span id="title-b">低云</span><sup class="title-mark" id="title-mark">01</sup></span>
+          </h1>
+          <p class="weather-latin" id="weather-en">AMBER STRATUS</p>
+        </div>
+
+        <p class="weather-description reveal reveal-3" id="weather-description">一阵低低地悬在窗沿上方一米处的暖雾。它不带来雨，只让所有声音变软，像一层被太阳晒暖的旧绒布。预计在有人想起你时缓慢散开。</p>
+
+        <div class="trace reveal reveal-3" aria-label="本次天气的感受来源">
+          <span class="trace-label">感受样本</span>
+          <span class="trace-quote" id="weather-source">一个还没有结束的下午</span>
+          <span class="trace-arrow" aria-hidden="true">→</span>
+          <span class="trace-result">凝结为天气</span>
+        </div>
+
+        <dl class="readings reveal reveal-4" id="readings">
+          <div class="reading">
+            <dt>温度 / TEMP</dt>
+            <dd><span id="reading-temp">22.4</span><small>°C</small></dd>
+          </div>
+          <div class="reading">
+            <dt>相对湿度 / HUM</dt>
+            <dd><span id="reading-humidity">67</span><small>%</small></dd>
+          </div>
+          <div class="reading">
+            <dt>气压 / PRES</dt>
+            <dd><span id="reading-pressure">1012</span><small>hPa</small></dd>
+          </div>
+          <div class="reading">
+            <dt>能见度 / VIS</dt>
+            <dd><span id="reading-visibility">0.8</span><small>km</small></dd>
+          </div>
+        </dl>
+
+        <div class="specimen-foot reveal reveal-5">
+          <div class="sensation">
+            <span class="sensation-label">体感</span>
+            <p id="weather-sensation">像一条晒过太阳的旧毛毯</p>
+          </div>
+          <div class="specimen-actions">
+            <button class="line-button" id="export-button" type="button">导出标本卡 <span aria-hidden="true">↓</span></button>
+            <button class="line-button" id="random-button" type="button">随机观测 <span aria-hidden="true">↗</span></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="stage reveal-stage" aria-label="臆象观测窗">
+        <div class="stage-backdrop" aria-hidden="true">
+          <span class="backdrop-disc"></span>
+          <span class="backdrop-index" id="backdrop-index">001</span>
+          <span class="backdrop-coordinate" id="backdrop-coordinate">31°14′N&nbsp;&nbsp;/&nbsp;&nbsp;121°29′E</span>
+          <span class="backdrop-caption">NOT A REAL<br>WEATHER STATION</span>
+        </div>
+
+        <div class="stage-inner">
+          <div class="scale scale-top" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="scale scale-left" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+          <figure class="vitrine">
+            <div class="vitrine-label">
+              <span>OBSERVATION WINDOW</span>
+              <span>O—<span id="window-number">01</span></span>
+            </div>
+            <div class="arch-shell" id="arch-shell">
+              <div class="arch">
+                <canvas id="weather-canvas" role="img" tabindex="0" aria-label="一件悬浮在黑暗观测窗中的臆象天气标本：暖雾与微光"></canvas>
+                <div class="arch-ui" aria-hidden="true">
+                  <div class="arch-topline">
+                    <span>IMAGINED&nbsp;METEOROLOGY</span>
+                    <span id="arch-condition">低云 · 暖雾</span>
+                  </div>
+                  <span class="arch-cross arch-cross-a">+</span>
+                  <span class="arch-cross arch-cross-b">+</span>
+                  <span class="arch-cross arch-cross-c">+</span>
+                  <span class="arch-cross arch-cross-d">+</span>
+                  <span class="arch-seal">臆<br><b>已封存</b></span>
+                  <div class="arch-bottomline">
+                    <span id="arch-temperature">AIR 22.4°C</span>
+                    <span id="arch-duration">持续至有人先开口</span>
+                  </div>
+                </div>
+                <div class="arch-sheen" aria-hidden="true"></div>
+                <div class="arch-wipe" aria-hidden="true"></div>
+              </div>
+            </div>
+            <figcaption class="vitrine-caption">
+              <span>轻触玻璃，扰动天气<span class="mobile-cue"> · 向下交出一段感受 ↓</span></span>
+              <span class="caption-pulse"><i aria-hidden="true"></i><span id="canvas-clock">18:21:05</span></span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+    </main>
+
+    <footer class="composer">
+      <div class="composer-main">
+        <div class="composer-heading">
+          <span>01 / 交出一段感受</span>
+          <span class="composer-en">COLLECT A FEELING, RETURN A CLIMATE</span>
+        </div>
+        <form class="composer-form" id="weather-form" autocomplete="off">
+          <label class="sr-only" for="feeling-input">描述一种感受</label>
+          <div class="input-shell">
+            <span class="input-arrow" aria-hidden="true">↳</span>
+            <input id="feeling-input" name="feeling" type="text" maxlength="40" placeholder="例如：搬到新城市后的第一个雨天" aria-describedby="input-hint">
+            <span class="input-count" id="input-count">0 / 40</span>
+          </div>
+          <button class="cast-button" id="cast-button" type="submit">
+            <span class="cast-text" id="cast-text">铸造天气</span>
+            <span class="cast-arrow" aria-hidden="true">↗</span>
+          </button>
+        </form>
+        <p class="input-hint" id="input-hint">语气、温度和湿度将由你的描述决定。若不填写，本局将随机拾取一段无名感受。</p>
+      </div>
+
+      <aside class="composer-aside">
+        <div class="suggestions-label">或从这些样本开始</div>
+        <div class="suggestions" id="suggestions">
+          <button type="button" data-feeling="凌晨三点的便利店">凌晨三点的便利店</button>
+          <button type="button" data-feeling="没说出口的再见">没说出口的再见</button>
+          <button type="button" data-feeling="雨停之后">雨停之后</button>
+          <button type="button" data-feeling="所有的灯都关了">所有的灯都关了</button>
+        </div>
+        <p class="bureau-note">臆候局并不存在。本局不受理真实天气，也不对任何一次想起负责。所有记录仅保存在这台设备里。</p>
+      </aside>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="overlay archive-overlay" id="archive-overlay" hidden>
+    <div class="overlay-scrim" data-close-overlay="archive"></div>
+    <section class="archive-sheet" role="dialog" aria-modal="true" aria-labelledby="archive-heading">
+      <header class="archive-header">
+        <div>
+          <p class="archive-kicker">YHJ / PRIVATE WEATHER ARCHIVE</p>
+          <h2 id="archive-heading">臆象档案</h2>
+        </div>
+        <div class="archive-header-actions">
+          <button class="text-action" id="clear-archive" type="button">清空档案</button>
+          <button class="close-button" id="close-archive" type="button" aria-label="关闭档案">关闭 <span aria-hidden="true">×</span></button>
+        </div>
+      </header>
+      <div class="archive-grid" id="archive-grid"></div>
+      <footer class="archive-footer">
+        <span id="archive-footnote">共收录 04 种天气</span>
+        <span>点击任一条目，可将其调回观测窗。档案至多保留 24 份。</span>
+      </footer>
+    </section>
+  </div>
+
+  <script src="data.js" defer></script>
+  <script src="weather.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>

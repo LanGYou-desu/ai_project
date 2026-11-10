@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.vite/
+.qa/
+qa-*.png
+*.local
+.DS_Store

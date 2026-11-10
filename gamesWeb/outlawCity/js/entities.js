@@ -20,6 +20,9 @@ class Player {
     this.wanted = 0;
     this.muzzleT = 0; this.meleeSwing = 0;
     this.dmgFlash = 0;
+    // 步行速度用加速度/阻尼平滑，避免键盘移动一按就满速的“滑冰感”
+    this.vx = 0; this.vy = 0;
+    this.moveSpeed = 0; this.walkPhase = 0;
   }
   weapon() { return this.weapons[this.weaponIndex]; }
   equip(i) {
@@ -172,7 +175,7 @@ class Vehicle {
     this.wrecked = true;
     const ex = this.x + Math.cos(this.heading) * this.def.h * 0.5;
     const ey = this.y + Math.sin(this.heading) * this.def.h * 0.5;
-    const big = this.type === "truck";
+    const big = this.type === "truck" || this.type === "bus";
     Combat.explode(ex, ey, big ? 175 : 125, big ? 200 : 150, this.driver === W.player ? "player" : "ai");
     if (this.driver === W.player) {
       W.player.vehicle = null; this.driver = null;
@@ -201,7 +204,13 @@ class NPC {
     this.tx = x; this.ty = y;
     this.fireTimer = Utils.rand(0.5, 1.5);
     this.dead = false; this.deathTimer = 0;
-    this.clothes = Utils.choice(["#e2e8f0", "#fda4af", "#93c5fd", "#fcd34d", "#86efac", "#c4b5fd"]);
+    this.clothes = Utils.choice([
+      "#e2e8f0", "#fda4af", "#93c5fd", "#fcd34d", "#86efac", "#c4b5fd",
+      "#f97316", "#22d3ee", "#f43f5e", "#a3e635", "#fbbf24", "#c084fc",
+      "#475569", "#9f1239", "#0e7490", "#854d0e"
+    ]);
+    this.variant = type === "police" ? 0 : type === "boss" ? 1 : Utils.randInt(0, 7);
+    this.skin = Utils.randInt(0, 3);
     this.gang = type === "gang";
     this.police = type === "police";
     this.boss = type === "boss";

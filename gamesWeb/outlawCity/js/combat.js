@@ -41,7 +41,7 @@ const Combat = {
       if (p.type === "spark") { p.vx *= (1 - 3 * dt); p.vy *= (1 - 3 * dt); }
     }
   },
-  fireWeapon(team, weaponName, ox, oy, angle) {
+  fireWeapon(team, weaponName, ox, oy, angle, spreadScale) {
     const def = CFG.WEAPONS[weaponName];
     if (def.melee) {
       for (const n of W.npcs) {
@@ -59,8 +59,9 @@ const Combat = {
       return;
     }
     const pellets = def.pellets || 1;
+    const spread = def.spread * (spreadScale == null ? 1 : spreadScale);
     for (let i = 0; i < pellets; i++) {
-      const ang = angle + Utils.rand(-def.spread, def.spread);
+      const ang = angle + Utils.rand(-spread, spread);
       this.bullets.push({ x: ox, y: oy, vx: Math.cos(ang) * def.bulletSpeed, vy: Math.sin(ang) * def.bulletSpeed, dmg: def.dmg, life: def.range / def.bulletSpeed, team: team });
     }
     AudioSys.shoot(weaponName);

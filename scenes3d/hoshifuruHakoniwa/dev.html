@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="day">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#e8dcc3" />
+  <meta name="description" content="星落町——一座会呼吸的 3D 箱庭小镇。穿过白昼与星夜，看风车、潮汐与灯火慢慢转动。" />
+  <title>星落町 · Hoshifuru Hakoniwa</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2324342d'/%3E%3Cpath d='M32 10l4.2 15.6L52 30l-15.8 4.4L32 50l-4.2-15.6L12 30l15.8-4.4z' fill='%23e2c68f'/%3E%3Ccircle cx='32' cy='30' r='4' fill='%23f6ead0'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene" aria-label="可旋转、缩放的星落町三维箱庭"></canvas>
+    <div class="sky-wash" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="film-grain" aria-hidden="true"></div>
+    <div class="bottom-shade" aria-hidden="true"></div>
+
+    <div id="ui">
+      <header class="masthead">
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="0.8" opacity="0.45"/>
+              <circle cx="32" cy="32" r="21" stroke="currentColor" stroke-width="0.6" opacity="0.28"/>
+              <path d="M32 11l3.6 14.9L50 32l-14.4 6.1L32 53l-3.6-14.9L14 32l14.4-6.1L32 11z" fill="currentColor" opacity="0.9"/>
+              <circle cx="32" cy="32" r="3.2" fill="#f6e8cc"/>
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <p class="micro-label">A LIVING MINIATURE WORLD</p>
+            <h1>星落町</h1>
+            <p class="brand-roman">HOSHIFURU <i>·</i> HAKONIWA</p>
+          </div>
+        </div>
+        <div class="brand-rule" aria-hidden="true"></div>
+        <p class="brand-note">海风、钟声与一盏盏窗灯，<br/>把日子安放在掌心。</p>
+      </header>
+
+      <div class="top-actions">
+        <button class="flow-button" id="flowToggle" type="button" aria-pressed="false" aria-label="开启时间流转">
+          <span class="flow-orbit" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M20.4 13.1A8.5 8.5 0 1 1 11 3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+              <path d="M8.2 13.2l2.6 2.5 5.2-5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="flow-label"><small>TIME FLOW</small><b>时间流转</b></span>
+          <span class="flow-state">OFF</span>
+        </button>
+
+        <div class="mode-switch" id="modeSwitch" data-mode="day" role="group" aria-label="切换白昼与星夜">
+          <span class="mode-thumb" aria-hidden="true"></span>
+          <button class="mode-button is-active" data-mode="day" type="button" aria-pressed="true">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="4.1" stroke="currentColor" stroke-width="1.25"/>
+              <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+            </svg>
+            <span>白昼</span>
+          </button>
+          <button class="mode-button" data-mode="night" type="button" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M20.1 15.2A8.4 8.4 0 0 1 9 4.1 8.5 8.5 0 1 0 20.1 15.2z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+              <path d="M16.5 5.3l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z" fill="currentColor" opacity="0.8"/>
+            </svg>
+            <span>星夜</span>
+          </button>
+        </div>
+      </div>
+
+      <section class="intro-panel">
+        <p class="micro-label"><span>HAKONIWA</span><i></i>VOL. 01</p>
+        <h2>把昼夜，<br /><em>收进一座小镇。</em></h2>
+        <p class="intro-copy">风车、潮汐与灯火，在掌心大小的世界里，<br class="wide-only"/>缓缓继续。</p>
+        <div class="intro-meta">
+          <span class="coordinate">35°41′N&nbsp;&nbsp;139°41′E</span>
+          <span class="meta-line"></span>
+          <span>SCALE 1:120</span>
+        </div>
+      </section>
+
+      <aside class="time-card" aria-label="时间控制器">
+        <div class="time-card-head">
+          <span class="micro-label">LOCAL TIME</span>
+          <span id="weatherLabel">晴 · 微风</span>
+        </div>
+        <div class="clock-row">
+          <time id="clockDisplay">15:10</time>
+          <div class="period-block">
+            <span id="periodLabel">午后</span>
+            <small id="orbitLabel">SUN HIGH</small>
+          </div>
+        </div>
+        <div class="orbit-track">
+          <div class="orbit-line" aria-hidden="true"></div>
+          <div class="orbit-progress" id="orbitProgress" aria-hidden="true"></div>
+          <div class="orbit-dot" id="orbitDot" aria-hidden="true"><span></span></div>
+          <input id="timeSlider" type="range" min="0" max="24" step="0.02" value="15.17" aria-label="拖动改变一天中的时间" />
+        </div>
+        <div class="time-ticks" aria-hidden="true">
+          <span>00</span><span>06</span><span>12</span><span>18</span><span>24</span>
+        </div>
+        <div class="time-card-foot">
+          <span id="timeNote">日光正好，适合散步</span>
+          <button class="text-button" id="resetTime" type="button">回到现在</button>
+        </div>
+      </aside>
+
+      <nav class="view-nav" aria-label="切换观看视角">
+        <span class="micro-label">VIEWPOINTS</span>
+        <div class="view-list">
+          <button class="view-button is-active" data-view="overview" type="button"><i>01</i><span>全景</span></button>
+          <button class="view-button" data-view="plaza" type="button"><i>02</i><span>广场</span></button>
+          <button class="view-button" data-view="harbor" type="button"><i>03</i><span>港湾</span></button>
+          <button class="view-button" data-view="hill" type="button"><i>04</i><span>山丘</span></button>
+        </div>
+      </nav>
+
+      <div class="hint-line" aria-hidden="true">
+        <span class="mouse-glyph"><i></i></span>
+        <span>拖拽旋转</span><b>·</b><span>滚轮缩放</span><b>·</b><span><kbd>N</kbd> 切换昼夜</span>
+      </div>
+
+      <div class="edition">MADE OF LIGHT &amp; TIDES <span>·</span> 2026</div>
+
+      <button class="landmark-label" data-landmark="clock" data-view="plaza" type="button">
+        <span class="landmark-pin"><i></i></span>
+        <span class="landmark-copy"><em>01</em><b>时钟塔</b><small>CLOCK TOWER</small></span>
+      </button>
+      <button class="landmark-label" data-landmark="windmill" data-view="hill" type="button">
+        <span class="landmark-pin"><i></i></span>
+        <span class="landmark-copy"><em>02</em><b>风见之丘</b><small>WINDMILL HILL</small></span>
+      </button>
+      <button class="landmark-label" data-landmark="lighthouse" data-view="harbor" type="button">
+        <span class="landmark-pin"><i></i></span>
+        <span class="landmark-copy"><em>03</em><b>潮汐灯塔</b><small>LIGHTHOUSE</small></span>
+      </button>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <div class="loader" id="loader">
+      <div class="loader-glow"></div>
+      <div class="loader-content">
+        <svg class="loader-mark" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+          <circle cx="32" cy="32" r="24" stroke="currentColor" stroke-width="0.8" opacity="0.4"/>
+          <path d="M32 11l3.6 14.9L50 32l-14.4 6.1L32 53l-3.6-14.9L14 32l14.4-6.1L32 11z" fill="currentColor"/>
+          <circle cx="32" cy="32" r="3" fill="#f4e7cd"/>
+        </svg>
+        <p class="loader-kicker">HOSHIFURU HAKONIWA</p>
+        <h2>星落町</h2>
+        <div class="loader-track"><span></span></div>
+        <p class="loader-note">正在点亮窗灯</p>
+      </div>
+    </div>
+
+    <div class="webgl-error" id="webglError" hidden>
+      <p>此浏览器无法点亮这座小镇。</p>
+      <small>请开启 WebGL 2 后刷新页面。</small>
+    </div>
+
+    <noscript>
+      <div class="noscript-note">请开启 JavaScript，才能走进星落町。</div>
+    </noscript>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

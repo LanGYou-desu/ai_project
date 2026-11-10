@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>工作室 — LanGYou Archive</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="theme-color" content="#f1ece2" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/css/site.css" />
+  <link rel="stylesheet" href="/css/studio.css" />
+</head>
+<body class="studio-body">
+  <div class="grain" aria-hidden="true"></div>
+  <header class="studio-head">
+    <a class="studio-brand" href="/">
+      <span class="studio-brand-mark">LY</span>
+      <span><strong>LanGYou</strong><small>STUDIO / 工作室</small></span>
+    </a>
+    <div class="studio-head-mid">
+      <span class="studio-live"><i></i> ARCHIVE ONLINE</span>
+      <span id="studioDate">CST —</span>
+    </div>
+    <div class="studio-head-actions">
+      <a href="/" target="_blank" rel="noopener">查看网站 ↗</a>
+      <button id="logoutBtn" type="button">退出登录</button>
+    </div>
+  </header>
+
+  <main class="studio-main">
+    <section class="studio-hero">
+      <div class="eyebrow dark"><span class="pulse"></span> STUDIO / 控制台</div>
+      <div class="studio-hero-grid">
+        <h1 id="greeting">晚上好，<em>LanGYou</em>。</h1>
+        <div class="studio-hero-side">
+          <p>这里是档案馆的后台。上传新的作品、替换展示信息、决定哪些世界对访客开放。</p>
+          <div class="studio-stats" id="studioStats">
+            <div><strong>—</strong><span>作品总数</span></div>
+            <div><strong>—</strong><span>上传作品</span></div>
+            <div><strong>—</strong><span>占用空间</span></div>
+            <div><strong>—</strong><span>公开中</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="studio-workspace">
+      <div class="upload-panel">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">01 / NEW WORK</div>
+            <h2>上传新作品</h2>
+          </div>
+          <span class="panel-hint">ZIP · JPG · PNG · WEBP</span>
+        </div>
+
+        <form id="uploadForm" novalidate>
+          <div class="dropzones">
+            <label class="dropzone" id="coverDrop">
+              <input id="coverInput" name="cover" type="file" accept="image/jpeg,image/png,image/webp,image/avif" hidden />
+              <span class="dropzone-preview" id="coverPreview"><span class="dropzone-icon">▧</span></span>
+              <span class="dropzone-copy"><strong>封面图</strong><small>点击或拖入 · 最大 12 MB</small></span>
+            </label>
+            <label class="dropzone" id="packageDrop">
+              <input id="packageInput" name="package" type="file" accept=".zip,application/zip" hidden />
+              <span class="dropzone-preview package" id="packagePreview"><span class="dropzone-icon">ZIP</span></span>
+              <span class="dropzone-copy"><strong>作品包</strong><small>ZIP · 最大 600 MB · 含 index.html 可在线游玩</small></span>
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <label class="studio-field"><span>标题 <em>TITLE</em></span><input name="title" type="text" maxlength="80" placeholder="例如：我的新世界" required /></label>
+            <label class="studio-field"><span>副标题 <em>SUBTITLE</em></span><input name="subtitle" type="text" maxlength="80" placeholder="一句中文名 / 副标题" /></label>
+            <label class="studio-field"><span>分类 <em>CATEGORY</em></span><select name="category" id="categorySelect"><option value="webgames">网页游戏</option><option value="three">三维世界</option><option value="desktop">桌面游戏</option><option value="apps">网页应用</option><option value="tools">开发工具</option><option value="art">生成艺术</option></select></label>
+            <label class="studio-field"><span>强调色 <em>ACCENT</em></span><input name="accent" type="color" value="#ff4a1c" /></label>
+          </div>
+
+          <label class="studio-field"><span>一句话介绍 <em>TAGLINE</em></span><input name="tagline" type="text" maxlength="200" placeholder="访客在卡片上看到的第一句话" /></label>
+          <label class="studio-field"><span>详细描述 <em>DESCRIPTION</em></span><textarea name="description" rows="4" maxlength="3000" placeholder="作品是什么、怎么玩、有什么值得注意的细节…"></textarea></label>
+
+          <div class="form-grid">
+            <label class="studio-field"><span>标签 <em>TAGS</em></span><input name="tags" type="text" placeholder="解谜, 叙事, 3D" /></label>
+            <label class="studio-field"><span>技术 <em>TECH</em></span><input name="tech" type="text" placeholder="Three.js, Canvas, Node.js" /></label>
+          </div>
+
+          <div class="studio-checks">
+            <label><input name="featured" type="checkbox" /> 设为首页精选</label>
+            <label><input name="visible" type="checkbox" checked /> 立即公开</label>
+          </div>
+
+          <div class="upload-progress" id="uploadProgress" hidden>
+            <div class="upload-progress-bar"><i id="uploadBar"></i></div>
+            <span id="uploadPercent">0%</span>
+          </div>
+
+          <div class="studio-submit-row">
+            <button class="studio-submit" type="submit" id="publishBtn"><span>发布作品</span><span>→</span></button>
+            <span class="studio-form-msg" id="formMsg" role="status"></span>
+          </div>
+        </form>
+      </div>
+
+      <aside class="studio-aside">
+        <div class="aside-card">
+          <div class="panel-kicker">02 / GUIDE</div>
+          <h3>上传说明</h3>
+          <ul>
+            <li><strong>在线游玩</strong>：ZIP 根目录放一个 <code>index.html</code>，上传后会自动发布到 play 子域。</li>
+            <li><strong>仅展示 / 下载</strong>：没有 index.html 也可以上传，访客会看到封面并下载 ZIP。</li>
+            <li><strong>图片作品</strong>：只上传封面也可以，适合插画、截图或单张生成艺术。</li>
+            <li><strong>安全</strong>：上传内容会运行在独立子域，不会接触登录 Cookie。</li>
+          </ul>
+        </div>
+
+        <div class="aside-card account-card">
+          <div class="panel-kicker">03 / ACCOUNT</div>
+          <h3>账号</h3>
+          <div class="account-name"><span class="account-avatar">L</span><div><strong>LanGYou</strong><small>OWNER · 唯一账号</small></div></div>
+          <form id="passwordForm">
+            <label class="studio-field"><span>当前密码</span><input name="currentPassword" type="password" autocomplete="current-password" required /></label>
+            <label class="studio-field"><span>新密码</span><input name="newPassword" type="password" autocomplete="new-password" minlength="10" required /></label>
+            <button class="studio-text-btn" type="submit">更新密码 <span>→</span></button>
+            <div class="studio-form-msg" id="passwordMsg" role="status"></div>
+          </form>
+        </div>
+      </aside>
+    </section>
+
+    <section class="archive-panel">
+      <div class="archive-head">
+        <div>
+          <div class="panel-kicker">04 / ARCHIVE</div>
+          <h2>作品档案</h2>
+        </div>
+        <div class="archive-tools">
+          <div class="archive-tabs" id="archiveTabs">
+            <button class="is-active" data-tab="all" type="button">全部</button>
+            <button data-tab="upload" type="button">已上传</button>
+            <button data-tab="builtin" type="button">内置</button>
+          </div>
+          <label class="archive-search"><span>⌕</span><input id="archiveSearch" type="search" placeholder="搜索档案…" /></label>
+        </div>
+      </div>
+      <div class="archive-list" id="archiveList"></div>
+      <div class="archive-empty" id="archiveEmpty" hidden>没有匹配的档案。</div>
+    </section>
+  </main>
+
+  <div class="edit-modal" id="editModal" aria-hidden="true">
+    <div class="edit-backdrop" data-edit-close></div>
+    <div class="edit-panel" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+      <div class="edit-head">
+        <div><div class="panel-kicker">EDIT / 编辑作品</div><h2 id="editTitle">编辑</h2></div>
+        <button class="edit-close" type="button" data-edit-close aria-label="关闭">✕</button>
+      </div>
+      <form id="editForm">
+        <div class="form-grid">
+          <label class="studio-field"><span>标题</span><input name="title" required /></label>
+          <label class="studio-field"><span>副标题</span><input name="subtitle" /></label>
+          <label class="studio-field"><span>分类</span><select name="category" id="editCategory"></select></label>
+          <label class="studio-field"><span>强调色</span><input name="accent" type="color" /></label>
+        </div>
+        <label class="studio-field"><span>一句话介绍</span><input name="tagline" /></label>
+        <label class="studio-field"><span>详细描述</span><textarea name="description" rows="4"></textarea></label>
+        <div class="form-grid">
+          <label class="studio-field"><span>标签（逗号分隔）</span><input name="tags" /></label>
+          <label class="studio-field"><span>技术（逗号分隔）</span><input name="tech" /></label>
+        </div>
+        <div class="studio-checks">
+          <label><input name="featured" type="checkbox" /> 设为精选</label>
+          <label><input name="visible" type="checkbox" /> 公开展示</label>
+        </div>
+        <div class="edit-actions">
+          <button class="studio-submit" type="submit"><span>保存修改</span><span>→</span></button>
+          <button class="studio-text-btn" type="button" data-edit-close>取消</button>
+        </div>
+        <div class="studio-form-msg" id="editMsg" role="status"></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="studio-toast" id="studioToast" role="status" aria-live="polite"></div>
+  <script type="module" src="/js/studio.js"></script>
+</body>
+</html>

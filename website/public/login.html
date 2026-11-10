@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>站主登录 — LanGYou Archive</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="theme-color" content="#0b0b0d" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/css/site.css" />
+  <link rel="stylesheet" href="/css/login.css" />
+</head>
+<body class="login-body">
+  <div class="grain" aria-hidden="true"></div>
+  <main class="login-shell">
+    <section class="login-left">
+      <a class="brand login-brand" href="/" aria-label="返回 LanGYou Archive">
+        <span class="brand-glyph">LY</span>
+        <span class="brand-text"><strong>LanGYou</strong><small>ARCHIVE / 最强</small></span>
+      </a>
+      <div class="login-left-inner">
+        <div class="eyebrow"><span class="pulse"></span> CURATOR'S ENTRANCE / 站主入口</div>
+        <h1>Only <em>one</em><br />curator.</h1>
+        <p class="login-lead">这座档案馆对所有人开放。<br />工作室只对 LanGYou 本人开放。</p>
+        <div class="login-keyhole" aria-hidden="true">
+          <span class="keyhole-ring"></span>
+          <span class="keyhole-slot"></span>
+          <span class="keyhole-scan"></span>
+        </div>
+        <blockquote>“The archive is open.<br />The studio is not.”</blockquote>
+      </div>
+      <div class="login-left-foot">
+        <span>LANGYOUSAikyo.TOP</span>
+        <span>EST. 2026 / CST</span>
+      </div>
+    </section>
+
+    <section class="login-right">
+      <div class="login-form-wrap">
+        <div class="login-form-top">
+          <span>LY / STUDIO</span>
+          <a href="/">← 返回档案馆</a>
+        </div>
+        <h2>站主登录</h2>
+        <p class="login-sub">输入凭据以进入工作室。没有注册，没有第三方登录，也没有找回密码的入口。</p>
+        <form id="loginForm" novalidate>
+          <label class="field">
+            <span>用户名 <em>USERNAME</em></span>
+            <input id="username" name="username" type="text" value="LanGYou" autocomplete="username" autocapitalize="off" spellcheck="false" required />
+          </label>
+          <label class="field">
+            <span>密码 <em>PASSWORD</em></span>
+            <span class="password-wrap">
+              <input id="password" name="password" type="password" autocomplete="current-password" required />
+              <button type="button" id="togglePassword" aria-label="显示密码">显示</button>
+            </span>
+          </label>
+          <button class="login-submit" type="submit">
+            <span>进入工作室</span><span class="login-submit-arrow">→</span>
+          </button>
+          <div class="login-error" id="loginError" role="alert"></div>
+        </form>
+        <div class="login-note">
+          <span class="login-note-dot"></span>
+          仅站主账号。上传的作品会立即出现在公开档案馆中。
+        </div>
+      </div>
+      <div class="login-right-foot">
+        <span>© 2026 LanGYou</span>
+        <span>PRIVATE STUDIO / NO PUBLIC SIGN-UP</span>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/js/login.js"></script>
+</body>
+</html>

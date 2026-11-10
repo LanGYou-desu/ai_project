@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>LanGYou Archive — 一个人，三十三个可以进入的世界</title>
+  <meta name="description" content="LanGYou 的个人创作档案馆：网页游戏、桌面游戏、3D 场景、网页应用、开发工具与生成艺术。在线游玩、下载与持续更新。" />
+  <meta name="theme-color" content="#0b0b0d" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="LanGYou Archive" />
+  <meta property="og:description" content="一个人，三十三个可以进入的世界。网页游戏、3D 场景、桌面游戏、工具与生成艺术。" />
+  <meta property="og:url" content="https://langyousaikyo.top/" />
+  <meta property="og:image" content="https://langyousaikyo.top/assets/og.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preload" href="/assets/fonts/InstrumentSerif-Regular.ttf" as="font" type="font/ttf" crossorigin />
+  <link rel="preload" href="/assets/fonts/SpaceGrotesk-Variable.ttf" as="font" type="font/ttf" crossorigin />
+  <link rel="stylesheet" href="/css/site.css" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="cursor" id="cursor" aria-hidden="true"><span class="cursor-label">OPEN</span></div>
+
+  <header class="masthead" id="masthead">
+    <a class="brand" href="/" aria-label="LanGYou Archive 首页">
+      <span class="brand-glyph">LY</span>
+      <span class="brand-text">
+        <strong>LanGYou</strong>
+        <small>ARCHIVE / 最强</small>
+      </span>
+    </a>
+    <nav class="nav" aria-label="主导航">
+      <a href="#works" data-scroll>作品 <span>WORKS</span></a>
+      <a href="#about" data-scroll>关于 <span>ABOUT</span></a>
+      <a href="/login" class="nav-studio">站主登录 <span>STUDIO ↗</span></a>
+    </nav>
+    <div class="head-meta">
+      <span id="clock">CST --:--:--</span>
+      <button class="menu-toggle" id="menuToggle" aria-label="打开菜单" aria-expanded="false">
+        <span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+    <a href="#works" data-scroll>作品 <em>WORKS</em></a>
+    <a href="#about" data-scroll>关于 <em>ABOUT</em></a>
+    <a href="/login">站主登录 <em>STUDIO ↗</em></a>
+    <div class="mobile-menu-foot">langyousaikyo.top · 2026</div>
+  </div>
+
+  <main>
+    <section class="hero" id="top">
+      <canvas id="orbit" aria-hidden="true"></canvas>
+      <div class="hero-glow" aria-hidden="true"></div>
+      <div class="hero-inner">
+        <div class="eyebrow hero-eyebrow">
+          <span class="pulse"></span>
+          PERSONAL ARCHIVE — 2026
+          <span class="eyebrow-cn">个人创作档案馆</span>
+        </div>
+        <h1 class="hero-title" aria-label="Small worlds, made real.">
+          <span class="hero-line hero-line-1"><em>Small</em> worlds,</span>
+          <span class="hero-line hero-line-2">made <span class="outline">real</span><span class="hero-dot">.</span></span>
+        </h1>
+        <div class="hero-cn">一个人，<span id="heroCount">三十三</span>个可以进入的世界。</div>
+        <div class="hero-bottom">
+          <p class="hero-intro">
+            这里是 LanGYou 的档案馆。网页游戏、桌面游戏、3D 庭院、奇怪的小工具，
+            以及一些只能用浏览器打开的房间。大多数作品可以立刻游玩，也可以把整个项目带走。
+          </p>
+          <div class="hero-actions">
+            <a class="round-btn magnet" href="#works" data-scroll>
+              <span class="round-btn-label">进入<br />档案馆</span>
+              <span class="round-btn-arrow">↓</span>
+            </a>
+            <button class="surprise-link" id="surpriseHero" type="button">
+              <span class="surprise-icon">✦</span> 随机进入一个世界
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="hero-side" aria-hidden="true">
+        <span>SCROLL TO ENTER</span>
+        <i></i>
+        <span>EST. 2026 / CST</span>
+      </div>
+      <div class="hero-index" aria-hidden="true">
+        <span>NO. 01 — 33</span>
+        <span>ALL WORLDS PLAYABLE</span>
+      </div>
+    </section>
+
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker-track">
+        <span>PLAYABLE WORLDS</span><b>✦</b><span>3D GARDENS</span><b>✦</b><span>DESKTOP STORIES</span><b>✦</b><span>ODD LITTLE TOOLS</span><b>✦</b><span>GENERATIVE ART</span><b>✦</b><span>MADE BY HAND</span><b>✦</b>
+        <span>PLAYABLE WORLDS</span><b>✦</b><span>3D GARDENS</span><b>✦</b><span>DESKTOP STORIES</span><b>✦</b><span>ODD LITTLE TOOLS</span><b>✦</b><span>GENERATIVE ART</span><b>✦</b><span>MADE BY HAND</span><b>✦</b>
+      </div>
+    </div>
+
+    <section class="section featured-section" id="featured">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span> SELECTED WORKS / 精选</div>
+          <h2 class="section-title">Three ways <em>in.</em></h2>
+        </div>
+        <p class="section-note">如果不知道从哪里开始，<br />先走进这三扇门。</p>
+      </div>
+      <div class="featured-grid" id="featuredGrid"></div>
+    </section>
+
+    <section class="section works-section" id="works">
+      <div class="works-head">
+        <div>
+          <div class="eyebrow"><span class="pulse"></span> THE COMPLETE INDEX / 全部作品</div>
+          <h2 class="section-title">The <em>Index.</em></h2>
+        </div>
+        <div class="works-head-right">
+          <div class="works-count"><span id="worksCount">33</span><small>WORKS<br />IN THE ARCHIVE</small></div>
+          <button class="surprise-link" id="surpriseBtn" type="button"><span class="surprise-icon">✦</span> 随机漫游</button>
+        </div>
+      </div>
+
+      <div class="filterbar" id="filterbar">
+        <div class="filters" id="filters" role="group" aria-label="按类别筛选"></div>
+        <label class="search">
+          <span class="search-icon">⌕</span>
+          <input id="search" type="search" placeholder="搜索作品、标签、技术…" autocomplete="off" aria-label="搜索作品" />
+          <kbd>/</kbd>
+        </label>
+      </div>
+
+      <div class="grid" id="grid" aria-live="polite"></div>
+      <div class="empty" id="empty" hidden>
+        <div class="empty-mark">∅</div>
+        <p>没有找到匹配的作品。</p>
+        <button class="text-btn" id="clearFilters" type="button">清除筛选</button>
+      </div>
+    </section>
+
+    <section class="about-section" id="about">
+      <div class="about-inner">
+        <div class="about-top">
+          <div class="eyebrow dark"><span class="pulse"></span> ABOUT THE ARCHIVE / 关于</div>
+          <div class="about-grid">
+            <h2 class="about-title">我做小世界。<br /><em>可进入的、可弄坏的、<br />会回望你的。</em></h2>
+            <div class="about-copy">
+              <p>LanGYou 是一名独立创作者。这里的每一个项目都从零开始：概念、代码、美术、声音、测试，以及最后那一点不肯将就的细节。</p>
+              <p>有些作品是为了让人玩，有些是为了让人停下来听一会儿，有些只是想知道「如果把它做出来，会是什么样子」。</p>
+              <p class="about-sign">— LanGYou，写于某个还在运行的深夜。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="about-stats" id="aboutStats">
+          <div class="stat"><strong>33</strong><span>WORLDS<br />作品</span></div>
+          <div class="stat"><strong>06</strong><span>DISCIPLINES<br />类别</span></div>
+          <div class="stat"><strong>2,551</strong><span>ASSERTIONS<br />自动化检查</span></div>
+          <div class="stat"><strong>23</strong><span>TEST SUITES<br />测试套件</span></div>
+        </div>
+
+        <div class="about-cta">
+          <div class="about-cta-copy">
+            <div class="eyebrow dark"><span class="pulse"></span> CURATOR'S ENTRANCE</div>
+            <h3>档案馆对所有人开放。<br /><em>工作室只对站主开放。</em></h3>
+            <p>登录后可以上传新的作品、替换封面、管理档案。这里没有访客账号，也没有第三方登录。</p>
+          </div>
+          <a class="studio-card" href="/login">
+            <span class="studio-card-no">LY / STUDIO</span>
+            <span class="keyhole" aria-hidden="true"></span>
+            <span class="studio-card-label">站主登录 <em>ENTER ↗</em></span>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <span class="brand-glyph">LY</span>
+        <div>
+          <strong>LanGYou Archive</strong>
+          <span>一个人，三十三个可以进入的世界。</span>
+        </div>
+      </div>
+      <div class="footer-links">
+        <a href="#works" data-scroll>作品索引</a>
+        <a href="#about" data-scroll>关于</a>
+        <a href="/login">站主登录</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 LanGYou. Built by hand, no templates.</span>
+      <span class="footer-domain">LANGYOU / SAIKYO.TOP</span>
+      <span>ALL WORLDS PLAYABLE / SOME REQUIRE HEADPHONES</span>
+    </div>
+  </footer>
+
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close></div>
+    <article class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" id="modalClose" aria-label="关闭">✕</button>
+      <div class="modal-media" id="modalMedia"></div>
+      <div class="modal-body">
+        <div class="modal-eyebrow" id="modalEyebrow"></div>
+        <h2 class="modal-title" id="modalTitle"></h2>
+        <div class="modal-sub" id="modalSub"></div>
+        <p class="modal-desc" id="modalDesc"></p>
+        <div class="modal-meta" id="modalMeta"></div>
+        <div class="modal-tags" id="modalTags"></div>
+        <div class="modal-actions" id="modalActions"></div>
+        <div class="modal-foot">
+          <button class="text-btn" id="copyLink" type="button">复制作品链接</button>
+          <span id="modalKind"></span>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="/js/site.js"></script>
+</body>
+</html>

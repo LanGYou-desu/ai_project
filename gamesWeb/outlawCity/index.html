@@ -2,15 +2,18 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#070a10">
 <title>亡命都市 OUTLAW CITY 3D — GTA 风格开放世界</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div id="wrap">
+<main id="wrap" aria-label="OUTLAW CITY 游戏画面">
   <canvas id="game3d" width="1280" height="720"></canvas>
   <canvas id="hud" width="1280" height="720"></canvas>
-</div>
+  <div id="vignette" aria-hidden="true"></div>
+</main>
+<noscript>本游戏需要启用 JavaScript 与 WebGL。</noscript>
 <script src="lib/three.min.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/config.js"></script>

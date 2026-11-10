@@ -1,5 +1,5 @@
 'use strict';
-/* 仓库级测试总入口：把 22 个带自动化测试的项目一次跑完，给出统一汇总。
+/* 仓库级测试总入口：把 23 个带自动化测试的项目一次跑完，给出统一汇总。
  *
  *   node scripts/test-all.js                     # 跑全部
  *   node scripts/test-all.js loom unlit          # 只跑指定项目（写短名或完整路径均可）
@@ -8,8 +8,9 @@
  *
  * 零依赖：只用 Node 内置模块。每个项目仍然是"各自独立"的，
  * 这里只负责按登记表调用它们自己的测试命令，不改变任何项目结构。
- * 其余 7 个项目（bikeArt / hakureiShrine / tokyoCelCity / naiwaModel /
- * rainMart / stillwater / lumenBay）是纯静态页面或 3D 场景作品，没有自动化测试，就不登记了。
+ * 其余 10 个项目（bikeArt / hakureiShrine / tokyoCelCity / naiwaModel /
+ * rainMart / stillwater / lumenBay / aetherGarden / hoshifuruHakoniwa /
+ * imaginedWeather）是纯静态页面或 3D 场景作品，没有自动化测试，就不登记了。
  */
 const { spawnSync } = require('child_process');
 const path = require('path');
@@ -39,6 +40,7 @@ const PROJECTS = [
       { cmd: 'node test/smoke-ui.js', timeout: 120000 }
     ] },
   { id: 'gamesWeb/outlawCity',     name: '亡命都市 3D',      suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
+  { id: 'gamesWeb/HollowSignal',   name: '空洞信号',         suites: [{ cmd: 'npm test', timeout: 600000 }] },
   { id: 'gamesDesktop/devsaga',     name: 'DevSaga',          suites: [{ cmd: 'python -m unittest discover -s tests -p "test_*.py"', timeout: 300000 }] },
   { id: 'gamesDesktop/shellQuest', name: '真实文件历险',     suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
   { id: 'gamesDesktop/theVanished', name: '桌面悬疑事件',    suites: [{ cmd: 'node test/run.js', timeout: 180000 }] },
@@ -63,7 +65,7 @@ const PROJECTS = [
 ];
 
 /* --fast：跳过已知最慢的两个项目 */
-const SLOW = new Set(['gamesWeb/ecoArk', 'gamesDesktop/devsaga']);
+const SLOW = new Set(['gamesWeb/ecoArk', 'gamesDesktop/devsaga', 'gamesWeb/HollowSignal']);
 
 function pick(argv) {
   const fast = argv.includes('--fast');

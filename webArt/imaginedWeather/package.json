@@ -1,0 +1,21 @@
+{
+  "name": "yihouju",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "臆候局 · The Bureau of Imagined Weather — a zero-dependency generative weather archive.",
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check data.js && node --check weather.js && node --check app.js && node --check server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "generative-art",
+    "creative-coding",
+    "canvas",
+    "web-audio",
+    "interactive"
+  ]
+}

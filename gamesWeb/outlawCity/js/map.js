@@ -58,9 +58,17 @@ const MapSys = {
       const i = Utils.randInt(0, CFG.WORLD.cols - 1), j = Utils.randInt(0, CFG.WORLD.rows - 1);
       const x = Utils.rand(i * cell + road / 2 + margin, (i + 1) * cell - road / 2 - margin);
       const y = Utils.rand(j * cell + road / 2 + margin, (j + 1) * cell - road / 2 - margin);
-      if (!this.isBlocked(x, y)) return { x: x, y: y };
+      if (this.isBlocked(x, y)) continue;
+      if (!this.isClearOf(x, y, 66)) continue;
+      return { x: x, y: y };
     }
     return { x: d.worldW / 2, y: d.worldH / 2 };
+  },
+  isClearOf(x, y, r) {
+    const d = this.data;
+    for (const b of d.buildings) { if (this.circleRect(x, y, r, b)) return false; }
+    for (const w of d.water) { if (this.circleRect(x, y, r, w)) return false; }
+    return true;
   },
   walkableNear(x, y, radius) {
     for (let tries = 0; tries < 30; tries++) {
@@ -136,14 +144,48 @@ const MapSys = {
     const cv = document.createElement("canvas"); cv.width = size; cv.height = size;
     const g = cv.getContext("2d");
     const s = size / d.worldW;
-    g.fillStyle = "#16181d"; g.fillRect(0, 0, size, size);
-    g.fillStyle = "#24507a";
+    g.fillStyle = "#0c1218"; g.fillRect(0, 0, size, size);
+    g.fillStyle = "#1d3540";
     for (const w of d.water) g.fillRect(w.x * s, w.y * s, w.w * s, w.h * s);
-    g.fillStyle = "#234030";
+    g.fillStyle = "#173126";
     for (const p of d.parks) g.fillRect(p.x * s, p.y * s, p.w * s, p.h * s);
-    g.fillStyle = "#3a3f47";
-    for (const vx of d.roadsV) g.fillRect(vx * s - 2, 0, 4, size);
-    for (const hy of d.roadsH) g.fillRect(0, hy * s - 2, size, 4);
+    for (const p of d.parks) {
+      g.fillStyle = "rgba(110,170,120,0.20)";
+      for (let tx = p.x + 14; tx < p.x + p.w - 8; tx += 28) {
+        for (let ty = p.y + 14; ty < p.y + p.h - 8; ty += 28) {
+          if (((tx + ty) | 0) % 3 === 0) g.fillRect(tx * s, ty * s, 1.5, 1.5);
+        }
+      }
+    }
+    g.fillStyle = "#39434f";
+    for (const b of d.buildings) {
+      g.fillRect(b.x * s, b.y * s, Math.max(1.5, b.w * s), Math.max(1.5, b.h * s));
+    }
+    g.fillStyle = "rgba(255,255,255,0.07)";
+    for (const b of d.buildings) g.fillRect(b.x * s, b.y * s, Math.max(1.5, b.w * s), 1);
+    g.fillStyle = "#29333d";
+    for (const vx of d.roadsV) g.fillRect(vx * s - 2.5, 0, 5, size);
+    for (const hy of d.roadsH) g.fillRect(0, hy * s - 2.5, size, 5);
+    g.strokeStyle = "rgba(251,191,36,0.13)";
+    g.lineWidth = 0.7;
+    for (const vx of d.roadsV) {
+      g.setLineDash([2, 5]);
+      g.beginPath(); g.moveTo(vx * s, 0); g.lineTo(vx * s, size); g.stroke();
+    }
+    for (const hy of d.roadsH) {
+      g.setLineDash([2, 5]);
+      g.beginPath(); g.moveTo(0, hy * s); g.lineTo(size, hy * s); g.stroke();
+    }
+    g.setLineDash([]);
+    const hx = (W.hospital ? W.hospital.x : 160) * s, hy2 = (W.hospital ? W.hospital.y : 160) * s;
+    g.fillStyle = "rgba(103,232,249,0.9)";
+    g.fillRect(hx - 3.5, hy2 - 1, 7, 2);
+    g.fillRect(hx - 1, hy2 - 3.5, 2, 7);
+    const vg = g.createLinearGradient(0, 0, size, size);
+    vg.addColorStop(0, "rgba(0,0,0,0.18)");
+    vg.addColorStop(0.55, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,0.34)");
+    g.fillStyle = vg; g.fillRect(0, 0, size, size);
     this.mini = cv;
   },
 };

@@ -57,7 +57,15 @@ const PoliceSys = {
   },
   spawnSquad() {
     const p = W.player;
-    const pt = this.edgePoint();
+    // 从多个边点里挑离玩家最远的，避免警车贴脸生成，也让测试中的部署时机稳定。
+    let pt = this.edgePoint();
+    let best = pt, bestD = Utils.dist(pt.x, pt.y, p.x, p.y);
+    for (let i = 0; i < 6; i++) {
+      const q = this.edgePoint();
+      const qd = Utils.dist(q.x, q.y, p.x, p.y);
+      if (qd > bestD) { best = q; bestD = qd; }
+    }
+    pt = best;
     const v = new Vehicle("police", pt.x, pt.y, Utils.angleTo(pt.x, pt.y, p.x, p.y), { siren: true });
     v.ai = makePoliceAI(v);
     W.vehicles.push(v);

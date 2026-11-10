@@ -1,0 +1,1011 @@
+{
+  "meta": {
+    "title": "LanGYou Archive",
+    "subtitle": "一个人，三十三个可以进入的世界。",
+    "domain": "langyousaikyo.top",
+    "playBase": "https://play.langyousaikyo.top",
+    "description": "LanGYou 的个人创作档案馆：网页游戏、桌面游戏、3D 场景、网页应用、开发工具与生成艺术。在线游玩与下载。"
+  },
+  "categories": [
+    {
+      "id": "webgames",
+      "name": "WEB GAMES",
+      "cn": "网页游戏",
+      "accent": "#ff4a1c"
+    },
+    {
+      "id": "desktop",
+      "name": "DESKTOP",
+      "cn": "桌面游戏",
+      "accent": "#d8ff3e"
+    },
+    {
+      "id": "three",
+      "name": "3D WORLDS",
+      "cn": "三维世界",
+      "accent": "#8ab4ff"
+    },
+    {
+      "id": "apps",
+      "name": "WEB APPS",
+      "cn": "网页应用",
+      "accent": "#ffb03a"
+    },
+    {
+      "id": "tools",
+      "name": "TOOLS",
+      "cn": "开发工具",
+      "accent": "#cfc9bc"
+    },
+    {
+      "id": "art",
+      "name": "WEB ART",
+      "cn": "生成艺术",
+      "accent": "#ff7aa8"
+    }
+  ],
+  "stats": {
+    "works": 33,
+    "categories": 6,
+    "assertions": 2551,
+    "suites": 23
+  },
+  "works": [
+    {
+      "order": 1,
+      "year": "2026",
+      "tests": 86,
+      "duration": "60–90 分钟",
+      "cover": "/covers/netime.jpg",
+      "art": null,
+      "demo": "netime/",
+      "download": "netime.zip",
+      "downloadSize": "61 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "netime",
+      "title": "NETIME",
+      "subtitle": "网络时光机",
+      "category": "webgames",
+      "tagline": "一封来自 1995 年的信，五个年代的互联网考古。",
+      "description": "复古浏览器里沿着 1995→2025 五个年代收集时间密钥，用 ROT13、摩斯、藏头与 Base64 破解一桩跨越三十年的旧互联网失踪案。",
+      "tags": [
+        "解谜",
+        "复古网页",
+        "叙事"
+      ],
+      "tech": [
+        "HTML / CSS / JS"
+      ],
+      "accent": "#35e0c0"
+    },
+    {
+      "order": 2,
+      "year": "2026",
+      "tests": 103,
+      "duration": "60–90 分钟",
+      "cover": "/covers/soundArchaeology.jpg",
+      "art": null,
+      "demo": "soundArchaeology/",
+      "download": "soundArchaeology.zip",
+      "downloadSize": "339 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "soundArchaeology",
+      "title": "LAB-7",
+      "subtitle": "声音考古学",
+      "category": "webgames",
+      "tagline": "用耳朵做取证：六段录音，一座沉睡四十年的广播塔。",
+      "description": "音频取证解谜。变速、倒放、滤波、读频谱图，逐层破译六段录音，揭开废弃广播塔与 LAB-7 实验的秘密。",
+      "tags": [
+        "音频",
+        "取证",
+        "Web Audio"
+      ],
+      "tech": [
+        "HTML / CSS / JS",
+        "Web Audio API"
+      ],
+      "accent": "#ffb03a"
+    },
+    {
+      "order": 3,
+      "year": "2026",
+      "tests": 57,
+      "duration": "30–60 分钟",
+      "cover": "/covers/lingua.jpg",
+      "art": null,
+      "demo": "lingua/",
+      "download": "lingua.zip",
+      "downloadSize": "81 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "lingua",
+      "title": "LINGUA",
+      "subtitle": "语言演化博物馆",
+      "category": "webgames",
+      "tagline": "造一门语言，然后看它活过一千年。",
+      "description": "音变、语法演化、方言分裂、借词与文字诞生。106 个词、24 条音变规则、7 条分支，每一次选择都会留下谱系。",
+      "tags": [
+        "语言",
+        "模拟",
+        "生成"
+      ],
+      "tech": [
+        "HTML / CSS / JS"
+      ],
+      "accent": "#d8ff3e"
+    },
+    {
+      "order": 4,
+      "year": "2026",
+      "tests": 62,
+      "duration": "45–75 分钟",
+      "cover": "/covers/lastBroadcast.jpg",
+      "art": null,
+      "demo": "lastBroadcast/",
+      "download": "lastBroadcast.zip",
+      "downloadSize": "77 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "lastBroadcast",
+      "title": "LASTBROADCAST",
+      "subtitle": "最后的广播",
+      "category": "webgames",
+      "tagline": "末日前的最后 24 小时，你是城市唯一还在播音的人。",
+      "description": "选歌、播报、接来电、回应神秘信号。15 位听众的命运与 9 种结局，取决于你以什么姿态陪一座城市走完最后一夜。",
+      "tags": [
+        "叙事",
+        "末日",
+        "电台"
+      ],
+      "tech": [
+        "HTML / CSS / JS",
+        "Web Audio"
+      ],
+      "accent": "#ff4a1c"
+    },
+    {
+      "order": 5,
+      "year": "2026",
+      "tests": 59,
+      "duration": "约 1 小时",
+      "cover": "/covers/ecoArk.jpg",
+      "art": null,
+      "demo": "ecoArk/",
+      "download": "ecoArk.zip",
+      "downloadSize": "71 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "ecoArk",
+      "title": "ECO-ARK",
+      "subtitle": "生态方舟",
+      "category": "webgames",
+      "tagline": "从苔藓到狼群，重建一个会自己呼吸的生态系统。",
+      "description": "在培养皿星球上涂抹物种、重建食物网，应对干旱、冰期、陨石与入侵藤蔓。六章剧情、沙盒模式与 21 个物种。",
+      "tags": [
+        "生态",
+        "模拟",
+        "策略"
+      ],
+      "tech": [
+        "HTML / CSS / JS",
+        "Canvas"
+      ],
+      "accent": "#8fe36a"
+    },
+    {
+      "order": 6,
+      "year": "2026",
+      "tests": 80,
+      "duration": "40–60 分钟",
+      "cover": "/covers/unlit.jpg",
+      "art": null,
+      "demo": "unlit/",
+      "download": "unlit.zip",
+      "downloadSize": "75 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "unlit",
+      "title": "UNLIT",
+      "subtitle": "无光之城",
+      "category": "webgames",
+      "tagline": "戴上耳机，走进一个没有光的世界。",
+      "description": "你是一位三个月前失去视力的人。用白杖回声定位、听信号灯过马路、摸盲文读信、听水声做饭。六章剧情与十张助盲知识卡。",
+      "tags": [
+        "共情",
+        "音频",
+        "叙事"
+      ],
+      "tech": [
+        "HTML / CSS / JS",
+        "Web Audio"
+      ],
+      "accent": "#9b8cff"
+    },
+    {
+      "order": 7,
+      "year": "2026",
+      "tests": 141,
+      "duration": "45–90 分钟",
+      "cover": "/covers/synapse.jpg",
+      "art": null,
+      "demo": "synapse/",
+      "download": "synapse.zip",
+      "downloadSize": "48 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "synapse",
+      "title": "SYNAPSE",
+      "subtitle": "神经织造",
+      "category": "webgames",
+      "tagline": "亲手连线，织一个会学习的神经网络。",
+      "description": "拖拽连线搭网络，调权重、偏置与激活函数，实时看损失下降和决策边界成形。五个数据集，从 XOR 打到井字棋。",
+      "tags": [
+        "神经网络",
+        "教学",
+        "可视化"
+      ],
+      "tech": [
+        "HTML / CSS / JS",
+        "Canvas"
+      ],
+      "accent": "#5b7cff"
+    },
+    {
+      "order": 8,
+      "year": "2026",
+      "tests": 60,
+      "duration": "2–4 小时",
+      "cover": "/covers/inkSaga.jpg",
+      "art": null,
+      "demo": "inkSaga/",
+      "download": "inkSaga.zip",
+      "downloadSize": "111 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "inkSaga",
+      "title": "INK-SAGA",
+      "subtitle": "墨战·天书纪",
+      "category": "webgames",
+      "tagline": "你写的每一个字，都是刀。",
+      "description": "用鼠标亲手写出敌人头顶的目标字来触发字诀。271 字词库、15 章剧情、6 种结局、4 大模式与 49 项成就。",
+      "tags": [
+        "汉字",
+        "战斗",
+        "水墨"
+      ],
+      "tech": [
+        "HTML / CSS / JS",
+        "Canvas",
+        "Node.js"
+      ],
+      "accent": "#ff6b3d"
+    },
+    {
+      "order": 9,
+      "year": "2026",
+      "tests": 123,
+      "duration": "30–90 分钟",
+      "cover": "/covers/loom.jpg",
+      "art": null,
+      "demo": "loom/",
+      "download": "loom.zip",
+      "downloadSize": "58 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "loom",
+      "title": "LOOM",
+      "subtitle": "织机编程",
+      "category": "webgames",
+      "tagline": "写一段程序，让 1804 年的织机把它变成布。",
+      "description": "用穿综、提综、踏综或打孔卡片写织造程序，织出真实织物；引擎会反推组织、浮长与克重，还能在布面上手绘提花反写成代码。",
+      "tags": [
+        "编程",
+        "织物",
+        "生成"
+      ],
+      "tech": [
+        "HTML / CSS / JS",
+        "Canvas"
+      ],
+      "accent": "#e0b36a"
+    },
+    {
+      "order": 10,
+      "year": "2026",
+      "tests": 253,
+      "duration": "自由游玩",
+      "cover": "/covers/outlawCity.jpg",
+      "art": null,
+      "demo": "outlawCity/",
+      "download": "outlawCity.zip",
+      "downloadSize": "258 KB",
+      "featured": true,
+      "desktop": false,
+      "id": "outlawCity",
+      "title": "OUTLAW CITY",
+      "subtitle": "亡命都市 3D",
+      "category": "webgames",
+      "tagline": "一座纯前端跑起来的 GTA 风格开放世界。",
+      "description": "第三人称开放世界：驾驶、枪战、警察追捕、任务系统、昼夜循环与实时阴影。没有后端，双击即玩。",
+      "tags": [
+        "3D",
+        "开放世界",
+        "动作"
+      ],
+      "tech": [
+        "HTML / CSS / JS",
+        "Three.js"
+      ],
+      "accent": "#ff4a1c"
+    },
+    {
+      "order": 11,
+      "year": "2026",
+      "tests": 93,
+      "duration": "30–50 分钟",
+      "cover": "/covers/HollowSignal.jpg",
+      "art": null,
+      "demo": "HollowSignal/",
+      "download": "HollowSignal.zip",
+      "downloadSize": "4.7 MB",
+      "featured": true,
+      "desktop": false,
+      "id": "HollowSignal",
+      "title": "THE HOLLOW SIGNAL",
+      "subtitle": "空洞信号",
+      "category": "webgames",
+      "tagline": "湖底研究站里，妹妹留下的最后一段磁带。",
+      "description": "约 30–50 分钟的第一人称心理恐怖短篇。沿着四章线性关卡下潜，收集十二份档案，在两个不可逆的结局之间做出选择。",
+      "tags": [
+        "恐怖",
+        "第一人称",
+        "叙事"
+      ],
+      "tech": [
+        "Three.js",
+        "WebGL2",
+        "Node.js"
+      ],
+      "accent": "#7fd4d0"
+    },
+    {
+      "order": 12,
+      "year": "2026",
+      "tests": 85,
+      "duration": "6–10 小时",
+      "cover": null,
+      "art": "code",
+      "demo": null,
+      "download": "devsaga.zip",
+      "downloadSize": "155 KB",
+      "featured": false,
+      "desktop": true,
+      "id": "devsaga",
+      "title": "DEVSAGA",
+      "subtitle": "程序员模拟器",
+      "category": "desktop",
+      "tagline": "在游戏里上班，在上班时学会真正的排障。",
+      "description": "程序员职场模拟器：11 种开发环境、79 个任务、33 道课后测验、51 篇知识手册与多结局剧情。Python 标准库零依赖。",
+      "tags": [
+        "养成",
+        "编程",
+        "模拟"
+      ],
+      "tech": [
+        "Python 3.10+"
+      ],
+      "accent": "#d8ff3e"
+    },
+    {
+      "order": 13,
+      "year": "2026",
+      "tests": 148,
+      "duration": "40–60 分钟",
+      "cover": null,
+      "art": "terminal",
+      "demo": null,
+      "download": "shellQuest.zip",
+      "downloadSize": "45 KB",
+      "featured": false,
+      "desktop": true,
+      "id": "shellQuest",
+      "title": "ARCHIVE-7",
+      "subtitle": "真实文件历险",
+      "category": "desktop",
+      "tagline": "在一个真实存在的目录里，用真实命令找回 ECHO 核心。",
+      "description": "启动时生成 60 多个真实 txt/log/hex/tar 文件。ls、cat、grep、base64、untar 都是真的；三幕剧情、13 个口令、40–60 分钟。",
+      "tags": [
+        "命令行",
+        "解谜",
+        "真实文件"
+      ],
+      "tech": [
+        "Node.js",
+        "HTML / CSS / JS"
+      ],
+      "accent": "#9fe870"
+    },
+    {
+      "order": 14,
+      "year": "2026",
+      "tests": 42,
+      "duration": "约 40 分钟",
+      "cover": null,
+      "art": "signal",
+      "demo": null,
+      "download": "theVanished.zip",
+      "downloadSize": "33 KB",
+      "featured": false,
+      "desktop": true,
+      "id": "theVanished",
+      "title": "THE VANISHED",
+      "subtitle": "桌面悬疑事件",
+      "category": "desktop",
+      "tagline": "同事深夜失踪，线索正在通过你的 Windows 通知抵达。",
+      "description": "约 40 分钟的实时桌面悬疑剧：真实 Toast 通知、真实写入磁盘的证据文件、模拟聊天，3 个检查点与 5 种结局。",
+      "tags": [
+        "悬疑",
+        "实时",
+        "桌面"
+      ],
+      "tech": [
+        "Node.js",
+        "PowerShell"
+      ],
+      "accent": "#ff5c5c"
+    },
+    {
+      "order": 15,
+      "year": "2026",
+      "tests": 52,
+      "duration": "30–60 分钟",
+      "cover": "/covers/desktopSiege.jpg",
+      "art": "grid",
+      "demo": null,
+      "download": "desktopSiege.zip",
+      "downloadSize": "39 KB",
+      "featured": false,
+      "desktop": true,
+      "id": "desktopSiege",
+      "title": "DESKTOP SIEGE",
+      "subtitle": "桌面保卫战",
+      "category": "desktop",
+      "tagline": "你电脑里的文件名，正在变成敌人。",
+      "description": "启动时扫描桌面、文档、下载与系统进程，把真实文件名变成敌人：exe 冲锋、pdf 重甲、zip 分裂。每台电脑的战场都独一无二。",
+      "tags": [
+        "射击",
+        "塔防",
+        "真实文件"
+      ],
+      "tech": [
+        "Node.js",
+        "Canvas"
+      ],
+      "accent": "#ffb03a"
+    },
+    {
+      "order": 16,
+      "year": "2026",
+      "tests": 125,
+      "duration": "4–6 小时",
+      "cover": null,
+      "art": "ghost",
+      "demo": null,
+      "download": "houseGuest.zip",
+      "downloadSize": "75 KB",
+      "featured": false,
+      "desktop": true,
+      "id": "houseGuest",
+      "title": "HOUSE GUEST",
+      "subtitle": "桌灵·房客",
+      "category": "desktop",
+      "tagline": "一只幽灵住进你的电脑，还给你留了作业。",
+      "description": "透明桌面悬浮层 + 真实虚拟 C 盘。用资源管理器与 cmd 在 vfsystem 里找文件、解密码、移动文件。12 章、4 幕、3+1 结局。",
+      "tags": [
+        "桌面",
+        "解谜",
+        "陪伴"
+      ],
+      "tech": [
+        "Python 3.10+"
+      ],
+      "accent": "#b8a6ff"
+    },
+    {
+      "order": 17,
+      "year": "2026",
+      "tests": 150,
+      "duration": "自由欣赏",
+      "cover": "/covers/carShowroom.jpg",
+      "art": null,
+      "demo": "carShowroom/",
+      "download": "carShowroom.zip",
+      "downloadSize": "2.1 MB",
+      "featured": false,
+      "desktop": false,
+      "id": "carShowroom",
+      "title": "3D CAR",
+      "subtitle": "跑车展厅",
+      "category": "three",
+      "tagline": "一间可以走进的摄影棚，和一辆 51 个部件的 Ferrari 458。",
+      "description": "Three.js 交互式 3D 车展：51 个部件逐一制作 PBR 材质，8 种涂装、3 种轮毂、夜景大灯、行驶模式与摄影棚级环境反射。",
+      "tags": [
+        "汽车",
+        "PBR",
+        "展厅"
+      ],
+      "tech": [
+        "Three.js r160",
+        "GLTF"
+      ],
+      "accent": "#ff4a1c"
+    },
+    {
+      "order": 18,
+      "year": "2026",
+      "tests": 170,
+      "duration": "自由欣赏",
+      "cover": "/covers/hakoniwaTown.jpg",
+      "art": null,
+      "demo": "hakoniwaTown/",
+      "download": "hakoniwaTown.zip",
+      "downloadSize": "222 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "hakoniwaTown",
+      "title": "HAKONIWA TOWN",
+      "subtitle": "箱庭小镇",
+      "category": "three",
+      "tagline": "一座漂在云海上的岛，和它慢慢转动的昼夜。",
+      "description": "程序化高低错落岛屿小镇：中央台地、神社丘陵、城堡山、海角灯塔，缆车、列车、摩天轮、烟花与完整昼夜循环。",
+      "tags": [
+        "箱庭",
+        "程序化",
+        "昼夜"
+      ],
+      "tech": [
+        "Three.js r158"
+      ],
+      "accent": "#8fe36a"
+    },
+    {
+      "order": 19,
+      "year": "2026",
+      "tests": 0,
+      "duration": "自由欣赏",
+      "cover": "/covers/hakureiShrine.jpg",
+      "art": null,
+      "demo": "hakureiShrine/",
+      "download": "hakureiShrine.zip",
+      "downloadSize": "2.7 MB",
+      "featured": false,
+      "desktop": false,
+      "id": "hakureiShrine",
+      "title": "博麗神社",
+      "subtitle": "幻想郷の小さな社",
+      "category": "three",
+      "tagline": "没有 UI，只有一座可以拖拽旋转的微缩庭院。",
+      "description": "三渲二微缩场景：本殿、鸟居、手水舍、绘马架、石灯笼，以及一个会扫地、起跳、推落叶的 Q 版像素灵梦。",
+      "tags": [
+        "东方",
+        "三渲二",
+        "微缩"
+      ],
+      "tech": [
+        "Three.js 0.186",
+        "Vite"
+      ],
+      "accent": "#ff6fa5"
+    },
+    {
+      "order": 20,
+      "year": "2026",
+      "tests": 0,
+      "duration": "自由欣赏",
+      "cover": "/covers/tokyoCelCity.jpg",
+      "art": null,
+      "demo": "tokyoCelCity/",
+      "download": "tokyoCelCity.zip",
+      "downloadSize": "207 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "tokyoCelCity",
+      "title": "天空都市 東京",
+      "subtitle": "CELESTIAL METROPOLIS",
+      "category": "three",
+      "tagline": "2,400 米见方的东京，在几秒内从代码里长出来。",
+      "description": "单文件、零依赖的三渲二程序化都市：数千栋建筑、运河、公园、远山，白昼/黄昏/夜三段时刻与自动巡航。",
+      "tags": [
+        "城市",
+        "程序化",
+        "单文件"
+      ],
+      "tech": [
+        "Three.js r159"
+      ],
+      "accent": "#8ab4ff"
+    },
+    {
+      "order": 21,
+      "year": "2026",
+      "tests": 0,
+      "duration": "自由欣赏",
+      "cover": "/covers/naiwaModel.jpg",
+      "art": null,
+      "demo": "naiwaModel/",
+      "download": "naiwaModel.zip",
+      "downloadSize": "56.8 MB",
+      "featured": false,
+      "desktop": false,
+      "id": "naiwaModel",
+      "title": "NAIWA",
+      "subtitle": "奶蛙 3D 建模",
+      "category": "three",
+      "tagline": "从三张官方视图里，重新长出一只奶蛙。",
+      "description": "依据官方三视图程序化重建的 3D 形象：Catmull-Rom 梨形躯干、体素重网格、顶点色奶白肚皮，附 GLB、120mm 水密 STL、三视图与转台。",
+      "tags": [
+        "Blender",
+        "角色",
+        "3D 打印"
+      ],
+      "tech": [
+        "Blender 4.5",
+        "Python"
+      ],
+      "accent": "#ffd36e"
+    },
+    {
+      "order": 22,
+      "year": "2026",
+      "tests": 0,
+      "duration": "自由欣赏",
+      "cover": "/covers/rainMart.jpg",
+      "art": null,
+      "demo": "rainMart/",
+      "download": "rainMart.zip",
+      "downloadSize": "507 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "rainMart",
+      "title": "RAIN MART",
+      "subtitle": "星降るマート",
+      "category": "three",
+      "tagline": "雨夜便利店，3600 条雨丝和一块会反光的湿地。",
+      "description": "三渲二雨夜街角微缩模型：便利店、咖啡店与小巷全部几何建模；GPU 雨丝、檐口滴水、水花涟漪、低空薄雾与霓虹反光。",
+      "tags": [
+        "雨夜",
+        "街角",
+        "三渲二"
+      ],
+      "tech": [
+        "Three.js",
+        "原生 JS"
+      ],
+      "accent": "#5b7cff"
+    },
+    {
+      "order": 23,
+      "year": "2026",
+      "tests": 0,
+      "duration": "自由欣赏",
+      "cover": "/covers/stillwater.jpg",
+      "art": null,
+      "demo": "stillwater/",
+      "download": "stillwater.zip",
+      "downloadSize": "7.2 MB",
+      "featured": false,
+      "desktop": false,
+      "id": "stillwater",
+      "title": "STILLWATER",
+      "subtitle": "室内泳池",
+      "category": "three",
+      "tagline": "一座安静到能听见水声的室内泳池。",
+      "description": "PV 质感的建筑漫游：24m × 52m 拱顶泳池大厅、瓷砖着色器、水面折射与 72×48×112 烘焙 GI 体积，电影式运镜与摄影模式。",
+      "tags": [
+        "建筑",
+        "漫游",
+        "GI"
+      ],
+      "tech": [
+        "Three.js 0.186",
+        "TypeScript",
+        "Vite"
+      ],
+      "accent": "#9fd8ff"
+    },
+    {
+      "order": 24,
+      "year": "2026",
+      "tests": 0,
+      "duration": "自由欣赏",
+      "cover": "/covers/aetherGarden.jpg",
+      "art": null,
+      "demo": "aetherGarden/",
+      "download": "aetherGarden.zip",
+      "downloadSize": "971 KB",
+      "featured": true,
+      "desktop": false,
+      "id": "aetherGarden",
+      "title": "AETHER GARDEN",
+      "subtitle": "浮光庭",
+      "category": "three",
+      "tagline": "悬在云海与星野之间的一座观星花园。",
+      "description": "三座主浮岛、星晷台、月洞门、观云亭、风铃祠、瀑布与云桥。所有地形、植物、云层与星图都由代码实时生成。",
+      "tags": [
+        "浮岛",
+        "星夜",
+        "程序化"
+      ],
+      "tech": [
+        "Three.js",
+        "Vite"
+      ],
+      "accent": "#b8a6ff"
+    },
+    {
+      "order": 25,
+      "year": "2026",
+      "tests": 0,
+      "duration": "自由欣赏",
+      "cover": "/covers/hoshifuruHakoniwa.jpg",
+      "art": null,
+      "demo": "hoshifuruHakoniwa/",
+      "download": "hoshifuruHakoniwa.zip",
+      "downloadSize": "1011 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "hoshifuruHakoniwa",
+      "title": "HOSHIFURU HAKONIWA",
+      "subtitle": "星落町",
+      "category": "three",
+      "tagline": "一座盛在胡桃木托盘里的 3D 箱庭小镇。",
+      "description": "钟塔、旅店、公会堂、水车磨坊、风车、灯塔与缆车；完整昼夜、潮汐、灯火、烟花与可拖动的时间光轨。",
+      "tags": [
+        "箱庭",
+        "小镇",
+        "昼夜"
+      ],
+      "tech": [
+        "Three.js",
+        "Vite"
+      ],
+      "accent": "#ffb03a"
+    },
+    {
+      "order": 26,
+      "year": "2026",
+      "tests": 371,
+      "duration": "10+ 小时",
+      "cover": "/covers/cyberAcademy.jpg",
+      "art": null,
+      "demo": "cyberAcademy/",
+      "download": "cyberAcademy.zip",
+      "downloadSize": "188 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "cyberAcademy",
+      "title": "CYBER ACADEMY",
+      "subtitle": "赛博安全学院",
+      "category": "apps",
+      "tagline": "从零基础到进阶，把网络安全学成一门可以打通关的课。",
+      "description": "课程、示例、关卡、挑战、真实本地靶场与命令行工具链。371 项断言覆盖课程、挑战、靶场与安全边界。",
+      "tags": [
+        "安全",
+        "课程",
+        "靶场"
+      ],
+      "tech": [
+        "HTML / CSS / JS",
+        "Node.js"
+      ],
+      "accent": "#35e0c0"
+    },
+    {
+      "order": 27,
+      "year": "2026",
+      "tests": 47,
+      "duration": "5 分钟",
+      "cover": null,
+      "art": "manuscript",
+      "demo": null,
+      "download": "historyReader.zip",
+      "downloadSize": "33 KB",
+      "featured": false,
+      "desktop": true,
+      "id": "historyReader",
+      "title": "HISTORY READER",
+      "subtitle": "历史朗读者",
+      "category": "apps",
+      "tagline": "把今天的浏览器历史，写成一篇关于你的短篇小说。",
+      "description": "读取 Chrome/Edge 历史，按专注、寻找、漂移、切换的行为节奏分章，生成文学叙事。数据只在本地处理，不上传。",
+      "tags": [
+        "文学",
+        "隐私",
+        "生成"
+      ],
+      "tech": [
+        "Node.js",
+        "sql.js"
+      ],
+      "accent": "#e0b36a"
+    },
+    {
+      "order": 28,
+      "year": "2026",
+      "tests": 114,
+      "duration": "自由探索",
+      "cover": "/covers/personalOs.jpg",
+      "art": null,
+      "demo": "personalOs/",
+      "download": "personalOs.zip",
+      "downloadSize": "278 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "personalOs",
+      "title": "personalOs",
+      "subtitle": "我的个人操作系统",
+      "category": "apps",
+      "tagline": "把个人网站做成一台可以开机、可以折腾的电脑。",
+      "description": "桌面、窗口、终端、音乐播放器与九个应用，外加一块 256 KiB、可从浏览器真实读写的虚拟磁盘。支持 PWA 与移动端。",
+      "tags": [
+        "操作系统",
+        "Svelte",
+        "虚拟磁盘"
+      ],
+      "tech": [
+        "Svelte 5",
+        "TypeScript",
+        "Vite"
+      ],
+      "accent": "#8ab4ff"
+    },
+    {
+      "order": 29,
+      "year": "2026",
+      "tests": 85,
+      "duration": "工具",
+      "cover": null,
+      "art": "code",
+      "demo": null,
+      "download": "aiCompiler.zip",
+      "downloadSize": "90.0 MB",
+      "featured": false,
+      "desktop": true,
+      "id": "aiCompiler",
+      "title": "AI COMPILER",
+      "subtitle": "AI 编译器",
+      "category": "tools",
+      "tagline": "把代码发给 AI「模拟运行」，输出直接流进终端。",
+      "description": "Electron 桌面应用：Monaco 编辑器 + 流式终端，支持 AI 提问、生成代码、解释、错误修复与 Markdown 预览。",
+      "tags": [
+        "Electron",
+        "AI",
+        "编辑器"
+      ],
+      "tech": [
+        "Electron",
+        "Express",
+        "Monaco"
+      ],
+      "accent": "#d8ff3e"
+    },
+    {
+      "order": 30,
+      "year": "2026",
+      "tests": 45,
+      "duration": "工具",
+      "cover": null,
+      "art": "terminal",
+      "demo": null,
+      "download": "shitMover.zip",
+      "downloadSize": "41 KB",
+      "featured": false,
+      "desktop": true,
+      "id": "shitMover",
+      "title": "SHIT MOVER",
+      "subtitle": "自动搬史程序",
+      "category": "tools",
+      "tagline": "检索、统计、筛选，然后按阈值自动 @ 好友。",
+      "description": "B 站评论区自动化脚本：Playwright 驱动、登录态保存、分块 / 去重 / dry-run / 指定 UID。请仅用于少量、经好友同意的分享。",
+      "tags": [
+        "Python",
+        "Playwright",
+        "自动化"
+      ],
+      "tech": [
+        "Python 3.10+",
+        "Playwright"
+      ],
+      "accent": "#ff7aa8"
+    },
+    {
+      "order": 31,
+      "year": "2026",
+      "tests": 0,
+      "duration": "1 分钟",
+      "cover": "/covers/bikeArt.jpg",
+      "art": null,
+      "demo": "bikeArt/",
+      "download": "bikeArt.zip",
+      "downloadSize": "19 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "bikeArt",
+      "title": "BIKE ART",
+      "subtitle": "骑车",
+      "category": "art",
+      "tagline": "三张单文件 SVG 动画小画，海风、鹈鹕和一辆自行车。",
+      "description": "纯 SVG + SMIL，零脚本、零依赖。海边的鹈鹕、骑车的鹈鹕、艾玛骑车，双击即看。",
+      "tags": [
+        "SVG",
+        "动画",
+        "零依赖"
+      ],
+      "tech": [
+        "SVG",
+        "SMIL"
+      ],
+      "accent": "#ffb03a"
+    },
+    {
+      "order": 32,
+      "year": "2026",
+      "tests": 0,
+      "duration": "自由欣赏",
+      "cover": "/covers/lumenBay.jpg",
+      "art": null,
+      "demo": "lumenBay/",
+      "download": "lumenBay.zip",
+      "downloadSize": "51 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "lumenBay",
+      "title": "LUMEN BAY",
+      "subtitle": "光湾市",
+      "category": "art",
+      "tagline": "一座会呼吸的像素海港，画面与声音全部实时生成。",
+      "description": "清晨、黄昏、夜景三套光照与天气、生活节奏和生成式配乐。点击行人打招呼，移动鼠标搅动海风。",
+      "tags": [
+        "像素",
+        "生成",
+        "Web Audio"
+      ],
+      "tech": [
+        "Canvas 2D",
+        "Web Audio"
+      ],
+      "accent": "#ff9f1c"
+    },
+    {
+      "order": 33,
+      "year": "2026",
+      "tests": 0,
+      "duration": "10 分钟",
+      "cover": "/covers/imaginedWeather.jpg",
+      "art": null,
+      "demo": "imaginedWeather/",
+      "download": "imaginedWeather.zip",
+      "downloadSize": "1.8 MB",
+      "featured": false,
+      "desktop": false,
+      "id": "imaginedWeather",
+      "title": "THE BUREAU OF IMAGINED WEATHER",
+      "subtitle": "臆候局",
+      "category": "art",
+      "tagline": "为尚未发生、却已被感受的天气，建立一份非官方档案。",
+      "description": "交出一段感受，它从七个气候家族中推断出一场天气，生成独属于这一刻的名称、云图、读数、体感与声场，并可导出标本卡。",
+      "tags": [
+        "生成艺术",
+        "气象",
+        "Web Audio"
+      ],
+      "tech": [
+        "Canvas 2D",
+        "Web Audio"
+      ],
+      "accent": "#c9b8ff"
+    }
+  ]
+}
