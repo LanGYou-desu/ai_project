@@ -9,7 +9,7 @@
     var el = document.createElement('div');
     el.id = 'studioBootNote';
     el.textContent = '正在重新连接创作中心…如果长时间空白，请刷新页面。';
-    el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;background:#0b0b0d;color:#f1ece2;padding:10px 16px;font:9px ui-monospace,monospace;letter-spacing:.04em;';
+    el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;background:#0b0b0d;color:#f1ece2;padding:10px 16px;font:11px ui-monospace,monospace;letter-spacing:.04em;';
     document.body.appendChild(el);
   }
   function retryModule() {
@@ -21,6 +21,12 @@
     s.src = '/js/studio.js?retry=' + Date.now();
     document.body.appendChild(s);
   }
+  var clean = setInterval(function () {
+    if (!statsReady()) return;
+    var note = document.getElementById('studioBootNote');
+    if (note) note.remove();
+    clearInterval(clean);
+  }, 400);
   setTimeout(retryModule, 1400);
   window.addEventListener('load', function () { setTimeout(retryModule, 900); });
   setTimeout(function () {

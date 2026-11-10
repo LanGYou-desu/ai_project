@@ -212,3 +212,75 @@ body.role-user .studio-hero-side p { max-width: 560px; }
   .mywork-cover, .review-cover { width: 78px; height: 56px; }
   .mywork-actions, .review-actions { grid-column: 2; justify-content: flex-start; }
 }
+/* readability pass — larger labels and body copy */
+.studio-body { font-size: 15px; }
+.studio-head-mid, .studio-head-actions { font-size: 11px; }
+.studio-brand small { font-size: 10px; letter-spacing: 0.12em; }
+.studio-hero { padding: clamp(36px, 5vw, 62px) 0 clamp(28px, 3.5vw, 44px); }
+.studio-hero h1 { font-size: clamp(3rem, 5.4vw, 6.1rem); line-height: 0.9; }
+.studio-hero-grid { align-items: center; margin-top: 24px; gap: clamp(28px, 4vw, 60px); }
+.studio-hero-side p { font-size: 14.5px; line-height: 1.85; max-width: 430px; }
+.studio-stats { gap: 16px; margin-top: 24px; padding-top: 18px; }
+.studio-stats strong { font-size: clamp(1.65rem, 2.4vw, 2.35rem); }
+.studio-stats span { font-size: 10px; margin-top: 8px; letter-spacing: 0.04em; }
+.eyebrow { font-size: 10px; }
+.panel-kicker { font-size: 10px; letter-spacing: 0.11em; }
+.panel-hint { font-size: 11px; line-height: 1.6; padding-top: 8px; }
+.panel-head h2, .archive-head h2 { font-size: clamp(2.1rem, 3.2vw, 3.1rem); }
+.panel-head { margin-bottom: 24px; padding-bottom: 16px; }
+.studio-field { margin-bottom: 20px; }
+.studio-field > span { font-size: 10px; margin-bottom: 8px; letter-spacing: 0.07em; }
+.studio-field input, .studio-field select, .studio-field textarea { font-size: 15px; }
+.studio-field input::placeholder, .studio-field textarea::placeholder { font-size: 13px; }
+.studio-field textarea { min-height: 108px; line-height: 1.75; }
+.studio-checks, .journal-checks { font-size: 11px; }
+.studio-checks input, .journal-checks input { width: 14px; height: 14px; }
+.studio-submit { font-size: 12px; padding: 15px 20px; }
+.studio-form-msg { font-size: 11px; line-height: 1.6; }
+.studio-text-btn { font-size: 11px; }
+.journal-admin-item { padding: 16px 0; }
+.journal-admin-item .ja-meta { font-size: 10px; line-height: 1.5; }
+.journal-admin-item h3 { font-size: 1.4rem; margin: 7px 0 5px; }
+.journal-admin-item p { font-size: 13px; line-height: 1.65; }
+.journal-admin-item .ja-actions button { font-size: 10px; padding: 6px 9px; }
+.journal-admin-empty { font-size: 12px; line-height: 1.7; }
+.archive-tabs button { font-size: 11px; padding: 8px 12px; }
+.archive-search input { font-size: 13px; }
+.row-meta { font-size: 10px; line-height: 1.5; }
+.row-main h3 { font-size: 1.5rem; }
+.row-main p { font-size: 13px; }
+.row-actions button, .row-actions a { font-size: 10px; padding: 6px 9px; }
+.archive-empty { font-size: 12px; }
+.mywork-meta, .review-meta { font-size: 10px; line-height: 1.5; }
+.mywork-main h3, .review-main h3 { font-size: 1.45rem; }
+.mywork-main p, .review-main p { font-size: 13px; line-height: 1.65; color: #5a5449; }
+.mywork-note { font-size: 11px; }
+.mywork-actions button, .review-actions button, .mywork-actions a { font-size: 10px; padding: 7px 10px; }
+.status-badge { font-size: 9px; padding: 4px 7px; }
+.review-empty, .myworks-empty { font-size: 12px; line-height: 1.7; }
+.account-name strong { font-size: 17px; }
+.account-name small { font-size: 10px; }
+.aside-card h3 { font-size: 1.5rem; }
+.aside-card ul { font-size: 13px; line-height: 1.8; }
+/* second readability pass */
+.studio-head-mid, .studio-head-actions { font-size: 12px; }
+.studio-stats span { font-size: 11px; }
+.panel-kicker { font-size: 11px; }
+.studio-field > span { font-size: 11px; }
+.journal-admin-item .ja-meta { font-size: 11px; }
+.row-meta { font-size: 11px; }
+.mywork-meta, .review-meta { font-size: 11px; }
+.status-badge { font-size: 10px; }
+.journal-admin-item .ja-actions button, .row-actions button, .row-actions a, .mywork-actions button, .review-actions button, .mywork-actions a { font-size: 11px; }
+/* layout tightening */
+.studio-hero { padding-bottom: clamp(24px, 3vw, 36px); }
+.studio-submission, .studio-myworks, .studio-review { margin-top: clamp(30px, 4vw, 46px); }
+.studio-review .archive-head { margin-bottom: 16px; }
+.review-list, .myworks-list { margin-top: 16px; }
+@media (max-width: 760px) {
+  .panel-head, .archive-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .panel-hint { padding-top: 0; }
+  .studio-hero h1 { font-size: clamp(2.7rem, 12vw, 4rem); }
+  .studio-hero-side p { font-size: 14px; }
+  .studio-stats { gap: 14px 18px; }
+}

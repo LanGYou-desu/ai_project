@@ -755,3 +755,30 @@ section[id] { scroll-margin-top: 96px; }
   .grain { display: none; }
   .cursor { display: none; }
 }
+/* readability pass */
+.brand-text strong { font-size: 14px; }
+.brand-text small { font-size: 9px; }
+.nav a { font-size: 12px; }
+.nav a span { font-size: 9px; }
+#clock { font-size: 10px; }
+.eyebrow { font-size: 10px; }
+.hero-intro { font-size: 15px; line-height: 1.9; }
+.section-note { font-size: 11px; line-height: 1.8; }
+.card-no { font-size: 9px; }
+.card-cat { font-size: 9px; }
+.card-sub { font-size: 9px; }
+.card-desc { font-size: 13px; line-height: 1.75; }
+.tag { font-size: 9px; padding: 4px 7px; }
+.journal-card { min-height: 210px; padding: 24px 0 28px; }
+.journal-date { font-size: 10px; line-height: 1.5; }
+.journal-excerpt { font-size: 13px; line-height: 1.8; }
+.journal-read { font-size: 10px; bottom: 26px; }
+.journal-empty { font-size: 11px; line-height: 1.7; }
+.post-eyebrow { font-size: 10px; }
+.post-body { font-size: 15px; line-height: 1.95; }
+.post-foot { font-size: 10px; }
+.about-copy p { font-size: 15px; line-height: 1.95; }
+.modal-desc { font-size: 14px; line-height: 1.9; }
+.footer-brand span { font-size: 10px; }
+.footer-links a { font-size: 10px; }
+.footer-bottom { font-size: 10px; line-height: 1.7; }

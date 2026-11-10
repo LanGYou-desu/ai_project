@@ -81,6 +81,8 @@ function renderStats() {
       '<div><strong>' + (stats.works ?? '—') + '</strong><span>可玩作品</span></div>' +
       '<div><strong>' + (stats.publicPosts ?? '—') + '</strong><span>公开手记</span></div>';
   }
+  const bootNote = document.getElementById('studioBootNote');
+  if (bootNote) bootNote.remove();
   const dateEl = $('#studioDate');
   if (dateEl) {
     const now = new Date();
