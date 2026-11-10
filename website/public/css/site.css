@@ -394,6 +394,7 @@ em { font-style: italic; }
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 /* ---------- common section ---------- */
+section[id] { scroll-margin-top: 96px; }
 .section { padding: clamp(76px, 10vw, 140px) var(--pad); max-width: 1600px; margin: 0 auto; }
 .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; margin-bottom: clamp(36px, 5vw, 64px); }
 .section-title {

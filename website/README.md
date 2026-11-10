@@ -84,6 +84,16 @@ my-work.zip
    - `client_max_body_size 600m`。
 6. 证书可用 Let's Encrypt DNS-01（Cloudflare 插件）或 Cloudflare Origin CA。
 
+## 部署注意（中国大陆 ECS）
+
+如果源站部署在中国大陆的云服务器上，未完成 ICP 备案的域名会被运营商在网络层拦截：80 端口返回 `Non-compliance ICP Filing`，443 端口 TLS 连接被重置。此时即使 Nginx / 证书都正确，Cloudflare 也会返回 525。
+
+可选方案：
+
+1. **Cloudflare Tunnel（推荐）**：由服务器主动向外建立隧道，不依赖入站 80/443，也不需要备案。在 Cloudflare Zero Trust 创建 Tunnel，把 token 交给服务器上的 `cloudflared`，再把域名 CNAME 到 `<tunnel-id>.cfargotunnel.com`。
+2. **境外服务器 / 已备案域名**：直接把同一套 Nginx + Node 部署到没有该限制的环境。
+3. **完成 ICP 备案**：备案通过后可按本文档直接使用 80/443。
+
 ## 隐私
 
 网站不展示真实姓名、邮箱、电话、住址等个人信息。登录账号只使用公开称呼 `LanGYou`。上传前请自行检查作品包中是否含有个人路径、密钥或隐私数据；`storage/` 与 `.env` 已被 gitignore。
