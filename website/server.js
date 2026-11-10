@@ -25,7 +25,7 @@ const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '127.0.0.1';
 const secureCookie = String(process.env.COOKIE_SECURE || 'true') !== 'false';
 const adminUsername = process.env.ADMIN_USERNAME || 'LanGYou';
-const adminEmail = process.env.ADMIN_EMAIL || '3365814005@qq.com';
+const adminEmail = process.env.ADMIN_EMAIL || '';
 
 await ensureDir(storageDir);
 await ensureDir(playDir);
