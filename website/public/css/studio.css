@@ -284,3 +284,18 @@ body.role-user .studio-hero-side p { max-width: 560px; }
   .studio-hero-side p { font-size: 14px; }
   .studio-stats { gap: 14px 18px; }
 }
+/* responsive layout pass */
+.studio-hero { border-bottom: 0; }
+.studio-hero + .studio-review,
+.studio-hero + .studio-submission { margin-top: 0; border-top: 0; padding-top: clamp(18px, 2.5vw, 28px); }
+@media (max-width: 760px) {
+  .studio-head-actions { gap: 12px; }
+  .studio-head-actions a { display: inline; }
+  .studio-main { padding-bottom: 56px; }
+  .studio-hero { padding-top: 28px; padding-bottom: 18px; }
+  .studio-hero-grid { margin-top: 18px; gap: 18px; }
+  .studio-hero-side p { font-size: 13.5px; line-height: 1.75; }
+  .studio-stats { margin-top: 16px; padding-top: 14px; }
+  .studio-stats strong { font-size: 1.9rem; }
+  .studio-review, .studio-submission, .studio-myworks { margin-top: 28px; padding-top: 24px; }
+}

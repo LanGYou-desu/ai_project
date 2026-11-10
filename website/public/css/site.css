@@ -782,3 +782,14 @@ section[id] { scroll-margin-top: 96px; }
 .footer-brand span { font-size: 10px; }
 .footer-links a { font-size: 10px; }
 .footer-bottom { font-size: 10px; line-height: 1.7; }
+/* responsive layout pass */
+.hero { min-height: 92svh; }
+@media (max-width: 900px) {
+  .hero { min-height: auto; padding-top: 96px; padding-bottom: 48px; }
+  .hero-bottom { margin-top: 24px; }
+}
+@media (max-width: 640px) {
+  .hero-intro { font-size: 14px; }
+  .hero-bottom { gap: 22px; }
+  .filterbar { padding-bottom: 2px; }
+}

@@ -103,3 +103,25 @@
 /* second readability pass */
 .field > span:first-child { font-size: 11px; }
 .login-stats, .login-left-foot, .login-form-top { font-size: 11px; }
+/* responsive layout pass */
+@media (max-width: 600px) {
+  .login-left { min-height: 0; padding: 18px 22px 22px; }
+  .login-left-inner { margin: 16px 0 0; padding: 0; }
+  .login-left h1 { font-size: clamp(2.7rem, 12vw, 3.8rem); margin: 12px 0; }
+  .login-lead { font-size: 14px; line-height: 1.75; }
+  .login-stats { margin-top: 14px; padding-top: 10px; gap: 8px 18px; }
+  .login-left-foot { display: none; }
+  .login-right { min-height: auto; padding: 22px; }
+  .login-form-wrap { padding: 14px 0 26px; }
+  .login-right h2 { font-size: clamp(2.5rem, 11vw, 3.2rem); margin-top: 18px; }
+  .auth-tabs { margin: 20px 0; }
+  .login-note { margin-top: 18px; }
+}
+@media (max-width: 600px) {
+  .login-stats { display: none; }
+  .login-left-inner { margin: 10px 0 0; }
+  .login-left h1 { font-size: clamp(2.4rem, 10.5vw, 3.2rem); margin: 10px 0 8px; }
+  .login-lead { font-size: 13.5px; line-height: 1.7; }
+  .login-right h2 { font-size: clamp(2.3rem, 10vw, 3rem); margin-top: 14px; }
+  .auth-tabs { margin: 16px 0; }
+}
