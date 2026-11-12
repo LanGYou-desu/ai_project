@@ -1,6 +1,6 @@
 # AI Project 合集
 
-> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录 **33 个项目**，按 6 个类别归档在顶层子目录里：
+> 一个包含多个**相互独立实战项目**的代码仓库（monorepo 风格）。目前收录 **34 个项目**，按 6 个类别归档在顶层子目录里：
 >
 > | 类别 | 内容 | 项目数 |
 > | ---- | ---- | ---- |
@@ -9,7 +9,7 @@
 > | [`scenes3d/`](./scenes3d/) | 🏞 3D 场景与模型作品（Three.js 场景 · Blender 建模） | 9 |
 > | [`webApps/`](./webApps/) | 🌐 网页应用（安全训练营、文学装置、个人操作系统） | 3 |
 > | [`devTools/`](./devTools/) | 🧰 开发工具 | 2 |
-> | [`webArt/`](./webArt/) | 🎨 美术小作 | 3 |
+> | [`webArt/`](./webArt/) | 🎨 美术小作 | 4 |
 >
 > 其中 **23 个项目自带自动化测试**，合计 **2,551 项检查**（含 HollowSignal 的 93 项浏览器冒烟），一条 `npm test` 即可全量回归。其余项目为静态页面、3D 场景或工具，由各项目自己的构建 / 冒烟检查覆盖。
 >
@@ -83,12 +83,13 @@
 | [bikeArt](./webArt/bikeArt/) | SVG 动画美术 | 「骑车」：三张单文件 SVG 动画小画（海边的鹈鹕 / 骑车的鹈鹕 / 艾玛骑车），零脚本、零依赖、双击即看 | 原生 SVG + SMIL | — |
 | [lumenBay](./webArt/lumenBay/) | 程序化像素艺术 | 「光湾市」：会呼吸的像素海港——清晨 / 黄昏 / 夜景三套光照、天气与生成式配乐，Canvas 2D 全程序化绘制，可点击行人、搅动海风，无任何图片 / 音频素材 | 原生 HTML/CSS/JS + Canvas 2D + Web Audio（零依赖） | — |
 | [imaginedWeather](./webArt/imaginedWeather/) | 生成式数字装置 | 「臆候局」：写下一段感受，从七个气候家族推断一场天气，生成名称 / 云图 / 读数 / 体感 / 声场与可导出的标本卡 | 原生 HTML/CSS/JS + Canvas 2D + Web Audio（零依赖） | — |
+| [stellarPost](./webArt/stellarPost/) | 互动数字装置 | 「星海邮局」：写下 80 字以内的一句话，它会变成星图里的一颗星——Canvas 星场、鼠标引力与星座连线、悬停读信，服务端渲染星图 + 零依赖 Node 服务，一键启动 | 原生 HTML/CSS/JS + Canvas 2D + Node.js（零第三方依赖） | — |
 
 ## 🌐 线上档案馆
 
 - **地址**：<https://langyousaikyo.top>
 - **源码**：[`website/`](./website/)
-- **内容**：33 个作品的完整索引、封面、标签、在线演示与下载；支持按类别筛选、搜索、随机漫游与作品详情弹层。
+- **内容**：34 个作品的完整索引、封面、标签、在线演示与下载；支持按类别筛选、搜索、随机漫游与作品详情弹层。
 - **公开账号系统**：访客可以直接浏览、游玩与下载；注册需要邮箱验证码，忘记密码也通过邮箱验证码重置。
 - **三种角色**：访客只读；注册用户可以发布、编辑、删除自己的手记，也可以投稿作品等待审核；管理员可以审核投稿、维护作品、所有手记与注册用户。
 - **手记（Journal）**：首页 JOURNAL 区块展示所有公开手记与作者；登录用户可在创作中心写自己的手记。
@@ -123,7 +124,7 @@ node scripts/test-all.js gamesWeb/loom # 同上，用分类路径
 
 ```
 ai_project/
-├── README.md                 # 本文件（33 个项目总览）
+├── README.md                 # 本文件（34 个项目总览）
 ├── package.json              # 根级脚本：npm test 一次跑完所有带测试的项目
 ├── scripts/test-all.js       # 仓库级测试调度器（按各项目自己的命令调用）
 ├── .gitattributes            # 换行符与二进制策略（.bat/.ps1 检出为 CRLF）
@@ -173,7 +174,8 @@ ai_project/
 └── webArt/                  # 🎨 美术小作
     ├── bikeArt/             # BIKE ART · 骑车（SVG 动画小画）
     ├── lumenBay/            # LUMEN BAY · 光湾市（程序化像素海港）
-    └── imaginedWeather/     # 臆候局 · The Bureau of Imagined Weather（生成式装置）
+    ├── imaginedWeather/     # 臆候局 · The Bureau of Imagined Weather（生成式装置）
+    └── stellarPost/         # 星海邮局 · Stellar Post（把一句话变成一颗星的互动装置）
 ```
 
 ## 🚀 快速开始
@@ -508,9 +510,18 @@ npm start           # 打开 http://127.0.0.1:4173
 
 「臆候局」是一个虚构的气象机构，也是一件可以直接在浏览器里体验的生成式数字装置：写下一段感受，它从雾 / 雨 / 雪 / 雷暴 / 光晕 / 风 / 余烬七个气候家族中推断出一场天气，生成名称、云图、读数、体感与一段观察记录；轻触玻璃可以扰动天气，打开声场能听见 Web Audio 实时合成的空气、雨声与和声，还可以导出 1200 × 1600 的标本卡。
 
+#### stellarPost（星海邮局 · STELLAR POST）
+```bash
+cd webArt/stellarPost
+.\start.bat            # 一键启动并打开 http://127.0.0.1:5177/
+# 或：node server.js --no-open
+```
+
+把想说的话寄给夜空：写下 80 字以内的一句话，它会在 Canvas 星图里变成一颗星；鼠标靠近时星星让开、与光标连成星座线，悬停或 Tab 聚焦即可读信。零第三方依赖、零构建，服务端渲染星图（关掉 JS 也能读），数据落盘为 `data/wishes.json`，仅监听本机。
+
 ## 📝 仓库约定
 
-- **三十三个项目相互独立**：各自维护代码、文档与依赖，不互相引用；根目录的 `scripts/test-all.js` 只是调度器，不改动任何项目结构。
+- **三十四个项目相互独立**：各自维护代码、文档与依赖，不互相引用；根目录的 `scripts/test-all.js` 只是调度器，不改动任何项目结构。
 - **六类归档**：所有项目按体验形态归入 `gamesWeb/`（纯前端游戏）、`gamesDesktop/`（真实系统交互游戏）、`scenes3d/`（3D 场景与模型）、`webApps/`（网页应用）、`devTools/`（开发工具）、`webArt/`（美术小作）六个分类目录；新增项目也要先归档。
 - **目录名统一**：一律小驼峰 camelCase（首个单词小写，后续单词首字母大写，不使用分隔符）、不以数字开头；品牌单字名保留（`netime` / `devsaga` / `lingua` / `synapse` / `unlit` / `loom`），其余用一眼能读懂描述名（`carShowroom` / `hakoniwaTown` / `hoshifuruHakoniwa` / `aetherGarden` / `naiwaModel` / `tokyoCelCity`）。展示名统一为「BRAND · 中文名」。
 - **换行符统一**：`.gitattributes` 保证仓库内按 LF 存储，`.bat` / `.cmd` / `.ps1` 在 Windows 检出时自动转 CRLF（批处理对 LF 有已知隐患）；`*.blend` / `*.stl` / `*.glb` 等二进制不做任何转换。

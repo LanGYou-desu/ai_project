@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "LanGYou Archive",
-    "subtitle": "一个人，三十三个可以进入的世界。",
+    "subtitle": "一个人，三十四个可以进入的世界。",
     "domain": "langyousaikyo.top",
     "playBase": "https://play.langyousaikyo.top",
     "description": "LanGYou 的个人创作档案馆：网页游戏、桌面游戏、3D 场景、网页应用、开发工具与生成艺术。在线游玩与下载。"
@@ -45,7 +45,7 @@
     }
   ],
   "stats": {
-    "works": 33,
+    "works": 34,
     "categories": 6,
     "assertions": 2551,
     "suites": 23
@@ -1006,6 +1006,35 @@
         "Web Audio"
       ],
       "accent": "#c9b8ff"
+    },
+    {
+      "order": 34,
+      "year": "2026",
+      "tests": 0,
+      "duration": "5 分钟",
+      "cover": "/covers/stellarPost.jpg",
+      "art": null,
+      "demo": "stellarPost/",
+      "download": "stellarPost.zip",
+      "downloadSize": "20 KB",
+      "featured": false,
+      "desktop": false,
+      "id": "stellarPost",
+      "title": "STELLAR POST",
+      "subtitle": "星海邮局",
+      "category": "art",
+      "tagline": "把想说的话，寄给夜空。",
+      "description": "写下 80 字以内的一句话，它会变成星图里的一颗星。鼠标靠近时星星会让开，点开别人的星，能读到他们没说完的心事。",
+      "tags": [
+        "互动装置",
+        "星图",
+        "Canvas"
+      ],
+      "tech": [
+        "Canvas 2D",
+        "Node.js"
+      ],
+      "accent": "#a78bfa"
     }
   ]
 }

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>星海邮局 · 把想说的话寄给夜空</title>
+<meta name="description" content="写下 80 字以内的一句话，它会变成星图里的一颗星。纯手写 Canvas 星场，无第三方依赖。">
+<meta name="theme-color" content="#05060c">
+<meta property="og:title" content="星海邮局 · 把想说的话寄给夜空">
+<meta property="og:description" content="写下 80 字以内的一句话，它会变成星图里的一颗星。">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<canvas id="sky" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+<div class="spotlight" aria-hidden="true"></div>
+<div class="progress" aria-hidden="true"><i></i></div>
+
+<header class="topbar">
+  <a class="brand" href="#top">
+    <span class="brand-mark" aria-hidden="true"></span>星海邮局
+  </a>
+  <nav class="nav" aria-label="主导航">
+    <a href="#constellation">星图</a>
+    <a href="#post">投递</a>
+    <a href="#about">手记</a>
+    <a class="nav-strong" href="#post">写一封</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <p class="eyebrow">Stellar Post · <b>把愿望折成星光的地方</b></p>
+    <h1>把想说的话<br>寄给<span class="grad">夜空</span></h1>
+    <p class="lede">
+      写下 80 字以内的一句话，它会成为星图里的一颗星。
+      鼠标靠近时星星会让开，点开别人的星，能读到他们没说完的心事。
+    </p>
+    <div class="cta">
+      <a class="btn btn-primary" href="#post">写一封星信</a>
+      <a class="btn btn-ghost" href="#constellation">逛逛星图 <span class="n">(<span data-count><!--WISH_COUNT--></span>)</span></a>
+    </div>
+    <p class="hint">往下滚动，整片星空会跟着你走</p>
+  </section>
+
+  <section class="section" id="post" data-reveal>
+    <div class="section-head">
+      <span class="kicker">01 — 投递</span>
+      <h2>把一句话，交给星空</h2>
+      <p class="sub">不用注册，不留名字。它会被存进这台机器上的一个 JSON 文件，等下一个路过的人读。</p>
+    </div>
+
+    <form class="wish-form" method="post" action="/api/wishes" novalidate>
+      <label class="sr-only" for="wish-text">你的星信内容</label>
+      <textarea id="wish-text" name="text" rows="2" maxlength="80" required
+                placeholder="比如：愿明天的面试顺利，愿你还喜欢现在的自己。"></textarea>
+      <div class="form-foot">
+        <span class="counter">还可以写 <b data-left>80</b> 字</span>
+        <button class="send" type="submit">投进星空 <span class="arrow" aria-hidden="true">→</span></button>
+      </div>
+    </form>
+    <p class="form-note">同一网络每 12 秒可投递一次；内容是公开的，别写隐私信息。</p>
+  </section>
+
+  <section class="section" id="constellation" data-reveal>
+    <div class="section-head">
+      <span class="kicker">02 — 星图</span>
+      <h2>已经有 <em data-count><!--WISH_COUNT--></em> 颗星亮着</h2>
+      <p class="sub">把鼠标停在星星上（或按 Tab 聚焦），会浮出那句话。</p>
+    </div>
+
+    <div class="skyfield" id="skyfield">
+<!--WISH_STARS-->
+<!--WISH_EMPTY-->
+    </div>
+  </section>
+
+  <section class="section" id="about" data-reveal>
+    <div class="section-head">
+      <span class="kicker">03 — 手记</span>
+      <h2>这个小站是怎么长出来的</h2>
+      <p class="sub">没有框架、没有 npm、没有一张图片请求，全部是手写的。</p>
+    </div>
+
+    <div class="about-grid">
+      <article class="card">
+        <h3><span>01</span>一片会呼吸的星</h3>
+        <p>星空是 Canvas 逐帧画的：三层景深视差、靠近会被推开的鼠标引力、光标牵出的星座连线，还有偶尔划过的流星。</p>
+      </article>
+      <article class="card">
+        <h3><span>02</span>每句话都是一颗星</h3>
+        <p>星星的位置由内容 ID 做 djb2 散列得出，服务端 Node 与浏览器 JS 用同一套算法，所以刷新后星星不会乱跑。</p>
+      </article>
+      <article class="card">
+        <h3><span>03</span>数据就躺在文件夹里</h3>
+        <p>投递内容写进 data/wishes.json，服务端用临时文件 + 原子重命名落盘；data 目录不对外开放，只能通过接口读写。</p>
+      </article>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <span>© 2026 星海邮局 · 愿望在这里以光速存档</span>
+  <span>Node.js · Canvas · 零依赖 · <a href="#top">回到顶部 ↑</a></span>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="assets/js/app.js" defer></script>
+</body>
+</html>

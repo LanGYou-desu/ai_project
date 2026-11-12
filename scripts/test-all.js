@@ -8,9 +8,9 @@
  *
  * 零依赖：只用 Node 内置模块。每个项目仍然是"各自独立"的，
  * 这里只负责按登记表调用它们自己的测试命令，不改变任何项目结构。
- * 其余 10 个项目（bikeArt / hakureiShrine / tokyoCelCity / naiwaModel /
+ * 其余 11 个项目（bikeArt / hakureiShrine / tokyoCelCity / naiwaModel /
  * rainMart / stillwater / lumenBay / aetherGarden / hoshifuruHakoniwa /
- * imaginedWeather）是纯静态页面或 3D 场景作品，没有自动化测试，就不登记了。
+ * imaginedWeather / stellarPost）是纯静态页面或 3D 场景作品，没有自动化测试，就不登记了。
  */
 const { spawnSync } = require('child_process');
 const path = require('path');
