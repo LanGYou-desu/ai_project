@@ -212,3 +212,84 @@ main { flex: 1; display: grid; grid-template-columns: 1.05fr 1.2fr 1fr; gap: 12p
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 
 @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+
+/* ---------- 桌面端：三栏填满视口 ---------- */
+@media (min-width: 1101px) {
+  body { overflow: hidden; }
+  .app { height: 100vh; height: 100dvh; min-height: 0; padding-bottom: 6px; }
+  header { flex: 0 0 auto; }
+  main { flex: 1 1 auto; min-height: 0; }
+  .console, .city, .archive { display: flex; flex-direction: column; gap: 12px; min-height: 0; margin-bottom: 0; }
+  .console > .panel {
+    flex: 1 1 auto; min-height: 0; margin-bottom: 0;
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  #beat {
+    flex: 1 1 auto; min-height: 104px; overflow-y: auto;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 4px),
+      rgba(0, 0, 0, .25);
+  }
+  .city > .panel {
+    flex: 1 1 auto; min-height: 0; margin-bottom: 0;
+    display: flex; flex-direction: column;
+  }
+  #skyline { flex: 1 1 auto; height: auto; min-height: 220px; }
+  #chart { flex: 0 0 150px; height: 150px; }
+  .archive { overflow: hidden; }
+  .archive > .panel { flex: 0 0 auto; margin-bottom: 0; }
+  .archive > .panel:nth-child(2) { flex: 0 1 auto; min-height: 0; }
+  .archive .chars { gap: 4px; max-height: 320px; }
+  .archive .char { padding: 3px 6px; }
+  .archive > .panel.grow {
+    flex: 1 1 auto; min-height: 120px; display: flex;
+    flex-direction: column; overflow: hidden;
+  }
+  .archive .log { flex: 1 1 auto; max-height: none; min-height: 70px; }
+  footer { flex: 0 0 auto; padding: 7px 0 2px; }
+}
+
+/* ---------- 广播日志空状态 ---------- */
+.log:empty::before {
+  content: '等待第一条广播记录……';
+  display: block; padding: 14px 8px; color: var(--dim);
+  font-size: 12px; letter-spacing: 1px; opacity: .7;
+}
+
+/* ---------- 移动端（放在基础规则之后以确保覆盖） ---------- */
+@media (max-width: 820px) {
+  .app { padding: 8px 10px; }
+  header { gap: 8px 10px; padding: 6px 2px 10px; }
+  .brand { font-size: 21px; letter-spacing: 2px; }
+  .brand em { font-size: 10px; letter-spacing: 2px; margin-left: 6px; }
+  .hud { width: 100%; margin-left: 0; gap: 8px 10px; }
+  .turn { font-size: 14px; }
+  .remain { font-size: 12px; }
+  .stam { font-size: 11px; }
+  .onair { margin-left: auto; }
+  .panel { padding: 10px; border-radius: 10px; }
+  .beat { font-size: 13px; line-height: 1.8; padding: 9px 10px; }
+  #skyline { height: 210px; }
+  #chart { height: 110px; }
+  .archive .chars { max-height: none; }
+  .log { max-height: 260px; }
+}
+
+@media (max-width: 520px) {
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .actions .song-row,
+  .actions .btn.final,
+  .actions .btn.back { grid-column: 1 / -1; }
+  .actions .btn { min-height: 52px; padding: 9px 10px; flex-wrap: wrap; }
+  .actions .btn .sub { font-size: 10px; margin-left: 0; flex-basis: 100%; padding-left: 28px; }
+  .actions .song-row .btn.song { min-height: 52px; }
+  .actions .song-row .btn.song .sub { flex-basis: auto; padding-left: 0; }
+  .actions .song-row .fav-btn { width: 48px; }
+  .actions .btn:hover { transform: none; }
+  .hud { gap: 6px 8px; }
+  .lore-btn, .continue-btn { padding: 5px 8px; }
+  .controls { width: 100%; }
+  .intro-card, .ending .card { padding: 20px 18px; }
+  .end-title { font-size: 22px; }
+  .end-btns { flex-direction: column; }
+}

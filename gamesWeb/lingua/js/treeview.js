@@ -54,8 +54,10 @@
 
   function render(canvas, history, state) {
     var ctx = canvas.getContext('2d');
-    var W = canvas.width, H = canvas.height;
-    var padL = 90, padR = 20, padT = 24, padB = 30;
+    // 高分屏下 canvas.width 是物理像素；逻辑坐标需按 CSS 宽度折算
+    var dpr = (canvas.clientWidth && canvas.width) ? canvas.width / canvas.clientWidth : 1;
+    var W = canvas.width / dpr, H = canvas.height / dpr;
+    var padL = W < 480 ? 76 : 90, padR = W < 480 ? 26 : 20, padT = 24, padB = 30;
     var x0 = padL, x1 = W - padR;
     var t0 = 0, t1 = history.totalEpochs;
     var L = computeLanes(history);
@@ -66,6 +68,7 @@
     history.branches.forEach(function (b) { laneSet[lanes[b.id]] = true; });
     var nLanes = Object.keys(laneSet).length;
     var laneH = (H - padT - padB) / Math.max(nLanes, 1);
+    state = state || {};
 
     function X(epoch) { return x0 + (epoch - t0) / (t1 - t0) * (x1 - x0); }
     function Y(lane) { return padT + laneH * (lane + 0.5); }
@@ -104,11 +107,14 @@
       ctx.stroke();
     });
 
-    // 事件刻度（分裂/借词/文字）
+    // 事件刻度（分裂/借词/文字）：两行排布，放不下的只保留刻度线，避免文字挤成一团
     var marks = [];
-    history.splits.forEach(function (sp) { marks.push({ epoch: sp.epoch, label: '分裂', color: 'rgba(160,58,42,0.5)' }); });
-    history.loans.forEach(function (l) { marks.push({ epoch: l.epoch, label: '借词', color: 'rgba(47,111,143,0.5)' }); });
-    if (history.writing) marks.push({ epoch: history.writing.epoch, label: '文字', color: 'rgba(122,74,139,0.5)' });
+    history.splits.forEach(function (sp) { marks.push({ epoch: sp.epoch, label: '分裂', color: 'rgba(160,58,42,0.82)' }); });
+    history.loans.forEach(function (l) { marks.push({ epoch: l.epoch, label: '借词', color: 'rgba(47,111,143,0.82)' }); });
+    if (history.writing) marks.push({ epoch: history.writing.epoch, label: '文字', color: 'rgba(122,74,139,0.82)' });
+    marks.sort(function (a, b) { return a.epoch - b.epoch; });
+    var markRowY = [padT - 6, padT - 17];
+    var markRowRight = [-Infinity, -Infinity];
     marks.forEach(function (m) {
       var mx = X(m.epoch);
       ctx.strokeStyle = m.color;
@@ -119,10 +125,18 @@
       ctx.fillStyle = m.color;
       ctx.font = '10px "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(m.label, mx, padT - 5);
+      var mm = ctx.measureText ? ctx.measureText(m.label) : null;
+      var mw = (mm && typeof mm.width === 'number' && isFinite(mm.width)) ? mm.width : m.label.length * 10;
+      var left = mx - mw / 2 - 3, right = mx + mw / 2 + 3;
+      var row = left > markRowRight[0] ? 0 : (left > markRowRight[1] ? 1 : -1);
+      if (row >= 0) {
+        markRowRight[row] = right;
+        ctx.fillText(m.label, mx, markRowY[row]);
+      }
     });
 
     // 各分支轨道
+    var labels = [];
     history.branches.forEach(function (b) {
       var lane = lanes[b.id];
       var y = Y(lane);
@@ -145,14 +159,10 @@
         ctx.beginPath(); ctx.arc(X(b.writing), y, 6, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = '#a03a2a';
         ctx.font = '10px sans-serif';
-        ctx.fillText('文', X(b.writing) - 3.5, y + 3.5);
+        ctx.textAlign = 'center';
+        ctx.fillText('文', X(b.writing), y + 3.5);
       }
-      // 名称
-      ctx.fillStyle = '#3a2c1a';
-      ctx.font = (isSel || isHov ? 'bold ' : '') + '13px "Microsoft YaHei", sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText(b.name + (isHov && !isSel ? ' · 公元' + (b.bornEpoch * history.yearsPerEpoch) + '年' : ''), bx0 - 8, y + 4);
-      ctx.textAlign = 'left';
+      labels.push({ x: bx0 - 8, y: y + 4, branch: b, isSel: isSel, isHov: isHov });
       // 时间游标
       if (state.cursorEpoch != null) {
         var cxx = X(state.cursorEpoch);
@@ -161,12 +171,49 @@
         ctx.beginPath(); ctx.moveTo(cxx, y - 7); ctx.lineTo(cxx, y + 7); ctx.stroke();
       }
     });
+
+    // 分支名称：简单的防碰撞排布，避免同一时代出生的分支文字叠在一起
+    labels.sort(function (a, b) { return a.y - b.y; });
+    var placed = [];
+    labels.forEach(function (lab) {
+      var text = lab.branch.name + (lab.isHov && !lab.isSel ? ' · 公元' + (lab.branch.bornEpoch * history.yearsPerEpoch) + '年' : '');
+      ctx.font = (lab.isSel || lab.isHov ? 'bold ' : '') + '13px "Microsoft YaHei", sans-serif';
+      var m = ctx.measureText ? ctx.measureText(text) : null;
+      var tw = (m && typeof m.width === 'number' && isFinite(m.width)) ? m.width : text.length * 13;
+      var textX = Math.max(lab.x, tw + 10);
+      var ly = lab.y;
+      var top = ly - 11, bottom = ly + 4;
+      var tryUp = false;
+      for (var guard = 0; guard < 24; guard++) {
+        var hit = placed.some(function (p) {
+          return p.right > textX - tw - 8 && p.left < textX + 4 && p.bottom > top && p.top < bottom;
+        });
+        if (!hit) break;
+        if (!tryUp && ly + 16 < H - padB) ly += 16;
+        else { ly -= 16; tryUp = true; }
+        if (ly < padT + 8) { ly = padT + 8; break; }
+        top = ly - 11; bottom = ly + 4;
+      }
+      top = Math.max(padT + 2, ly - 11);
+      var plateL = Math.max(1, textX - tw - 7);
+      ctx.fillStyle = 'rgba(250,243,226,0.88)';
+      ctx.fillRect(plateL, top, tw + 9, 16);
+      ctx.fillStyle = '#3a2c1a';
+      ctx.textAlign = 'right';
+      ctx.fillText(text, textX, ly);
+      placed.push({ left: plateL, right: textX + 2, top: top, bottom: top + 16 });
+      if (Math.abs(ly - lab.y) > 2) {
+        ctx.strokeStyle = 'rgba(90,70,40,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(lab.x + 2, lab.y - 4); ctx.lineTo(lab.x + 2, ly - 4); ctx.stroke();
+      }
+    });
   }
 
   // 命中检测：返回 { branchId?, epoch? }（逻辑坐标，dpr 需与渲染一致）
   function hitTest(canvas, history, state, px, py, dpr) {
     var W = canvas.width / (dpr || 1), H = canvas.height / (dpr || 1);
-    var padL = 90, padR = 20, padT = 24, padB = 30;
+    var padL = W < 480 ? 76 : 90, padR = W < 480 ? 26 : 20, padT = 24, padB = 30;
     var x0 = padL, x1 = W - padR;
     var t0 = 0, t1 = history.totalEpochs;
     var lanes = layout(history);

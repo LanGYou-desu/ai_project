@@ -15,6 +15,8 @@
     dock: 'cards', anim: null, animPick: -1, lastT: 0, dirtyTimer: null,
     view3: { cs: 8, ox: 0, oy: 0 }, dragging: false, dragStart: null
   };
+  var SAVE_KEY = 'loom.draft.v1';
+  var pinchLast = 0;
 
   function $(id) { return document.getElementById(id); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -32,9 +34,32 @@
     return { w: w, h: h, ctx: ctx };
   }
 
+  /* ================= 草稿自动保存 ================= */
+  function saveDraft() {
+    if (!el.editor) return;
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        code: el.editor.value,
+        view: state.view,
+        grid: state.grid
+      }));
+    } catch (e) { /* 隐私模式 / 配额不足时静默降级 */ }
+  }
+
+  function loadDraft() {
+    try {
+      var raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
+      if (!obj || typeof obj.code !== 'string' || !obj.code.trim()) return null;
+      return obj;
+    } catch (e) { return null; }
+  }
+
   /* ================= 运行织造程序 ================= */
   function run(opts) {
     opts = opts || {};
+    saveDraft();
     var parsed = D.parse(el.editor.value);
     var built = W.build(parsed.spec);
     var errors = parsed.errors.concat(built.errors.map(function (e) { return { line: 0, msg: e.msg }; }));
@@ -275,6 +300,38 @@
   }
 
   /* ================= 事件 ================= */
+  /* ================= 移动端标签 ================= */
+  function isMobileLayout() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 940px)').matches);
+  }
+
+  function setMobileTab(name) {
+    if (!name) return;
+    document.body.setAttribute('data-mtab', name);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-mtab]'), function (b) {
+      b.classList.toggle('active', b.getAttribute('data-mtab') === name);
+    });
+    if (name === 'fabric') {
+      requestAnimationFrame(function () { fitView(); renderAll(); });
+    } else if (name === 'analysis') {
+      renderSide();
+    }
+  }
+
+  function bindMobileTabs() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-mtab]'), function (b) {
+      b.addEventListener('click', function () { setMobileTab(b.getAttribute('data-mtab')); });
+    });
+    if (isMobileLayout()) setMobileTab('fabric');
+    window.addEventListener('resize', function () {
+      if (!isMobileLayout()) {
+        document.body.removeAttribute('data-mtab');
+      } else if (!document.body.getAttribute('data-mtab')) {
+        setMobileTab('fabric');
+      }
+    });
+  }
+
   function bind() {
     el.editor.addEventListener('input', function () {
       updateGutter();
@@ -292,7 +349,10 @@
       }
     });
 
-    $('btn-run').addEventListener('click', function () { run(); });
+    $('btn-run').addEventListener('click', function () {
+      var ok = run();
+      if (ok && isMobileLayout()) setMobileTab('fabric');
+    });
 
     el.library.addEventListener('change', function () {
       var p = P.LIBRARY.filter(function (x) { return x.id === el.library.value; })[0];
@@ -324,10 +384,11 @@
         b.classList.add('active');
         state.view = b.dataset.view;
         renderFabric();
+        saveDraft();
       });
     });
 
-    el.chkGrid.addEventListener('change', function () { state.grid = el.chkGrid.checked; renderFabric(); });
+    el.chkGrid.addEventListener('change', function () { state.grid = el.chkGrid.checked; renderFabric(); saveDraft(); });
     el.chkPaint.addEventListener('change', function () {
       state.paint = el.chkPaint.checked;
       if (state.paint && state.analysis) {
@@ -391,6 +452,82 @@
     });
 
     el.fabric.addEventListener('dblclick', function () { fitView(); renderFabric(); });
+
+    /* 触屏：单指平移 / 手绘，双指捏合缩放 */
+    function touchPos(t) {
+      var r = el.fabric.getBoundingClientRect();
+      return { x: t.clientX - r.left, y: t.clientY - r.top };
+    }
+    function pinchDist(e) {
+      var a = e.touches[0], b = e.touches[1];
+      var dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    el.fabric.addEventListener('touchstart', function (e) {
+      if (e.touches.length >= 2) {
+        pinchLast = pinchDist(e);
+        state.dragging = false;
+        el.stage.classList.remove('dragging');
+        e.preventDefault();
+        return;
+      }
+      var p = touchPos(e.touches[0]);
+      if (state.paint && state.paintMatrix) {
+        var cell = F.cellAt(p.x, p.y, { cellSize: state.view3.cs, ox: state.view3.ox, oy: state.view3.oy, matrix: state.paintMatrix });
+        if (cell) {
+          state.painting = true;
+          state.paintValue = state.paintMatrix[cell.p][cell.e] ? 0 : 1;
+          state.paintMatrix[cell.p][cell.e] = state.paintValue;
+          applyPaint();
+        }
+      } else {
+        state.dragging = true;
+        state.dragStart = { x: p.x, y: p.y, ox: state.view3.ox, oy: state.view3.oy };
+        el.stage.classList.add('dragging');
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    el.fabric.addEventListener('touchmove', function (e) {
+      if (e.touches.length >= 2 && pinchLast > 0) {
+        e.preventDefault();
+        var d = pinchDist(e);
+        var r = el.fabric.getBoundingClientRect();
+        var cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+        var cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+        zoomAt(d / pinchLast, cx, cy);
+        pinchLast = d;
+        return;
+      }
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      var p = touchPos(e.touches[0]);
+      if (state.painting && state.paintMatrix) {
+        var cell = F.cellAt(p.x, p.y, { cellSize: state.view3.cs, ox: state.view3.ox, oy: state.view3.oy, matrix: state.paintMatrix });
+        if (cell && state.paintMatrix[cell.p][cell.e] !== state.paintValue) {
+          state.paintMatrix[cell.p][cell.e] = state.paintValue;
+          applyPaint();
+        }
+      } else if (state.dragging) {
+        state.view3.ox = state.dragStart.ox + (p.x - state.dragStart.x);
+        state.view3.oy = state.dragStart.oy + (p.y - state.dragStart.y);
+        renderFabric();
+      }
+    }, { passive: false });
+
+    function endTouch(e) {
+      if (e.touches && e.touches.length > 0) {
+        pinchLast = 0;
+        state.dragging = false;
+        el.stage.classList.remove('dragging');
+        return;
+      }
+      pinchLast = 0;
+      if (state.painting) { state.painting = false; commitPaint(); }
+      if (state.dragging) { state.dragging = false; el.stage.classList.remove('dragging'); }
+    }
+    el.fabric.addEventListener('touchend', endTouch);
+    el.fabric.addEventListener('touchcancel', endTouch);
 
     /* 底部坞切换 */
     Array.prototype.forEach.call(el.dockTabs.querySelectorAll('button'), function (b) {
@@ -541,10 +678,22 @@
     }).join('');
 
     state.tiles = P.tiles();
-    el.editor.value = P.LIBRARY.filter(function (p) { return p.id === 'twill22'; })[0].dsl;
+    var saved = loadDraft();
+    el.editor.value = saved && saved.code ? saved.code :
+      P.LIBRARY.filter(function (p) { return p.id === 'twill22'; })[0].dsl;
+    if (saved) {
+      if (saved.view === 'drawdown') state.view = 'drawdown';
+      state.grid = !!saved.grid;
+      el.chkGrid.checked = state.grid;
+    }
+    Array.prototype.forEach.call(el.viewSeg.querySelectorAll('button'), function (b) {
+      b.classList.toggle('active', b.dataset.view === state.view);
+    });
     updateGutter();
     bind();
+    bindMobileTabs();
     run();
+    window.addEventListener('beforeunload', saveDraft);
     requestAnimationFrame(loop);
   }
 

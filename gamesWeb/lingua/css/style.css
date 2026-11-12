@@ -207,4 +207,43 @@ footer {
 .intro-tip { font-size: 13px; color: var(--ink2); background: rgba(139,90,43,.08); border-radius: 8px; padding: 8px 12px; }
 .intro-card button { width: 100%; font-size: 15px; padding: 10px; margin-top: 14px; }
 
-@media (max-width: 900px) { main { grid-template-columns: 1fr; } header { position: static; } }
+@media (max-width: 900px) {
+  html, body { height: auto; min-height: 100%; }
+  body { overflow-x: hidden; }
+  header { position: static; padding: 10px 12px; gap: 7px; }
+  .logo { font-size: 22px; }
+  .logo span { font-size: 11px; letter-spacing: 2px; margin-left: 7px; }
+  .lang-title { max-width: calc(100% - 120px); font-size: 14px; padding: 3px 10px; }
+  .controls { margin-left: 0; width: 100%; gap: 5px; }
+  .ach-counter { font-size: 12px; padding: 3px 8px; }
+  .controls select { flex: 1 1 130px; max-width: 100%; font-size: 12px; }
+  .controls button { font-size: 11px; padding: 5px 8px; }
+  main { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 10px; min-height: 0; flex: 0 0 auto; }
+  .hall-left, .hall-right { min-width: 0; padding: 10px; }
+  .panel-title { font-size: 14px; letter-spacing: 2px; }
+  #treeCanvas { flex: none; height: 310px; min-height: 0; }
+  .tree-legend { gap: 3px 6px; font-size: 11px; }
+  .legend-chip { padding: 2px 6px; }
+  .timeline { flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+  .timeline input { flex: 1 1 130px; min-width: 0; }
+  #epochLabel { font-size: 12px; }
+  .timeline #btnPlay { padding: 5px 10px; font-size: 12px; }
+  .speed button { padding: 4px 7px; font-size: 11px; }
+  .era-chips { max-height: 96px; overflow-y: auto; gap: 5px; margin-top: 6px; padding-right: 2px; }
+  .era-chip { font-size: 11px; padding: 2px 8px; }
+  .hint { font-size: 11px; line-height: 1.6; margin-top: 6px; }
+  .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-bottom: 8px; }
+  .tabs button { min-width: 0; padding: 7px 3px; font-size: 11.5px; line-height: 1.25; }
+  .tabwrap { overflow-y: visible; padding-right: 0; }
+  .tab { padding-right: 0; overflow-x: auto; }
+  .tab table { font-size: 12px; }
+  .tab th, .tab td { padding: 3px 4px; }
+  .searchbar { gap: 5px; }
+  .searchbar input { font-size: 12px; padding: 6px 8px; }
+  .cat-filters { gap: 4px; }
+  .phoneme { font-size: 11px; padding: 6px 8px; line-height: 1.6; }
+  footer { padding: 10px 12px; }
+  .gallery { gap: 6px; }
+  .g-item { font-size: 12px; padding: 3px 8px; }
+  .btn-top { position: fixed; right: 10px; bottom: 10px; left: auto; margin: 0; }
+}

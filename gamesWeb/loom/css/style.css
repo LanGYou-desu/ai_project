@@ -273,12 +273,97 @@ kbd {
 ::-webkit-scrollbar-thumb { background: rgba(232,220,196,.16); border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(232,220,196,.28); }
 
+/* ================= 移动端视图切换 ================= */
+.mobile-tabs { display: none; }
+
 @media (max-width: 1180px) {
   .layout { grid-template-columns: 330px 1fr 300px; }
 }
+
 @media (max-width: 940px) {
-  html, body { overflow: auto; }
-  .layout { grid-template-columns: 1fr; height: auto; }
-  .panel { height: 70vh; }
-  .topbar { flex-wrap: wrap; }
+  html, body { height: 100dvh; overflow: hidden; }
+  body { display: flex; flex-direction: column; }
+  .topbar { flex: 0 0 auto; flex-wrap: wrap; gap: 7px; padding: 8px 10px; }
+  .brand { gap: 8px; }
+  .logo { font-size: 22px; }
+  .brand-text h1 { font-size: 17px; letter-spacing: .12em; }
+  .brand-text p { display: none; }
+  .tools { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tools .sel { flex: 1 1 calc(50% - 3px); min-width: 0; }
+  .tools .sel span { display: none; }
+  .tools .sel select { width: 100%; min-width: 0; }
+  .tools button { flex: 0 1 auto; padding: 6px 8px; font-size: 11px; }
+  .tools button.primary { flex: 1 1 auto; }
+  .tools kbd { display: none; }
+  .tools button.icon { width: 32px; flex: 0 0 32px; }
+
+  .mobile-tabs {
+    flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 4px; padding: 6px 8px; background: #14100c;
+    border-bottom: 1px solid var(--line);
+  }
+  .mobile-tabs button {
+    border: 1px solid var(--line); background: transparent; color: var(--muted);
+    padding: 8px 4px; font-size: 12px; border-radius: 7px;
+  }
+  .mobile-tabs button.active {
+    color: var(--brass); border-color: rgba(200,162,74,.5);
+    background: rgba(200,162,74,.1);
+  }
+
+  .layout {
+    flex: 1 1 auto; min-height: 0; height: auto;
+    grid-template-columns: 1fr; gap: 0; padding: 8px;
+  }
+  .panel { height: 100%; border-radius: 8px; }
+  body[data-mtab="editor"] .stage-panel,
+  body[data-mtab="editor"] .side-panel { display: none; }
+  body[data-mtab="fabric"] .editor-panel,
+  body[data-mtab="fabric"] .side-panel { display: none; }
+  body[data-mtab="analysis"] .editor-panel,
+  body[data-mtab="analysis"] .stage-panel { display: none; }
+
+  .panel-head { flex-wrap: wrap; gap: 6px; padding: 7px 9px; }
+  .panel-head h2 { font-size: 10px; }
+  .panel-head .zoom { margin-left: auto; }
+  .panel-head .seg button { padding: 4px 7px; font-size: 11px; }
+  .panel-head .chk { font-size: 11px; }
+  .zoom button { padding: 4px 7px; font-size: 11px; }
+  .zoom span { min-width: 34px; }
+
+  .stage { touch-action: none; }
+  .hint { font-size: 9px; left: 8px; bottom: 6px; }
+  .dock { flex: 0 0 210px; }
+  .dock.tall { flex: 0 0 250px; }
+  .dock-tabs { padding: 4px 6px 0; }
+  .dock-tabs button { padding: 5px 8px; font-size: 11px; }
+  .loom-controls { right: 6px; top: 5px; gap: 5px; padding: 4px 6px; }
+  .loom-controls button { padding: 4px 7px; font-size: 11px; }
+  .loom-controls input[type="range"] { width: 60px; }
+
+  .editor-wrap { min-height: 0; }
+  #editor { font-size: 12px; line-height: 18px; padding: 9px; }
+  .gutter { flex-basis: 34px; padding: 9px 6px 9px 0; font-size: 12px; line-height: 18px; }
+  .diagnostics { max-height: 92px; padding: 6px 9px; font-size: 11px; }
+
+  .side-body { padding: 8px; gap: 8px; }
+  .card { padding: 9px 10px; }
+  .overlay { padding: 12px; }
+  .overlay-card { max-height: 90vh; }
+}
+
+@media (max-width: 500px) {
+  .dock { flex: 0 0 178px; }
+  .dock.tall { flex: 0 0 224px; }
+  .panel-head .seg button { padding: 3px 6px; font-size: 10px; }
+  .panel-head .chk { font-size: 10px; }
+  .panel-head .zoom button { padding: 3px 6px; }
+  .panel-head .zoom span { min-width: 30px; font-size: 10px; }
+  .tools button { padding: 6px; font-size: 10px; }
+  .tools button.icon { width: 30px; flex-basis: 30px; }
+  .spec-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }

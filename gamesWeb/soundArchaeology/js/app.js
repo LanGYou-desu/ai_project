@@ -34,6 +34,296 @@
   const prefersReducedMotion = () =>
     !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
+  /* ==================== 启动画面动画 ==================== */
+
+  function initBootVisuals() {
+    const cv = $('boot-canvas');
+    const bars = $('boot-bars');
+    if (bars && !bars.childElementCount) {
+      for (let i = 0; i < 48; i++) {
+        const s = document.createElement('span');
+        s.style.setProperty('--d', (0.55 + Math.random() * 1.1).toFixed(2) + 's');
+        s.style.setProperty('--delay', (Math.random() * 1.2).toFixed(2) + 's');
+        bars.appendChild(s);
+      }
+    }
+
+    const reduce = prefersReducedMotion();
+    const g = cv && cv.getContext ? cv.getContext('2d') : null;
+    let W = 0, H = 0, dpr = 1;
+
+    function resize() {
+      if (!cv || !g) return;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      cv.width = Math.max(2, Math.floor(W * dpr));
+      cv.height = Math.max(2, Math.floor(H * dpr));
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (reduce) draw(0);
+    }
+
+    function waveLine(yBase, amp, freq, phase, speed, t, alpha, width) {
+      g.beginPath();
+      const step = W < 600 ? 3 : 2;
+      for (let x = 0; x <= W + step; x += step) {
+        const k = x / Math.max(W, 1);
+        const env = Math.sin(Math.PI * Math.min(1, Math.max(0, k)));
+        const v =
+          Math.sin(k * freq + t * speed + phase) * 0.62 +
+          Math.sin(k * freq * 2.37 - t * speed * 0.73 + phase) * 0.26 +
+          Math.sin(k * freq * 0.31 + t * speed * 1.61) * 0.12;
+        const y = yBase + v * amp * env;
+        if (x === 0) g.moveTo(x, y);
+        else g.lineTo(x, y);
+      }
+      g.strokeStyle = 'rgba(61,255,138,' + alpha + ')';
+      g.lineWidth = width;
+      g.shadowColor = 'rgba(61,255,138,.55)';
+      g.shadowBlur = 12;
+      g.stroke();
+      g.shadowBlur = 0;
+    }
+
+    function draw(t) {
+      if (!g || !W || !H) return;
+      g.clearRect(0, 0, W, H);
+
+      // 细网格
+      const grid = W < 600 ? 38 : 62;
+      g.lineWidth = 1;
+      g.strokeStyle = 'rgba(61,255,138,.045)';
+      g.beginPath();
+      for (let x = 0; x < W; x += grid) { g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, H); }
+      for (let y = 0; y < H; y += grid) { g.moveTo(0, y + 0.5); g.lineTo(W, y + 0.5); }
+      g.stroke();
+
+      // 主示波与副示波
+      waveLine(H * 0.73, H < 620 ? 26 : 54, 9, 0, 1.15, t, 0.34, 1.6);
+      waveLine(H * 0.73, H < 620 ? 13 : 23, 19, 1.9, 2.4, t, 0.15, 1);
+      waveLine(H * 0.29, H < 620 ? 9 : 17, 13, 3.1, 0.7, t, 0.1, 1);
+
+      // 扫描线
+      const sx = (t * (W < 600 ? 34 : 62)) % (W + 120) - 60;
+      const grad = g.createLinearGradient(sx - 26, 0, sx + 26, 0);
+      grad.addColorStop(0, 'rgba(61,255,138,0)');
+      grad.addColorStop(0.5, 'rgba(61,255,138,.12)');
+      grad.addColorStop(1, 'rgba(61,255,138,0)');
+      g.fillStyle = grad;
+      g.fillRect(sx - 26, 0, 52, H);
+
+      // 偶发信号点
+      const blob = Math.pow(Math.max(0, Math.sin(t * 0.9)), 8);
+      if (blob > 0.3) {
+        const bx = W * (0.2 + 0.6 * ((t * 0.07) % 1));
+        g.beginPath();
+        g.arc(bx, H * 0.73, 2 + blob * 3, 0, Math.PI * 2);
+        g.fillStyle = 'rgba(255,209,102,' + (0.25 + blob * 0.45) + ')';
+        g.fill();
+      }
+    }
+
+    function frame(ts) {
+      if (!bootVisible) return;
+      draw(ts / 1000);
+      bootRaf = requestAnimationFrame(frame);
+    }
+
+    resize();
+    window.addEventListener('resize', resize);
+    if (!reduce) {
+      bootRaf = requestAnimationFrame(frame);
+    } else {
+      draw(0);
+    }
+
+    // 读数抖动 + 计时
+    let elapsed = 0;
+    function tick() {
+      if (!bootVisible) return;
+      elapsed++;
+      const freq = 87.56 + Math.random() * 0.09;
+      const gain = -12.4 + (Math.random() - 0.5) * 0.7;
+      const noise = -94 - Math.random() * 2;
+      if ($('boot-freq')) $('boot-freq').textContent = freq.toFixed(2);
+      if ($('boot-gain')) $('boot-gain').textContent = '−' + Math.abs(gain).toFixed(1) + ' dB';
+      if ($('boot-noise')) $('boot-noise').textContent = Math.round(noise) + ' dBFS';
+      if ($('boot-timer')) {
+        const hh = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+        const mm = String(Math.floor(elapsed / 60) % 60).padStart(2, '0');
+        const ss = String(elapsed % 60).padStart(2, '0');
+        $('boot-timer').textContent = hh + ':' + mm + ':' + ss;
+      }
+    }
+    bootInterval = setInterval(tick, 1000);
+
+    // 打字机
+    const msgs = [
+      'LINK ESTABLISHED // 87.60 MHz',
+      'DEMODULATING 6 EVIDENCE REELS ...',
+      'SPECTRAL RESIDUE DETECTED // AWAITING OPERATOR'
+    ];
+    let mi = 0, ci = 0;
+    function typeStep() {
+      if (!bootVisible) return;
+      const el = $('boot-type');
+      if (!el) return;
+      const msg = msgs[mi];
+      if (ci < msg.length) {
+        el.textContent = msg.slice(0, ++ci);
+        bootTypeTimer = setTimeout(typeStep, 34);
+      } else {
+        bootTypeTimer = setTimeout(() => {
+          mi = (mi + 1) % msgs.length;
+          ci = 0;
+          el.textContent = '';
+          typeStep();
+        }, 1800);
+      }
+    }
+    if (reduce) {
+      const el = $('boot-type');
+      if (el) el.textContent = msgs[0];
+    } else {
+      typeStep();
+    }
+  }
+
+  function stopBootVisuals() {
+    bootVisible = false;
+    if (bootRaf) { cancelAnimationFrame(bootRaf); bootRaf = 0; }
+    if (bootInterval) { clearInterval(bootInterval); bootInterval = 0; }
+    if (bootTypeTimer) { clearTimeout(bootTypeTimer); bootTypeTimer = 0; }
+  }
+
+  /* ==================== 移动端抽屉 / 新手引导 ==================== */
+
+  function isMobileWidth() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 900px)').matches);
+  }
+
+  function setDrawer(which) {
+    const left = $('case-list');
+    const right = $('evidence');
+    const backdrop = $('drawer-backdrop');
+    const openLeft = which === 'left';
+    const openRight = which === 'right';
+    if (left) left.classList.toggle('drawer-open', openLeft);
+    if (right) right.classList.toggle('drawer-open', openRight);
+    document.body.classList.toggle('drawer-open', openLeft || openRight);
+    if (backdrop) backdrop.classList.toggle('hidden', !(openLeft || openRight));
+    const bl = $('btn-open-cases'), br = $('btn-open-dossier');
+    if (bl && bl.setAttribute) bl.setAttribute('aria-expanded', openLeft ? 'true' : 'false');
+    if (br && br.setAttribute) br.setAttribute('aria-expanded', openRight ? 'true' : 'false');
+  }
+
+  function closeDrawers() { setDrawer(null); }
+
+  function bindDrawers() {
+    const bl = $('btn-open-cases');
+    const br = $('btn-open-dossier');
+    if (bl) bl.addEventListener('click', () => {
+      setDrawer(bl.getAttribute && bl.getAttribute('aria-expanded') === 'true' ? null : 'left');
+    });
+    if (br) br.addEventListener('click', () => {
+      setDrawer(br.getAttribute && br.getAttribute('aria-expanded') === 'true' ? null : 'right');
+    });
+    const backdrop = $('drawer-backdrop');
+    if (backdrop) backdrop.addEventListener('click', closeDrawers);
+
+    document.querySelectorAll('[data-drawer-close]').forEach((b) => {
+      b.addEventListener('click', closeDrawers);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.body.classList.contains('drawer-open')) {
+        closeDrawers();
+      }
+    });
+    window.addEventListener('resize', () => {
+      if (!isMobileWidth()) closeDrawers();
+    });
+  }
+
+  const TUT_STEPS = [
+    {
+      title: '先听，再拆',
+      text: '按 <b>空格</b> 或点播放键，先原速听一遍。再用<b>倒放、变速、滤波</b>寻找藏在噪音里的异常。',
+      target: 'btn-play'
+    },
+    {
+      title: '让声音现形',
+      text: '波形上点击任意位置可<b>跳转</b>；频谱图会画出频率随时间的变化，摩斯与隐形文字都藏在这里。',
+      target: 'wave'
+    },
+    {
+      title: '把发现变成结论',
+      text: '物证、案情与提示都在<b>卷宗</b>里。把结论输入提交框；卡住时点「提示」——每题最多三条。',
+      target: null
+    }
+  ];
+
+  let tutIndex = 0;
+  let tutTarget = null;
+
+  function clearTutTarget() {
+    if (tutTarget && tutTarget.classList) tutTarget.classList.remove('tut-target');
+    document.querySelectorAll('.tut-target').forEach((el) => el.classList.remove('tut-target'));
+    tutTarget = null;
+  }
+
+  function renderTutorial() {
+    clearTutTarget();
+    const step = TUT_STEPS[tutIndex];
+    const isLast = tutIndex === TUT_STEPS.length - 1;
+    const targetId = step.target || (isMobileWidth() ? 'btn-open-dossier' : 'ans-input');
+    tutTarget = $(targetId);
+    if (tutTarget) {
+      tutTarget.classList.add('tut-target');
+      if (isMobileWidth()) {
+        try { tutTarget.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' }); } catch (e) { /* ignore */ }
+      }
+    }
+    $('tut-title').textContent = step.title;
+    $('tut-text').innerHTML = step.text;
+    $('tut-step').textContent = String(tutIndex + 1).padStart(2, '0') + ' / ' + String(TUT_STEPS.length).padStart(2, '0');
+    $('tut-prev').disabled = tutIndex === 0;
+    $('tut-next').textContent = isLast ? '完成 ✓' : '下一步 ▸';
+    const dots = $('tut-dots');
+    dots.innerHTML = '';
+    TUT_STEPS.forEach((_, i) => {
+      const d = document.createElement('span');
+      d.className = 'tut-dot' + (i === tutIndex ? ' on' : '');
+      dots.appendChild(d);
+    });
+  }
+
+  function closeTutorial() {
+    clearTutTarget();
+    $('tutorial').classList.add('hidden');
+    try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch (e) { /* ignore */ }
+  }
+
+  function showTutorial(force) {
+    let seen = false;
+    try { seen = localStorage.getItem(TUTORIAL_KEY) === '1'; } catch (e) { /* ignore */ }
+    if (seen && !force) return;
+    tutIndex = 0;
+    renderTutorial();
+    $('tutorial').classList.remove('hidden');
+  }
+
+  function bindTutorial() {
+    $('tut-prev').addEventListener('click', () => {
+      if (tutIndex > 0) { tutIndex--; renderTutorial(); }
+    });
+    $('tut-next').addEventListener('click', () => {
+      if (tutIndex < TUT_STEPS.length - 1) { tutIndex++; renderTutorial(); }
+      else closeTutorial();
+    });
+    $('tut-skip').addEventListener('click', closeTutorial);
+    const help = $('help-btn');
+    if (help) help.addEventListener('click', () => showTutorial(true));
+  }
 
   function loadProgress() {
     try {
@@ -135,7 +425,16 @@
 
   // ---------- 启动 ----------
 
+  initBootVisuals();
+
   $('boot-btn').addEventListener('click', async () => {
+    if (bootStarted) return;
+    bootStarted = true;
+    const bootEl = $('boot');
+    bootEl.classList.add('is-entering');
+    $('boot-btn').disabled = true;
+    $('boot-skip').disabled = true;
+    $('boot-status').textContent = 'SYSTEM LINK // 正在建立音频链路…';
     try {
       const AudioCtxCtor = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtxCtor) {
@@ -161,14 +460,19 @@
         voiceSr = v.sr;
       }
 
+      stopBootVisuals();
       $('boot').classList.add('hidden');
       $('app').classList.remove('hidden');
+      $('app').classList.add('app-enter');
       views.wave._resize();
       views.spec._resize();
       views.start();
       wireInstruments();
+      bindDrawers();
+      bindTutorial();
       renderCaseList();
       openCase(lastActiveId());
+      setTimeout(() => showTutorial(false), 650);
 
       // 自检：真实播放并采样抓取的音频流，验证音频确实在流动
       if (SELFTEST) {
@@ -194,9 +498,25 @@
         }, 400);
       }
     } catch (err) {
+      bootStarted = false;
+      bootEl.classList.remove('is-entering');
+      $('boot-btn').disabled = false;
+      $('boot-skip').disabled = false;
+      $('boot-status').textContent = 'SYSTEM READY // 等待接入';
       const msg = '启动失败: ' + (err && err.message ? err.message : err);
       if (SELFTEST) selftestReport('BOOT-FAIL: ' + msg);
       else alert(msg);
+    }
+  });
+
+  $('boot-skip').addEventListener('click', () => {
+    if (!bootStarted) $('boot-btn').click();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && bootVisible) {
+      e.preventDefault();
+      if (!bootStarted) $('boot-btn').click();
     }
   });
 
@@ -221,7 +541,11 @@
 
   function renderCaseList() {
     const el = $('case-list');
-    el.innerHTML = '<h3>案件列表</h3>';
+    el.innerHTML =
+      '<div class="case-head"><h3>案件列表</h3>' +
+      '<button class="drawer-close" type="button" data-drawer-close aria-label="关闭卷宗">✕</button></div>';
+    const closeBtn = el.querySelector('[data-drawer-close]');
+    if (closeBtn) closeBtn.addEventListener('click', closeDrawers);
     let unlocked = true;
     for (const id of CASE_ORDER) {
       const c = CASES[id];
@@ -247,6 +571,7 @@
 
   function openCase(id) {
     if (!CASES[id]) return;
+    closeDrawers();
     currentCaseId = id;
     progress.last = id;
     saveProgress(progress);

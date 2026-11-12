@@ -29,7 +29,7 @@
   }
 
   /* ---------- 网络图 ---------- */
-  function drawGraph(ctx, editor, net, sel, wireSel, W, H) {
+  function drawGraph(ctx, editor, net, sel, wireSel, W, H, opts) {
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = C.bg;
     ctx.fillRect(0, 0, W, H);
@@ -38,6 +38,9 @@
     ctx.lineWidth = 1;
     for (let x = 0; x <= W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
     for (let y = 0; y <= H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+    const pulseActive = opts && opts.active;
+    const phase = (opts && opts.phase) || 0;
 
     // 连线（按权重着色：正青 / 负品红，线宽随 |w|）
     for (const e of editor.edges) {
@@ -55,6 +58,29 @@
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
+
+    // 训练中的前向信号：沿连线流动的光点
+    if (pulseActive) {
+      for (const e of editor.edges) {
+        const from = editor.node(e.from), to = editor.node(e.to);
+        if (!from || !to) continue;
+        const w = editor.getWeight(net, e);
+        const base = ((phase * 0.55 + (e.id * 0.137) % 1) % 1 + 1) % 1;
+        for (let k = 0; k < 3; k++) {
+          const t = (base - k * 0.055 + 1) % 1;
+          const fade = Math.sin(Math.PI * Math.min(1, Math.max(0, t)));
+          if (fade < 0.12) continue;
+          const x = from.pos.x + (to.pos.x - from.pos.x) * t;
+          const y = from.pos.y + (to.pos.y - from.pos.y) * t;
+          ctx.beginPath();
+          ctx.arc(x, y, k === 0 ? 2.3 : 1.4, 0, Math.PI * 2);
+          ctx.fillStyle = w >= 0 ? C.cyan : C.magenta;
+          ctx.globalAlpha = fade * (k === 0 ? 0.95 : 0.4);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
 
     // 节点
     for (const col of editor.layers) {

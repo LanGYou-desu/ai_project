@@ -330,3 +330,111 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--c
 .tab-pane .scrollable { flex: 1; min-height: 0; overflow-y: auto; }
 .tab-pane .output { max-height: none; }
 
+/* ---------- 2026 前端强化：开机 / 抽屉 / 移动端 ---------- */
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, a:focus-visible {
+  outline: 2px solid var(--cyan); outline-offset: 2px;
+}
+.drawer-btn { display: none; }
+#drawerOverlay { display: none; }
+#saveState { color: var(--green); font-size: 10px; margin-left: 4px; opacity: 0; transition: opacity .2s; }
+#saveState.show { opacity: 1; }
+#page { background-image: repeating-linear-gradient(0deg, rgba(0,0,0,.035) 0 1px, transparent 1px 3px); }
+.browser.era-switch { animation: eraSwitch .42s ease-out; }
+@keyframes eraSwitch {
+  0% { filter: brightness(2.2) saturate(.2); transform: scale(.995); }
+  45% { filter: brightness(.85) saturate(1.2); }
+  100% { filter: none; transform: none; }
+}
+.toast.ach { animation: achPop .5s cubic-bezier(.2,1.4,.4,1); box-shadow: 0 0 20px rgba(232,182,76,.35); }
+@keyframes achPop { 0% { transform: scale(.8); opacity: 0; } 60% { transform: scale(1.04); } 100% { transform: none; } }
+
+/* 开机过场 */
+#bootOverlay {
+  position: fixed; inset: 0; z-index: 200; background: #04070c;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: var(--mono); color: #5ee8df; cursor: pointer;
+  transition: opacity .45s ease; overflow: hidden;
+}
+#bootOverlay::before {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(90,230,220,.05) 0 1px, transparent 1px 4px);
+  pointer-events: none;
+}
+#bootOverlay.done { opacity: 0; pointer-events: none; }
+.boot-lines { font-size: 14px; line-height: 2.1; text-shadow: 0 0 12px rgba(94,232,223,.45); width: min(520px, 86vw); }
+.boot-lines div { opacity: 0; transform: translateY(4px); animation: bootLine .35s forwards; }
+.boot-lines div:nth-child(1) { animation-delay: .05s; }
+.boot-lines div:nth-child(2) { animation-delay: .35s; }
+.boot-lines div:nth-child(3) { animation-delay: .65s; }
+.boot-lines div:nth-child(4) { animation-delay: .95s; }
+.boot-lines b { color: #7fd96b; }
+.boot-cursor { animation: blink 1s steps(2) infinite; }
+.boot-skip { position: absolute; bottom: 28px; font-size: 11px; color: #4b6d7a; letter-spacing: 2px; }
+@keyframes bootLine { to { opacity: 1; transform: none; } }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* 移动端：左/右栏变为抽屉 */
+@media (max-width: 1100px) {
+  #layout { grid-template-columns: minmax(0, 1fr); padding: 8px; }
+  #left, #right {
+    position: fixed; top: 52px; bottom: 0; z-index: 60;
+    background: linear-gradient(180deg, #111722, #0c111a);
+    padding: 10px; box-shadow: 0 0 40px rgba(0,0,0,.65);
+    transition: transform .28s cubic-bezier(.22,.8,.3,1);
+  }
+  #left { left: 0; width: min(330px, 88vw); transform: translateX(-105%); border-right: 1px solid var(--line2); }
+  #right { right: 0; width: min(370px, 92vw); transform: translateX(105%); border-left: 1px solid var(--line2); }
+  body.left-open #left { transform: none; }
+  body.right-open #right { transform: none; }
+  #drawerOverlay {
+    display: block; position: fixed; inset: 52px 0 0; z-index: 55;
+    background: rgba(3,7,12,.62); backdrop-filter: blur(2px);
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  body.left-open #drawerOverlay, body.right-open #drawerOverlay { opacity: 1; pointer-events: auto; }
+  .drawer-btn { display: inline-flex; align-items: center; gap: 4px; }
+  .drawer-close {
+    display: flex !important; align-items: center; justify-content: center;
+    width: 100%; margin-bottom: 4px; font-size: 12px; padding: 6px;
+    background: transparent; color: var(--dim); border: 1px dashed var(--line2);
+  }
+  .drawer-close:hover { color: var(--cyan); }
+}
+.drawer-close { display: none; }
+
+@media (max-width: 720px) {
+  #topbar { padding: 0 10px; gap: 6px; }
+  .brand { font-size: 15px; letter-spacing: 0; }
+  .brand span { display: none; }
+  .topbtns { display: flex; align-items: center; gap: 2px; }
+  .topbtns button { padding: 6px 8px; font-size: 12px; margin-left: 0; }
+  #btnReset { display: none; }
+  #layout { padding: 6px; gap: 8px; }
+  #center { min-height: 0; }
+  .toolbar { flex-wrap: wrap; gap: 4px; padding: 6px; }
+  .toolbar button { padding: 5px 7px; font-size: 11px; }
+  #btnSource { order: 5; }
+  #urlBar { order: 10; flex: 1 1 100%; min-width: 0; }
+  #btnGo { order: 11; }
+  #searchBox { order: 12; flex: 1 1 40%; width: auto; }
+  #btnSearch { order: 13; }
+  #statusBar { font-size: 10px; padding: 5px 8px; }
+  .browser-titlebar { padding: 6px 8px; font-size: 12px; }
+  .panel { padding: 9px 10px; }
+  .era-btn { padding: 8px; }
+  .clue-time { display: none; }
+  .modal-box { width: 92vw; max-height: 86vh; overflow-y: auto; padding: 18px; }
+  .toast { max-width: 86vw; }
+}
+
+@media (max-width: 420px) {
+  .topbtns button { padding: 6px 7px; }
+  #btnHelp { display: none; }
+  .win-brand { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+  .tab { font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+

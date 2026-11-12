@@ -97,6 +97,35 @@ body {
 .empty-tip { color: var(--ink-soft); padding: 20px; text-align: center; font-size: 15px; }
 
 /* ---------- 剧情章节列表 ---------- */
+.story-hero {
+  position: relative; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 18px 20px; margin-bottom: 14px; overflow: hidden;
+  border: 1px solid rgba(138,40,24,0.28); border-radius: 8px;
+  background:
+    radial-gradient(circle at 85% 20%, rgba(138,40,24,0.08), transparent 55%),
+    rgba(255,255,255,0.38);
+  box-shadow: inset 0 0 40px rgba(90,60,30,0.05);
+}
+.story-hero::after {
+  content: '墨'; position: absolute; right: 24px; top: 50%;
+  transform: translateY(-50%); font-size: 128px; line-height: 1;
+  color: rgba(42,32,24,0.05); pointer-events: none;
+}
+.sh-seal {
+  width: 46px; height: 46px; flex: 0 0 46px; border-radius: 5px;
+  background: var(--cinnabar); color: var(--paper);
+  font-size: 26px; line-height: 46px; text-align: center;
+  box-shadow: 0 3px 10px rgba(138,40,24,0.28); transform: rotate(-2deg);
+}
+.sh-copy { flex: 1; min-width: 160px; position: relative; z-index: 1; }
+.sh-kicker { font-size: 11px; letter-spacing: 0.22em; color: var(--ink-soft); }
+.sh-title { font-size: 24px; letter-spacing: 0.12em; margin-top: 2px; }
+.sh-eph { font-size: 13px; color: var(--ink-soft); margin-top: 3px; line-height: 1.6; }
+.sh-stats { display: flex; gap: 20px; position: relative; z-index: 1; }
+.sh-stat { text-align: center; }
+.sh-stat b { display: block; font-size: 22px; color: var(--cinnabar); line-height: 1.2; }
+.sh-stat span { font-size: 11px; color: var(--ink-soft); letter-spacing: 0.08em; }
+.sh-cta { position: relative; z-index: 1; padding: 9px 18px; font-size: 15px; }
 .story-list { display: flex; flex-direction: column; gap: 10px; }
 .story-item {
   display: flex; align-items: center; gap: 14px;
@@ -116,11 +145,15 @@ body {
 .ending-card {
   border: 1px dashed rgba(42,32,24,0.3); border-radius: 6px; padding: 12px;
   background: rgba(255,255,255,0.25); min-height: 90px;
+  display: flex; flex-direction: column;
 }
 .ending-card.got { border-style: solid; border-color: rgba(184,145,46,0.6); background: rgba(184,145,46,0.08); }
 .ec-name { font-size: 17px; font-weight: 700; }
-.ec-grade { display: inline-block; margin: 4px 0; font-size: 12px; color: #f6f1e3; background: var(--gold); padding: 1px 8px; border-radius: 8px; }
-.ec-desc { color: var(--ink-soft); font-size: 13px; line-height: 1.6; }
+.ec-grade { display: inline-block; align-self: flex-start; margin: 4px 0; font-size: 12px; color: #f6f1e3; background: var(--gold); padding: 1px 8px; border-radius: 8px; }
+.ec-desc {
+  color: var(--ink-soft); font-size: 13px; line-height: 1.6;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
 
 /* ---------- 无尽 ---------- */
 .endless-desc { color: var(--ink-soft); line-height: 1.9; margin-bottom: 16px; }
@@ -205,16 +238,22 @@ body {
 
 /* ---------- 战斗 ---------- */
 .battle-wrap { position: relative; width: 100%; height: calc(100vh - 48px); min-height: 480px; border-radius: 8px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
-#battle-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+.battle-wrap::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 48%, rgba(42,32,24,0.16) 100%),
+    linear-gradient(180deg, rgba(42,32,24,0.1), transparent 26%);
+}
+#battle-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; position: relative; z-index: 0; }
 #battle-hud {
-  position: absolute; top: 0; left: 0; right: 0;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2;
   padding: 10px 16px; pointer-events: none;
-  background: linear-gradient(to bottom, rgba(42,32,24,0.35), transparent);
+  background: linear-gradient(180deg, rgba(42,32,24,0.42) 0, rgba(42,32,24,0.2) 96px, transparent 200px);
 }
 .hud-top { display: flex; align-items: center; gap: 10px; }
 .hud-btn { pointer-events: auto; background: rgba(246,241,227,0.85); }
-.hud-title { flex: 1; text-align: center; color: #f6f1e3; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-.hud-title #battle-title { font-size: 20px; letter-spacing: 0.2em; }
+.hud-title { flex: 1; text-align: center; color: #f6f1e3; text-shadow: 0 1px 3px rgba(0,0,0,0.5); min-width: 0; }
+.hud-title #battle-title { font-size: 20px; letter-spacing: 0.2em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hud-sub { font-size: 12px; opacity: 0.85; }
 .hud-mid { display: flex; gap: 18px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
 .hud-hp { flex: 1; min-width: 200px; }
@@ -290,9 +329,59 @@ body {
 /* ---------- 响应式 ---------- */
 @media (max-width: 640px) {
   .screen { padding: 12px; }
-  .menu-buttons .btn-big { min-width: 100%; }
-  .hud-stats { font-size: 12px; gap: 8px; flex-wrap: wrap; }
+  .menu-wrap { padding: 3vh 10px 28px; }
+  .menu-buttons { gap: 9px; }
+  .menu-buttons .btn-big { min-width: 100%; padding: 12px 14px; font-size: 17px; }
+  .menu-row { gap: 8px; }
+  .menu-row .btn { flex: 1 1 calc(50% - 8px); min-width: 0; padding: 9px 6px; font-size: 14px; }
+  .menu-status { gap: 4px 14px; font-size: 12px; margin: 14px 0; }
   .game-title { font-size: 38px; }
+  .game-sub { font-size: 12px; }
+  .game-verse { font-size: 13px; }
+  .sub-head { font-size: 16px; margin-top: 20px; }
+  .panel-head { gap: 8px; }
+  .panel-head h2 { font-size: 20px; }
+  .panel-note { display: none; }
+  .story-hero { gap: 10px; padding: 12px; }
+  .sh-seal { width: 38px; height: 38px; flex-basis: 38px; font-size: 22px; line-height: 38px; }
+  .sh-copy { flex-basis: calc(100% - 54px); }
+  .sh-title { font-size: 19px; }
+  .sh-eph { font-size: 12px; }
+  .sh-stats { order: 3; flex: 1; justify-content: space-around; gap: 8px; padding-top: 4px; }
+  .sh-stat b { font-size: 18px; }
+  .sh-cta { order: 4; width: 100%; }
+  .story-hero::after { font-size: 90px; right: 8px; }
+  .story-item { padding: 10px 12px; gap: 10px; }
+  .si-no { font-size: 17px; }
+  .si-title { font-size: 16px; }
+  .si-eph { font-size: 12px; line-height: 1.5; }
+  .si-btn { font-size: 12px; padding: 3px 9px; }
+  .ending-list { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ending-card { min-height: 74px; padding: 9px; }
+  .ec-name { font-size: 15px; }
+  .ec-desc { font-size: 12px; -webkit-line-clamp: 3; }
+
+  /* 战斗 HUD：紧凑顶栏 + 全宽血条 */
+  #screen-battle { padding: 0; }
+  .battle-wrap { height: 100vh; height: 100dvh; min-height: 0; border-radius: 0; }
+  #battle-hud { padding: 8px 9px; }
+  .hud-top { gap: 5px; }
+  .hud-btn { font-size: 12px; padding: 6px 8px; letter-spacing: 0; }
+  .hud-title #battle-title { font-size: 15px; letter-spacing: 0.08em; }
+  .hud-sub { display: none; }
+  .hud-mid { margin-top: 6px; gap: 5px; }
+  .hud-hp { flex: 1 1 100%; min-width: 0; }
+  .hp-label { font-size: 11px; margin-bottom: 2px; }
+  .hp-track { height: 10px; }
+  .hud-stats { width: 100%; justify-content: space-between; font-size: 11px; gap: 4px; flex-wrap: nowrap; }
+  .hud-stats .combo { font-size: 13px; }
+  #boss-bar { margin-top: 5px; }
+  #boss-name { font-size: 12px; }
+  .hud-hint {
+    bottom: 12px; max-width: calc(100% - 18px); white-space: normal;
+    text-align: center; font-size: 11px; line-height: 1.45; padding: 6px 10px;
+  }
+  .pause-box { padding: 20px 26px; width: calc(100% - 40px); max-width: 340px; }
 }
 
 /* ---------- 暂停覆盖层 ---------- */
@@ -300,6 +389,7 @@ body {
   position: absolute; inset: 0; z-index: 50;
   display: none; align-items: center; justify-content: center;
   background: rgba(30,22,14,0.45); backdrop-filter: blur(2px);
+  pointer-events: auto;
 }
 .pause-overlay.open { display: flex; }
 .pause-box {

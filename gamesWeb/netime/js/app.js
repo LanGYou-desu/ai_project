@@ -10,12 +10,68 @@
   var E = window.NetEngine, P = window.NetPuzzle, S = window.Story;
 
   /* ==================== 工具函数 ==================== */
+  /* ---------- 轻量音效（WebAudio，无素材） ---------- */
+  var audioCtx = null;
+  var muted = false;
+  try { muted = localStorage.getItem('netime_muted') === '1'; } catch (e) { /* ignore */ }
+
+  function ensureAudio() {
+    if (muted) return null;
+    try {
+      if (!audioCtx) {
+        var Ctor = window.AudioContext || window.webkitAudioContext;
+        if (!Ctor) return null;
+        audioCtx = new Ctor();
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    } catch (e) { return null; }
+  }
+
+  function tone(freq, dur, type, gain, endFreq, delay) {
+    var ac = ensureAudio();
+    if (!ac) return;
+    var t0 = ac.currentTime + (delay || 0);
+    var osc = ac.createOscillator();
+    var g = ac.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain || 0.05, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g);
+    g.connect(ac.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+
+  function sfx(kind) {
+    if (muted) return;
+    if (kind === 'nav') { tone(520, 0.06, 'square', 0.018, 700); }
+    else if (kind === 'ok' || kind === 'clue') { tone(660, 0.1, 'sine', 0.04, 880); tone(1040, 0.16, 'sine', 0.035, 1320, 0.08); }
+    else if (kind === 'ach') { tone(523, 0.12, 'triangle', 0.045); tone(659, 0.12, 'triangle', 0.045, 0, 0.1); tone(784, 0.24, 'triangle', 0.05, 0, 0.2); }
+    else if (kind === 'warn') { tone(220, 0.14, 'sawtooth', 0.025, 160); }
+    else { tone(440, 0.05, 'sine', 0.015); }
+  }
+
+  function flashSaved(text) {
+    var el = $('saveState');
+    if (!el) return;
+    el.textContent = text || '已保存';
+    el.classList.add('show');
+    clearTimeout(flashSaved._t);
+    flashSaved._t = setTimeout(function () { el.classList.remove('show'); }, 1600);
+  }
+
   function showToast(msg, type) {
     var wrap = $('toastWrap');
     var t = document.createElement('div');
     t.className = 'toast ' + (type || 'info');
     t.innerHTML = E.escapeHtml(msg);
     wrap.appendChild(t);
+    sfx(type === 'ok' || type === 'clue' ? type : type || 'info');
+    if (type === 'ok' || type === 'clue' || type === 'ach') flashSaved();
     setTimeout(function () { t.classList.add('out'); }, 3800);
     setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 4300);
   }
@@ -59,7 +115,10 @@
       if (locked) btn.classList.add('locked');
       if (solved) btn.classList.add('solved');
       btn.title = era.year + ' · ' + era.tagline;
-      btn.addEventListener('click', function () { switchEra(era.id); });
+      btn.addEventListener('click', function () {
+        switchEra(era.id);
+        closeDrawers();
+      });
       nav.appendChild(btn);
     });
   }
@@ -86,19 +145,25 @@
     // 只有「进入拨号年代」时才播拨号动画；年代内翻页 / 非拨号年代一律秒开
     if (isEraSwitch && eraDef && eraDef.dialup) {
       showLoading(['正在拨号连接……', '调制解调器握手……', '已连接 52.8 Kbps，正在下载页面……'], function () {
-        renderPage(page, query);
+        renderPage(page, query, true);
       });
     } else {
-      renderPage(page, query);
+      renderPage(page, query, false);
     }
   }
 
-  function renderPage(page, query) {
+  function renderPage(page, query, isEraSwitch) {
     var era = page.era || currentEra();
     E.state.era = era;
 
     // 浏览器外壳
     $('browser').className = 'browser era-' + era;
+    if (isEraSwitch) {
+      var browserEl = $('browser');
+      browserEl.classList.remove('era-switch');
+      void browserEl.offsetWidth;
+      browserEl.classList.add('era-switch');
+    }
     var brandEl = $('browserBrand');
     if (brandEl) brandEl.textContent = BRANDS[era] || 'NETIME';
     var tabEl = $('tabTitle');
@@ -447,9 +512,92 @@
       '<p class="dim">进度自动保存在浏览器 localStorage 中，可随时「重置进度」重玩。</p>';
   }
 
+  /* ==================== 抽屉 / 开机 / 快捷键 ==================== */
+  function closeDrawers() {
+    document.body.classList.remove('left-open', 'right-open');
+  }
+
+  function bindDrawers() {
+    var leftBtn = $('btnLeftDrawer');
+    var rightBtn = $('btnRightDrawer');
+    var overlay = $('drawerOverlay');
+    if (!leftBtn || !rightBtn) return;
+    leftBtn.addEventListener('click', function () {
+      document.body.classList.toggle('left-open');
+      document.body.classList.remove('right-open');
+    });
+    rightBtn.addEventListener('click', function () {
+      document.body.classList.toggle('right-open');
+      document.body.classList.remove('left-open');
+    });
+    if (overlay) overlay.addEventListener('click', closeDrawers);
+    // 给两个侧栏加移动端收起按钮
+    ['left', 'right'].forEach(function (id) {
+      var aside = $(id);
+      if (!aside) return;
+      var b = document.createElement('button');
+      b.className = 'drawer-close';
+      b.type = 'button';
+      b.textContent = '✕ 收起面板';
+      b.addEventListener('click', closeDrawers);
+      if (typeof aside.insertBefore === 'function') aside.insertBefore(b, aside.firstChild);
+      else if (typeof aside.appendChild === 'function') aside.appendChild(b);
+    });
+  }
+
+  function startBoot() {
+    var ov = $('bootOverlay');
+    if (!ov) return;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      ov.classList.add('done');
+      setTimeout(function () { if (ov.parentNode) ov.remove(); }, 520);
+    }
+    ov.addEventListener('click', finish);
+    setTimeout(finish, reduce ? 350 : 1900);
+  }
+
+  function bindShortcuts() {
+    document.addEventListener('keydown', function (e) {
+      var tag = (e.target && e.target.tagName || '').toLowerCase();
+      var typing = tag === 'input' || tag === 'textarea' || tag === 'select';
+      if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); $('btnBack').click(); return; }
+      if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); $('btnFwd').click(); return; }
+      if (e.key === 'Escape') {
+        closeDrawers();
+        hideModal('helpModal');
+        $('viewSourceOverlay').classList.add('hidden');
+        return;
+      }
+      if (typing) return;
+      if (e.key === '/') {
+        e.preventDefault();
+        var sb = $('searchBox');
+        if (sb) sb.focus();
+        return;
+      }
+      if (e.key === '?') {
+        e.preventDefault();
+        $('helpBody').innerHTML = buildHelp();
+        showModal('helpModal');
+        return;
+      }
+      if ((e.key === 's' || e.key === 'S') && !$('loadingOverlay').classList.contains('hidden')) {
+        var skip = $('loadingSkip');
+        if (skip) skip.click();
+      }
+    });
+  }
+
   /* ==================== 初始化 ==================== */
   function init() {
     P.init();
+    startBoot();
+    bindDrawers();
+    bindShortcuts();
     renderEraNav();
     bindTools();
     refreshClues();
@@ -507,6 +655,20 @@
       else { showToast('写点什么再保存吧。', 'warn'); }
     });
     $('btnSave').addEventListener('click', function () { P.save(); showToast('💾 进度已保存', 'ok'); });
+    var soundBtn = $('btnSound');
+    if (soundBtn) {
+      soundBtn.textContent = muted ? '🔇' : '🔊';
+      if (soundBtn.setAttribute) soundBtn.setAttribute('aria-pressed', muted ? 'false' : 'true');
+      soundBtn.addEventListener('click', function () {
+        muted = !muted;
+        try { localStorage.setItem('netime_muted', muted ? '1' : '0'); } catch (e) { /* ignore */ }
+        soundBtn.textContent = muted ? '🔇' : '🔊';
+        if (soundBtn.setAttribute) soundBtn.setAttribute('aria-pressed', muted ? 'false' : 'true');
+        if (!muted) sfx('ok');
+        showToast(muted ? '🔇 音效已关闭' : '🔊 音效已开启', 'info');
+      });
+    }
+    document.addEventListener('pointerdown', ensureAudio, { once: true });
     $('btnReset').addEventListener('click', function () {
       if (window.confirm('确定要重置全部进度吗？线索、密钥、成就都会被清空。')) {
         P.reset();

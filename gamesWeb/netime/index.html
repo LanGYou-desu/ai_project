@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NETIME 网络时光机 · 旧互联网考古</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📡</text></svg>">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/eras.css">
 </head>
@@ -12,8 +13,11 @@
 <header id="topbar">
   <div class="brand">📡 NETIME <span>网络时光机 · 旧互联网考古</span></div>
   <div class="topbtns">
+    <button id="btnLeftDrawer" class="drawer-btn" aria-label="打开年代与档案">☰ 档案</button>
+    <button id="btnRightDrawer" class="drawer-btn" aria-label="打开工具面板">🧰 工具</button>
     <button id="btnHelp">❓ 帮助</button>
-    <button id="btnSave">💾 保存</button>
+    <button id="btnSave">💾 保存<span id="saveState"></span></button>
+    <button id="btnSound" aria-label="切换音效">🔊</button>
     <button id="btnReset">♻ 重置</button>
   </div>
 </header>
@@ -118,6 +122,19 @@
     </section>
   </aside>
 </main>
+
+<div id="drawerOverlay" aria-hidden="true"></div>
+
+<!-- 开机过场 -->
+<div id="bootOverlay" aria-hidden="true">
+  <div class="boot-lines">
+    <div>NETIME BIOS v1.0 · 1995-2025</div>
+    <div>检测时间接口 .......... <b>OK</b></div>
+    <div>装载旧互联网档案 ...... <b>OK</b></div>
+    <div>信号源：archive.netvoice.cn <span class="boot-cursor">▌</span></div>
+  </div>
+  <div class="boot-skip">点击任意处跳过</div>
+</div>
 
 <!-- 开场白 -->
 <div id="introModal" class="modal hidden">

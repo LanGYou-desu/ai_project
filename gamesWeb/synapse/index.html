@@ -69,6 +69,15 @@
             <div class="stat"><span class="k">准确率</span><span class="v" id="st-acc">—</span></div>
           </div>
           <div class="progress"><div id="progress-bar"></div></div>
+          <div class="probe" id="probe-panel" hidden>
+            <div class="probe-head">🔮 试跑 <span>输入一个坐标，看网络此刻怎么判</span></div>
+            <div class="probe-row">
+              <label>x <input type="number" id="probe-x" step="0.1" value="0.5"></label>
+              <label>y <input type="number" id="probe-y" step="0.1" value="0.5"></label>
+              <button id="btn-probe" type="button">预测</button>
+            </div>
+            <div class="probe-out" id="probe-out">训练后点「预测」查看分类结果</div>
+          </div>
         </div>
         <div class="chart-head"><span>损失曲线</span><span id="loss-legend" class="legend"></span></div>
         <canvas id="loss-canvas"></canvas>

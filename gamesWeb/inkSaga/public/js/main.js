@@ -67,11 +67,13 @@
     const list = $('#story-list');
     list.innerHTML = '';
     let index = 0;
+    const unlockedChapters = [];
     for (const ch of STORY.chapters) {
       // 是否主线章节（分支也显示，但标记）
       const isBranch = ['ch2a', 'ch2b', 'ch5a', 'ch5b', 'ch6a', 'ch6b', 'ch6c'].includes(ch.id);
       const unlocked = ch.id === 'prologue' || cleared.some(cid => NEXT[cid] === ch.id) || cleared.includes(ch.id);
       if (!unlocked) continue;
+      unlockedChapters.push(ch);
       const item = document.createElement('div');
       item.className = 'story-item' + (cleared.includes(ch.id) ? ' done' : '');
       item.innerHTML = '<div class="si-no">' + String(index + 1).padStart(2, '0') + '</div>' +
@@ -86,6 +88,32 @@
     if (!list.children.length) {
       list.innerHTML = '<div class="empty-tip">暂无可用章节</div>';
     }
+
+    // 卷首：当前篇章 + 收集进度
+    let hero = $('#story-hero');
+    if (!hero) {
+      hero = document.createElement('div');
+      hero.id = 'story-hero';
+      hero.className = 'story-hero';
+      list.parentNode.insertBefore(hero, list);
+    }
+    const nextCh = unlockedChapters.find(ch => !cleared.includes(ch.id)) || unlockedChapters[unlockedChapters.length - 1];
+    const gotEnds = (st.story.endings || []).length;
+    const totalEnds = Object.keys(STORY.endings).length;
+    hero.innerHTML =
+      '<div class="sh-seal">卷</div>' +
+      '<div class="sh-copy">' +
+        '<div class="sh-kicker">INK-SAGA · 剧情卷宗</div>' +
+        '<div class="sh-title">' + (nextCh ? nextCh.title : '全卷已通') + '</div>' +
+        '<div class="sh-eph">' + (nextCh ? nextCh.epigraph : '所有篇章均已阅尽，可在下方重温任意一节。') + '</div>' +
+      '</div>' +
+      '<div class="sh-stats">' +
+        '<div class="sh-stat"><b>' + cleared.length + '</b><span>已历章节</span></div>' +
+        '<div class="sh-stat"><b>' + gotEnds + '/' + totalEnds + '</b><span>结局回廊</span></div>' +
+      '</div>' +
+      (nextCh ? '<button class="btn btn-primary sh-cta" type="button">' + (cleared.includes(nextCh.id) ? '再读此章' : '继续篇章') + ' →</button>' : '');
+    const cta = hero.querySelector('.sh-cta');
+    if (cta && nextCh) cta.onclick = () => startChapter(nextCh.id);
     // 结局回廊
     const ends = $('#ending-list');
     ends.innerHTML = '';
@@ -93,9 +121,10 @@
       const got = st.story.endings.includes(id);
       const item = document.createElement('div');
       item.className = 'ending-card ' + (got ? 'got' : '');
+      item.title = got ? e.desc : '';
       item.innerHTML = '<div class="ec-name">' + (got ? e.name : '？？？') + '</div>' +
         '<div class="ec-grade">' + (got ? e.grade : '?') + '</div>' +
-        '<div class="ec-desc">' + (got ? e.desc : '尚未达成') + '</div>';
+        '<div class="ec-desc">' + (got ? e.desc : (id === 'wenyin' ? '隐藏结局 · 需携某位故人同行' : '终章抉择 · 另一种答案')) + '</div>';
       ends.appendChild(item);
     }
   }
@@ -182,7 +211,10 @@
     $('#hud-qi').textContent = '0';
     $('#hud-score').textContent = '0';
     $('#boss-bar').style.display = 'none';
-    $('#hud-hint').textContent = '按住鼠标左键，在空中书写敌人头顶的字';
+    const coarse = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || ('ontouchstart' in window);
+    $('#hud-hint').textContent = coarse
+      ? '按住屏幕，在敌人头顶的淡墨字上描红'
+      : '按住鼠标左键，在敌人头顶的淡墨字上描红';
 
     const st = window.INK_SAVE.load();
     battle = new window.INK_BATTLE.Battle({
@@ -220,7 +252,7 @@
     $('#hud-combo').textContent = h.combo > 1 ? h.combo + ' 连墨' : '';
     $('#hud-qi').textContent = '文气 ' + h.qi;
     $('#hud-score').textContent = '墨迹 ' + h.score;
-    $('#hud-wave').textContent = h.wave;
+    $('#hud-wave').textContent = h.wave && h.wave !== $('#battle-title').textContent ? h.wave : '';
     const bb = $('#boss-bar');
     if (h.boss) {
       bb.style.display = 'block';

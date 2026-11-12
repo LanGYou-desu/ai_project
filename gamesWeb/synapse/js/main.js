@@ -68,7 +68,7 @@
     buildConceptCards();
     bindEvents();
     loadDataset(S.dsId);
-    window.addEventListener('resize', function () { fitAll(); draw(); });
+    window.addEventListener('resize', function () { layoutAndFit(); draw(); });
     S.raf = requestAnimationFrame(tick);
   }
 
@@ -183,6 +183,10 @@
     nc.addEventListener('contextmenu', onNetRightClick);
     // 井字棋画布
     $('viz-canvas').addEventListener('click', onVizClick);
+    // 试跑探针
+    $('btn-probe').addEventListener('click', function () { updateProbeResult(true); });
+    $('probe-x').addEventListener('change', function () { updateProbeResult(true); });
+    $('probe-y').addEventListener('change', function () { updateProbeResult(true); });
     // 存档
     $('btn-save').addEventListener('click', saveState);
     $('btn-load').addEventListener('click', function () { $('file-load').click(); });
@@ -191,6 +195,15 @@
       S.muted = !S.muted;
       audio.setMuted(S.muted);
       this.textContent = S.muted ? '🔇' : '🔊';
+    });
+    document.addEventListener('keydown', function (e) {
+      const tag = (e.target && e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'select' || tag === 'textarea' || tag === 'button') return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (S.running) $('btn-pause').click();
+        else $('btn-train').click();
+      }
     });
   }
 
@@ -236,7 +249,58 @@
     updateVizHead();
     $('ds-desc').textContent = d.desc;
     $('ds-select').value = id;
+    updateProbeUI();
     draw();
+  }
+
+  /* ================= 试跑探针 ================= */
+  function updateProbeUI() {
+    const d = DST[S.dsId];
+    const panel = $('probe-panel');
+    if (!panel) return;
+    const show = !!(d && d.viz === 'boundary' && S.dataset && S.dataset.inputs && S.dataset.inputs.length);
+    panel.hidden = !show;
+    if (!show) return;
+    const r = rangeOf(S.dataset);
+    const x = $('probe-x'), y = $('probe-y');
+    const step = Math.max(0.01, (r[1] - r[0]) / 40);
+    x.min = r[0].toFixed(2); x.max = r[1].toFixed(2); x.step = step.toFixed(2);
+    y.min = r[2].toFixed(2); y.max = r[3].toFixed(2); y.step = step.toFixed(2);
+    x.value = ((r[0] + r[1]) / 2).toFixed(2);
+    y.value = ((r[2] + r[3]) / 2).toFixed(2);
+    const out = $('probe-out');
+    if (out) {
+      out.textContent = '移动坐标或点「预测」，看当前网络把这一点分到哪边';
+      out.className = 'probe-out';
+    }
+  }
+
+  function updateProbeResult(force) {
+    if (!S.net || !S.dataset) return;
+    const d = DST[S.dsId];
+    if (!d || d.viz !== 'boundary') return;
+    const x = parseFloat($('probe-x').value);
+    const y = parseFloat($('probe-y').value);
+    const out = $('probe-out');
+    if (!out) return;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      out.textContent = '请输入有效坐标';
+      out.className = 'probe-out';
+      return;
+    }
+    let p;
+    try { p = S.net.predict([x, y])[0]; } catch (e) { return; }
+    if (!Number.isFinite(p)) {
+      out.textContent = '网络输出异常（NaN/Inf）';
+      out.className = 'probe-out';
+      return;
+    }
+    const magenta = p >= 0.5;
+    const conf = magenta ? p : 1 - p;
+    out.textContent = '输出 ' + p.toFixed(3) + ' → ' + (magenta ? '● 洋红类' : '● 青色类') +
+      '（置信度 ' + (conf * 100).toFixed(1) + '%）';
+    out.className = 'probe-out ' + (magenta ? 'b' : 'a');
+    if (force) audio.pop();
   }
 
   function writeHPInputs() {
@@ -279,6 +343,8 @@
     updateNetDims();
     updateStats();
     updateButtons();
+    const pp = $('probe-panel');
+    if (pp && !pp.hidden) updateProbeResult(false);
     if (S.dsId === 'tictactoe') newTTT(S.ttt ? S.ttt.userSide : 1);
     draw();
   }
@@ -289,7 +355,7 @@
     if (!S.trainer) return;
     if (S.trainer.state.done) {
       rebuildNet();
-      return;
+      if (!S.trainer || S.trainer.state.done) return;
     }
     S.running = true;
     updateButtons();
@@ -302,12 +368,13 @@
       S.milestones.shift();
       audio.milestone(e.loss);
     }
-    if (e.epoch % 25 === 0) draw();
+    if (e.epoch % 25 === 0) { draw(); updateProbeResult(false); }
   }
   function onDone() {
     S.running = false;
     updateButtons();
     draw();
+    updateProbeResult(false);
     if (S.trainer.state.diverged) {
       $('st-loss').textContent = '发散';
       audio.tone(180, 0.4, 'sawtooth', 0.05);
@@ -379,9 +446,16 @@
     return ctx;
   }
   function fitAll() {
-    fitCanvas($('net-canvas'), 500, 'net');
-    fitCanvas($('loss-canvas'), 150, 'loss');
-    fitCanvas($('viz-canvas'), 330, 'viz');
+    fitCanvas($('net-canvas'), canvasH('net'), 'net');
+    fitCanvas($('loss-canvas'), canvasH('loss'), 'loss');
+    fitCanvas($('viz-canvas'), canvasH('viz'), 'viz');
+  }
+  function canvasH(key) {
+    const w = (typeof window !== 'undefined' && window.innerWidth) || 1200;
+    if (w > 760) return key === 'net' ? 500 : key === 'loss' ? 150 : 330;
+    if (key === 'net') return 360;
+    if (key === 'loss') return 128;
+    return 260;
   }
   function layoutAndFit() {
     fitAll();
@@ -390,11 +464,14 @@
 
   function draw() {
     if (!S.editor || !S.net) return;
-    const nctx = fitCanvas($('net-canvas'), 500, 'net');
-    R.drawGraph(nctx, S.editor, S.net, S.sel, S.wireSrc, S.sizes.net.w, S.sizes.net.h);
-    const lctx = fitCanvas($('loss-canvas'), 150, 'loss');
+    const nctx = fitCanvas($('net-canvas'), canvasH('net'), 'net');
+    R.drawGraph(nctx, S.editor, S.net, S.sel, S.wireSrc, S.sizes.net.w, S.sizes.net.h, {
+      active: S.running,
+      phase: (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000
+    });
+    const lctx = fitCanvas($('loss-canvas'), canvasH('loss'), 'loss');
     R.drawLoss(lctx, S.trainer ? S.trainer.state.history : [], S.sizes.loss.w, S.sizes.loss.h);
-    const vctx = fitCanvas($('viz-canvas'), 330, 'viz');
+    const vctx = fitCanvas($('viz-canvas'), canvasH('viz'), 'viz');
     drawViz(vctx);
   }
 
@@ -441,6 +518,8 @@
   function updateButtons() {
     $('btn-train').disabled = S.running;
     $('btn-pause').disabled = !S.running;
+    const done = !!(S.trainer && S.trainer.state.done);
+    $('btn-train').textContent = S.running ? '⏳ 训练中…' : (done ? '↻ 再训一轮' : '▶ 开始训练');
   }
 
   /* ================= 画布交互 ================= */

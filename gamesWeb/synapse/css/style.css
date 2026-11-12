@@ -131,3 +131,64 @@ footer {
   background: rgba(13, 17, 32, 0.85);
 }
 .footer-right { display: flex; gap: 8px; }
+
+/* ---------- 试跑探针 ---------- */
+.probe {
+  margin-top: 2px; padding: 8px 10px; border: 1px solid var(--border);
+  border-radius: 8px; background: linear-gradient(180deg, rgba(77,208,225,.05), rgba(179,136,255,.03));
+}
+.probe-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--cyan); margin-bottom: 6px; }
+.probe-head span { color: var(--muted); font-size: 11px; font-weight: 400; }
+.probe-row { display: flex; align-items: flex-end; gap: 6px; }
+.probe-row label { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); }
+.probe-row button { flex: none; padding: 7px 12px; font-size: 12px; }
+.probe-out { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 16px; line-height: 1.4; }
+.probe-out.a { color: var(--cyan); }
+.probe-out.b { color: var(--magenta); }
+
+/* ---------- 移动端 ---------- */
+@media (max-width: 760px) {
+  body { overflow-x: hidden; }
+  header { flex-wrap: wrap; gap: 8px; padding: 10px 12px 8px; }
+  .brand { gap: 8px; }
+  .logo { font-size: 24px; }
+  h1 { font-size: 17px; letter-spacing: .5px; }
+  h1 em { font-size: 14px; margin-left: 4px; }
+  .tagline { display: none; }
+  .tabs { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .tab { padding: 9px 4px; font-size: 13px; white-space: nowrap; text-align: center; }
+  main { padding: 10px 10px 24px; }
+  .ws-grid { gap: 10px; }
+  .panel { padding: 10px; border-radius: 10px; }
+  .panel-head { flex-wrap: wrap; gap: 2px 8px; }
+  .toolbar { gap: 5px; }
+  .toolbar button { flex: 1 1 calc(33.333% - 6px); font-size: 12px; padding: 8px 4px; text-align: center; }
+  #net-canvas { height: 360px; }
+  #loss-canvas { height: 128px; }
+  #viz-canvas { height: 260px; }
+  .controls { gap: 8px; }
+  .hp-grid { gap: 6px; }
+  .actions { flex-wrap: wrap; }
+  .actions button { flex: 1 1 30%; font-size: 13px; }
+  .stat { padding: 7px 8px; }
+  .stat .v { font-size: 13px; }
+  .probe-head span { display: none; }
+  .node-panel { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 68vh; overflow-y: auto; }
+  footer { padding: 9px 12px; }
+  footer > span:first-child { display: none; }
+  .footer-right { width: 100%; justify-content: flex-end; }
+  .footer-right button { padding: 7px 12px; }
+  .arena-intro h2 { font-size: 20px; }
+  .arena-intro p { font-size: 13px; }
+  .card-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 430px) {
+  .toolbar button { flex-basis: calc(50% - 5px); }
+  .probe-row { flex-wrap: wrap; }
+  .probe-row label { flex-basis: calc(50% - 3px); }
+  .probe-row button { flex: 1 1 100%; }
+  .hp-grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

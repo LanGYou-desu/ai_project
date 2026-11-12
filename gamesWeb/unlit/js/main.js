@@ -56,6 +56,7 @@
       clearSave();
       setTimeout(function () {
         audio.ending();
+        ui.hide('#hud');
         ui.showEnd(engine.factsUnlocked, function () { location.reload(); });
       }, 900);
     }
@@ -78,10 +79,25 @@
     }
   }
 
+  function syncModeClass() {
+    if (document.body) document.body.classList.toggle('assist-mode', assist);
+  }
+
   function toggleAssist() {
     assist = !assist;
+    syncModeClass();
     ui.toast(assist ? '辅助模式：微弱轮廓已开启' : '沉浸模式：屏幕几乎全黑', 1800);
     audio.speak(assist ? '辅助模式' : '沉浸模式');
+  }
+
+  // 进入可操作状态：显示字幕 HUD（沉浸模式下仍保留文字，方便听不清/无声环境）
+  function enterPlay() {
+    state = 'play';
+    ui.show('#hud');
+    const st = document.querySelector('#sayText');
+    if (st && !st.textContent.trim()) {
+      ui.say('旁白', 'W 前进，← → 转身，空格用白杖探路。按 H 获取提示，按 M 打开心灵地图。');
+    }
   }
 
   document.addEventListener('keydown', function (ev) {
@@ -258,7 +274,7 @@
         lastChapter = engine.chapterId;
         state = 'intro';
         const ch = engine.curChapter();
-        ui.showIntro(ch, function () { state = 'play'; });
+        ui.showIntro(ch, function () { enterPlay(); });
       }
 
       if (state === 'play') {
@@ -310,22 +326,25 @@
   render.init(document.querySelector('#world'));
   ui.setEngine(engine);
   ui.bindMap();
+  syncModeClass();
+  ui.hide('#hud');
   if (audio.bindAutoResume) audio.bindAutoResume();
   const saved = readSave();
   ui.showTitle(function () {
     clearSave();
     state = 'intro';
     lastChapter = null;
+    ui.hide('#hud');
     engine.loadChapter('ch0');
   }, {
     hasSave: !!saved,
     chapterName: saved ? (UNLIT_CHAPTERS.get(saved.chapterId) || {}).name : null,
     mode: function () { return assist ? 'assist' : 'immerse'; },
-    onModeChange: function () { assist = !assist; },
+    onModeChange: function () { assist = !assist; syncModeClass(); },
     onContinue: function () {
       if (engine.restore(saved)) {
         lastChapter = engine.chapterId;   // 跳过引言，直接接着玩
-        state = 'play';
+        enterPlay();
         engine.say('继续上次的进度。', '旁白');
         ui.toast('📖 已载入上次进度', 2500);
       } else {
